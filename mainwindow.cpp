@@ -7,6 +7,7 @@
 #include <QApplication>
 #include <lbclient.h>
 #include <lbprocess.h>
+#include <QMenu>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -38,7 +39,10 @@ MainWindow::MainWindow(QWidget *parent)
     treeView->setModel(treeModel);
     treeView->setHeaderHidden(true);
     // treeView->header()->setSectionResizeMode(QHeaderView::Stretch);
-
+    treeView->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(treeView, &QTreeView::customContextMenuRequested,
+            this, &MainWindow::showTreeContextMenu);
+    treeView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     layout1->addWidget(treeView);
     dock1->setWidget(dock1Content);
 
@@ -89,6 +93,22 @@ MainWindow::MainWindow(QWidget *parent)
     vbox->addWidget(table);
     // vbox->addStretch(1);
     dock2->setWidget(wgtDiscover);
+
+
+    // dockConfig = new QDockWidget(tr("Конфигурация"), this);
+    // configDisplay = new QTextEdit(this);
+    // configDisplay->setReadOnly(true); // Только для чтения
+    // dockConfig->setWidget(configDisplay);
+
+    // // Добавляем его в ту же область, где лежит discover (допустим, это dock2)
+    // addDockWidget(Qt::RightDockWidgetArea, dockConfig);
+
+    // // ТАБИФИКАЦИЯ: Эта команда превратит два дока во вкладки
+    // tabifyDockWidget(dock2, dockConfig);
+
+    // // По умолчанию показываем discover
+    // dock2->raise();
+
 }
 
 void MainWindow::showEvent(QShowEvent *event)
@@ -182,7 +202,7 @@ void MainWindow::onTableDoubleClicked(int row, int column)
             }
             );
     connect(lbproc, &lbprocess::scanCompleted, this,
-            [ipv6, name, lbproc, this](const QMap<qsizetype, lbprocess::scaninfo>& scan){
+            [ipv6, name, lbc, lbproc, this](const QMap<qsizetype, lbprocess::scaninfo>& scan){
                 auto i = scan.begin();
                 for (auto i = scan.begin(); i != scan.end(); ++i) {
                     qDebug()<<i.key()<<i.value();
@@ -229,14 +249,80 @@ void MainWindow::onTableDoubleClicked(int row, int column)
                     // Теперь добавляем подробности ВНУТРЬ (как подветки)
                     col1->appendRow(new QStandardItem("MAC: " + info.mac));
                     col1->appendRow(new QStandardItem("Version: " + info.version));
+                    col1->appendRow(new QStandardItem("Serial: " + info.data.at(0)));
                 }
                 // 3. Раскрываем дерево
                 treeView->expand(rootIndex);
 
                 lbproc->deleteLater();
+                lbc->deleteLater();
             }
             );
-    lbproc->run(lbprocess::scan);
+    lbproc->run(lbprocess::scan, {"sys.serial"});
+}
+
+void MainWindow::showTreeContextMenu(const QPoint &pos)
+{
+    // Получаем индекс элемента, на который кликнули
+    QModelIndex index = treeView->indexAt(pos);
+    if (!index.isValid() || index.parent().isValid()) return;
+
+
+    QMenu menu(this);
+    QAction *removeAction = menu.addAction(QString("Удалить %1").arg(index.data().toString()));
+    QAction *getConfigAction = menu.addAction(QString("Запросить конфигурацию у %1").arg(index.data().toString()));
+
+    // Вызываем меню в позиции курсора
+    QAction *selectedItem = menu.exec(treeView->viewport()->mapToGlobal(pos));
+
+    if (selectedItem == removeAction) {
+        // Удаляем строку из модели
+        treeModel->removeRow(index.row());
+    }else if (selectedItem == getConfigAction){
+        getlbcfg(index.data(Qt::UserRole).toString());
+    }
 }
 
 MainWindow::~MainWindow() {}
+
+void MainWindow::getlbcfg(const QString &ipv6)
+{
+    qDebug()<<"getlbcfg: "<<ipv6;
+    LBclient *lbc = new LBclient(this, {"getconf"});
+    lbc->setTCPaddr(ipv6, 502);
+    connect(lbc, &LBclient::ExecuteCompletedJson, this,
+            [lbc, this](const QString& lbhost, const QJsonObject& Qjo, const QString& message, const QModbusDevice::Error error){
+                if(error==QModbusDevice::NoError){
+                    qDebug()<<"# BEGIN YAML";
+                    lbyaml::printlbconf(Qjo);
+                    qDebug()<<"# END YAML";
+                    // 1. Проверяем, создан ли док. Если нет — создаем.
+                    if (!dockConfig) {
+                        dockConfig = new QDockWidget(tr("Конфигурация: %1"), this);
+                        configDisplay = new QTextEdit(this);
+                        configDisplay->setReadOnly(true);
+                        configDisplay->setFontFamily("Courier New"); // Моноширинный шрифт для конфига
+                        dockConfig->setWidget(configDisplay);
+
+                        // Добавляем в ту же область, где ваш основной док (например, dock2)
+                        addDockWidget(Qt::RightDockWidgetArea, dockConfig);
+
+                        // Превращаем в табы
+                        tabifyDockWidget(dock2, dockConfig);
+                    }
+
+                    // 2. Обновляем содержимое
+                    dockConfig->setWindowTitle(tr("Конфигурация: %1"));
+                    configDisplay->setPlainText("# BEGIN YAML");
+
+                    // 3. Выводим на передний план
+                    dockConfig->show();
+                    dockConfig->raise();
+                }
+                else
+                    qDebug().noquote()<<message;
+                lbc->deleteLater();
+            }
+            );
+    lbc->Execute();
+}

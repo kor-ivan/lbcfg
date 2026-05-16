@@ -5,6 +5,7 @@
 #include <QTableWidget>
 #include <QTreeView>
 #include <QStandardItemModel>
+#include<QTextEdit>
 
 class MainWindow : public QMainWindow
 {
@@ -17,12 +18,16 @@ private:
     // Теперь они доступны во всем классе
     QDockWidget *dock1;
     QDockWidget *dock2;
+    QDockWidget *dockConfig;
     QTableWidget *table; // Чтобы иметь доступ к ней из методов
     QTreeView *treeView;
+    QTextEdit *configDisplay;
     QStandardItemModel *treeModel;
 
     inline static const QColor alertColor = QColor(255, 205, 210);
     bool SendDiscover;
+
+    void getlbcfg (const QString &ipv6);
 
 protected:
     void showEvent(QShowEvent *event) override;
@@ -31,5 +36,6 @@ protected:
 private slots:
     void btnDiscoverClicked(); // Слот для кнопки
     void onTableDoubleClicked(int row, int column);
+    void showTreeContextMenu(const QPoint &pos);
 };
 #endif // MAINWINDOW_H
