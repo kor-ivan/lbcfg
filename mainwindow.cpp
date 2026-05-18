@@ -279,28 +279,32 @@ void MainWindow::showTreeContextMenu(const QPoint &pos)
         // Удаляем строку из модели
         treeModel->removeRow(index.row());
     }else if (selectedItem == getConfigAction){
-        getlbcfg(index.data(Qt::UserRole).toString());
+        getlbcfg(index.data(Qt::UserRole).toString(), index.data().toString());
     }
 }
 
 MainWindow::~MainWindow() {}
 
-void MainWindow::getlbcfg(const QString &ipv6)
+void MainWindow::getlbcfg(const QString &ipv6, const QString &name)
 {
-    qDebug()<<"getlbcfg: "<<ipv6;
+    qDebug()<<"getlbcfg: "<<ipv6<<name;
     LBclient *lbc = new LBclient(this, {"getconf"});
     lbc->setTCPaddr(ipv6, 502);
     connect(lbc, &LBclient::ExecuteCompletedJson, this,
-            [lbc, this](const QString& lbhost, const QJsonObject& Qjo, const QString& message, const QModbusDevice::Error error){
+            [lbc, this, name](const QString& lbhost, const QJsonObject& Qjo, const QString& message, const QModbusDevice::Error error){
                 if(error==QModbusDevice::NoError){
                     qDebug()<<"# BEGIN YAML";
                     lbyaml::printlbconf(Qjo);
                     qDebug()<<"# END YAML";
+
+                    // Получаем YAML-текст один раз, чтобы использовать его для сравнения
+                    QString yamlContent = lbyaml::getlbconf(Qjo);
+
                     // 1. Проверяем, создан ли док. Если нет — создаем.
                     if (!dockConfig) {
-                        dockConfig = new QDockWidget(tr("Конфигурация: %1"), this);
+                        dockConfig = new QDockWidget(QString("Конфигурация: %1").arg(name), this);
                         configDisplay = new QTextEdit(this);
-                        configDisplay->setReadOnly(true);
+                        // configDisplay->setReadOnly(true);
                         configDisplay->setFontFamily("Courier New"); // Моноширинный шрифт для конфига
                         dockConfig->setWidget(configDisplay);
 
@@ -311,9 +315,24 @@ void MainWindow::getlbcfg(const QString &ipv6)
                         tabifyDockWidget(dock2, dockConfig);
                     }
 
+                    // Очищаем старые соединения, если док переиспользуется для нового запроса
+                    configDisplay->disconnect(SIGNAL(textChanged()));
+
                     // 2. Обновляем содержимое
-                    dockConfig->setWindowTitle(tr("Конфигурация: %1"));
-                    configDisplay->setPlainText("# BEGIN YAML");
+                    dockConfig->setWindowTitle(QString("Конфигурация: %1").arg(name));
+                    configDisplay->setPlainText(yamlContent);
+
+                    // 3. Отслеживаем изменения текста (Лямбда-слот)
+                    // Захватываем yamlContent (исходный текст) и name по значению
+                    connect(configDisplay, &QTextEdit::textChanged, this, [this, yamlContent, name]() {
+                        // Если текущий текст отличается от оригинального
+                        if (configDisplay->toPlainText() != yamlContent) {
+                            dockConfig->setWindowTitle(QString("* Конфигурация: %1").arg(name));
+                        } else {
+                            // Если пользователь вернул всё как было, убираем звёздочку
+                            dockConfig->setWindowTitle(QString("Конфигурация: %1").arg(name));
+                        }
+                    });
 
                     // 3. Выводим на передний план
                     dockConfig->show();

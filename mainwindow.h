@@ -27,7 +27,7 @@ private:
     inline static const QColor alertColor = QColor(255, 205, 210);
     bool SendDiscover;
 
-    void getlbcfg (const QString &ipv6);
+    void getlbcfg (const QString &ipv6, const QString &name);
 
 protected:
     void showEvent(QShowEvent *event) override;
