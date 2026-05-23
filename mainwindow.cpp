@@ -8,6 +8,9 @@
 #include <lbclient.h>
 #include <lbprocess.h>
 #include <QMenu>
+#include <QMenuBar>
+#include <QStatusBar>
+#include <QLabel>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -108,6 +111,29 @@ MainWindow::MainWindow(QWidget *parent)
 
     // // По умолчанию показываем discover
     // dock2->raise();
+
+    // 1. Создаем главное меню
+    QMenuBar *menuBar = this->menuBar();
+
+    // Добавляем вкладку "Файл"
+    QMenu *fileMenu = menuBar->addMenu("&Файл");
+
+    // Добавляем действие "Выход" в меню "Файл"
+    QAction *exitAction = fileMenu->addAction("&Выход");
+    exitAction->setShortcut(QKeySequence::Quit); // Горячая клавиша
+
+    // Соединяем клик по меню с закрытием программы
+    connect(exitAction, &QAction::triggered, this, &QWidget::close);
+
+    // 2. Создаем строку состояния (Status Bar)
+    QStatusBar *statusBar = this->statusBar();
+
+    // Временное сообщение (исчезнет через 5000 миллисекунд / 5 секунд)
+    statusBar->showMessage(tr("Программа готова к работе"), 5000);
+
+    // Постоянный индикатор (например, имя пользователя или статус сети)
+    QLabel *statusLabel = new QLabel(tr("Сеть: ОК"), this);
+    statusBar->addPermanentWidget(statusLabel);
 
 }
 
