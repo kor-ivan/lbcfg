@@ -18,7 +18,7 @@ private:
     // Теперь они доступны во всем классе
     QDockWidget *dock1;
     QDockWidget *dock2;
-    QDockWidget *dockConfig;
+    QDockWidget *dockConfig = nullptr;
     QTableWidget *table; // Чтобы иметь доступ к ней из методов
     QTreeView *treeView;
     QTextEdit *configDisplay;
@@ -35,7 +35,9 @@ protected:
 
 private slots:
     void btnDiscoverClicked(); // Слот для кнопки
-    void onTableDoubleClicked(int row, int column);
     void showTreeContextMenu(const QPoint &pos);
+    void onDeviceSelected(
+        const QString& ipv6,
+        const QString& name);
 };
 #endif // MAINWINDOW_H

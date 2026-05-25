@@ -11,6 +11,7 @@
 #include <QMenuBar>
 #include <QStatusBar>
 #include <QLabel>
+#include "discoverwidget.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -21,8 +22,8 @@ MainWindow::MainWindow(QWidget *parent)
     setCentralWidget(dummy);
     dummy->hide(); // Скрываем, чтобы доки сомкнулись в центре
 
-    dock1 = new QDockWidget(tr("Tree View"), this);
-    dock2 = new QDockWidget(tr("Discover"), this);
+    dock1 = new QDockWidget("Tree View", this);
+    dock2 = new QDockWidget("Discover", this);
     // Разрешаем прикрепление ко всем сторонам: Left, Right, Top, Bottom
     dock1->setAllowedAreas(Qt::AllDockWidgetAreas);
     dock2->setAllowedAreas(Qt::AllDockWidgetAreas);
@@ -33,69 +34,15 @@ MainWindow::MainWindow(QWidget *parent)
     setDockNestingEnabled(true);
 
 
-    QWidget *dock1Content = new QWidget();
-    QVBoxLayout *layout1 = new QVBoxLayout(dock1Content);
+    discoverWidget *m_discoverWidget = new discoverWidget(this);
 
-    treeView = new QTreeView();
-    treeModel = new QStandardItemModel(this);
+    dock2->setWidget(m_discoverWidget);
 
-    treeView->setModel(treeModel);
-    treeView->setHeaderHidden(true);
-    // treeView->header()->setSectionResizeMode(QHeaderView::Stretch);
-    treeView->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(treeView, &QTreeView::customContextMenuRequested,
-            this, &MainWindow::showTreeContextMenu);
-    treeView->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    layout1->addWidget(treeView);
-    dock1->setWidget(dock1Content);
-
-
-    QWidget *wgtDiscover = new QWidget();
-    QVBoxLayout *vbox = new QVBoxLayout(wgtDiscover);
-    // 2. Создаем кнопку
-    QPushButton *btnDiscover = new QPushButton("Send Discover");
-    // 1. Создаем горизонтальный слой для верхней части
-    QHBoxLayout *hBox = new QHBoxLayout();
-    // 2. Добавляем кнопку
-    hBox->addWidget(btnDiscover);
-    // Соединяем: КТО (кнопка) -> ЧТО СДЕЛАЛА (нажата) -> КТО ПРИМЕТ (окно) -> ЧТО СДЕЛАЕТ (метод)
-    connect(btnDiscover, &QPushButton::clicked, this, &MainWindow::btnDiscoverClicked);
-    // 3. Добавляем "пружину" (Spacer), которая вытолкнет кнопку влево
-    hBox->addStretch();
-    // 4. Добавляем этот горизонтальный слой в основной вертикальный
-    vbox->addLayout(hBox);
-
-    // 3. Создаем таблицу
-    table = new QTableWidget();
-    table->setColumnCount(7);
-    table->setHorizontalHeaderLabels({"Name", "Type", "IPv4", "MAC", "Delays (ms)", "IF"});
-    // Выделять строку целиком при клике на любую ячейку
-    table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    // разрешить выбирать только одну строку за раз
-    table->setSelectionMode(QAbstractItemView::SingleSelection);
-    // запретить редактирование ячеек, чтобы они не открывались по двойному клику
-    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    QHeaderView *header = table->horizontalHeader();
-    header->setSectionResizeMode(0, QHeaderView::Stretch);
-    // Остальные столбцы: подгоняем под содержимое текста
-    for (int i = 1; i < table->columnCount(); ++i) {
-        header->setSectionResizeMode(i, QHeaderView::ResizeToContents);
-    }
-    header->setStyleSheet(
-        "QHeaderView::section {"
-        "    background-color: #f0f0f0;"
-        "    font-weight: bold;"
-        "    border: 1px solid #dcdcdc;"
-        "    padding-left: 4px;" // Отступ только слева, чтобы текст не прилипал
-        "    height: 20px;"      // Подсказка для высоты
-        "}"
-        );
-    table->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-    table->setColumnHidden(6, true);
-    connect(table, &QTableWidget::cellDoubleClicked, this, &MainWindow::onTableDoubleClicked);
-    vbox->addWidget(table);
-    // vbox->addStretch(1);
-    dock2->setWidget(wgtDiscover);
+    connect(
+        m_discoverWidget,
+        &discoverWidget::deviceSelected,
+        this,
+        &MainWindow::onDeviceSelected);
 
 
     // dockConfig = new QDockWidget(tr("Конфигурация"), this);
@@ -198,17 +145,31 @@ void MainWindow::btnDiscoverClicked()
     }
 }
 
-void MainWindow::onTableDoubleClicked(int row, int column)
+
+void MainWindow::showTreeContextMenu(const QPoint &pos)
 {
-    Q_UNUSED(column);
-    if (QApplication::mouseButtons() != Qt::LeftButton) {
-        return;
+    // Получаем индекс элемента, на который кликнули
+    QModelIndex index = treeView->indexAt(pos);
+    if (!index.isValid() || index.parent().isValid()) return;
+
+
+    QMenu menu(this);
+    QAction *removeAction = menu.addAction(QString("Удалить %1").arg(index.data().toString()));
+    QAction *getConfigAction = menu.addAction(QString("Запросить конфигурацию у %1").arg(index.data().toString()));
+
+    // Вызываем меню в позиции курсора
+    QAction *selectedItem = menu.exec(treeView->viewport()->mapToGlobal(pos));
+
+    if (selectedItem == removeAction) {
+        // Удаляем строку из модели
+        treeModel->removeRow(index.row());
+    }else if (selectedItem == getConfigAction){
+        getlbcfg(index.data(Qt::UserRole).toString(), index.data().toString());
     }
-    QTableWidgetItem *item = table->item(row, 6);
-    if (!item) return;
-    QString ipv6 = item->text();
-    item = table->item(row, 0);
-    QString name = item->text();
+}
+
+void MainWindow::onDeviceSelected(const QString &ipv6, const QString &name)
+{
     qDebug() << "Starting process for:"<<ipv6<<" "<<name;
     LBclient *lbc = new LBclient(this);
     lbc->setTCPaddr(ipv6, 502);
@@ -285,28 +246,6 @@ void MainWindow::onTableDoubleClicked(int row, int column)
             }
             );
     lbproc->run(lbprocess::scan, {"sys.serial"});
-}
-
-void MainWindow::showTreeContextMenu(const QPoint &pos)
-{
-    // Получаем индекс элемента, на который кликнули
-    QModelIndex index = treeView->indexAt(pos);
-    if (!index.isValid() || index.parent().isValid()) return;
-
-
-    QMenu menu(this);
-    QAction *removeAction = menu.addAction(QString("Удалить %1").arg(index.data().toString()));
-    QAction *getConfigAction = menu.addAction(QString("Запросить конфигурацию у %1").arg(index.data().toString()));
-
-    // Вызываем меню в позиции курсора
-    QAction *selectedItem = menu.exec(treeView->viewport()->mapToGlobal(pos));
-
-    if (selectedItem == removeAction) {
-        // Удаляем строку из модели
-        treeModel->removeRow(index.row());
-    }else if (selectedItem == getConfigAction){
-        getlbcfg(index.data(Qt::UserRole).toString(), index.data().toString());
-    }
 }
 
 MainWindow::~MainWindow() {}
