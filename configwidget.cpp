@@ -1,10 +1,13 @@
 #include "configwidget.h"
 #include <QVBoxLayout>
 
-ConfigWidget::ConfigWidget(QWidget *parent)
-    : QWidget{parent}
+ConfigWidget::ConfigWidget(const QString &name, QWidget *parent)
+    : QDockWidget(QString("Конфигурация: %1").arg(name),parent)
 {
-    QVBoxLayout* layout = new QVBoxLayout(this);
+    plcName = name;
+    QWidget *content = new QWidget(this);
+    setWidget(content);
+    QVBoxLayout* layout = new QVBoxLayout(content);
     editor = new QTextEdit(this);
     editor->setFontFamily("Courier New");
     layout->addWidget(editor);
@@ -18,7 +21,7 @@ void ConfigWidget::setConfig(const QString &yaml)
     editor->setPlainText(yaml);
     editor->blockSignals(false);
     modified = false;
-    emit modifiedChanged(false);
+
 }
 
 QString ConfigWidget::config() const
@@ -35,6 +38,9 @@ void ConfigWidget::onTextChanged()
 {
     if (editor->toPlainText() != originalYaml){
         modified = true;
-        emit modifiedChanged(modified);
+        setWindowTitle(QString("* Конфигурация: %1").arg(plcName));
+    }else{
+        modified = false;
+        setWindowTitle(QString("Конфигурация: %1").arg(plcName));
     }
 }

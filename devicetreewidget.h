@@ -1,12 +1,12 @@
 #ifndef DEVICETREEWIDGET_H
 #define DEVICETREEWIDGET_H
 
-#include <QWidget>
+#include <QDockWidget>
 #include <QTreeView>
 #include <QStandardItemModel>
 #include <lbprocess.h>
 
-class DeviceTreeWidget : public QWidget
+class DeviceTreeWidget : public QDockWidget
 {
     Q_OBJECT
 public:

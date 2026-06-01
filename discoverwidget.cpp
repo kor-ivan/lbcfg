@@ -4,9 +4,11 @@
 #include <QApplication>
 
 DiscoverWidget::DiscoverWidget(QWidget *parent)
-    : QWidget(parent)
+    : QDockWidget("Discover", parent)
 {
-    QVBoxLayout *vbox = new QVBoxLayout(this);
+    QWidget *content = new QWidget(this);
+    setWidget(content);
+    QVBoxLayout *vbox = new QVBoxLayout(content);
     btnDiscover = new QPushButton("Send Discover");
     QHBoxLayout *hbox = new QHBoxLayout();
     hbox->addWidget(btnDiscover);

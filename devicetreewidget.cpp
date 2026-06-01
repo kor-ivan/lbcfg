@@ -3,9 +3,11 @@
 #include <QMenu>
 
 DeviceTreeWidget::DeviceTreeWidget(QWidget *parent)
-    : QWidget{parent}
+    : QDockWidget("Tree View", parent)
 {
-    QVBoxLayout *layout = new QVBoxLayout(this);
+    QWidget *content = new QWidget(this);
+    setWidget(content);
+    QVBoxLayout *layout = new QVBoxLayout(content);
     treeView = new QTreeView(this);
     treeModel = new QStandardItemModel(this);
     treeView->setModel(treeModel);

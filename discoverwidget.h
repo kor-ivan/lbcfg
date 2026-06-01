@@ -2,14 +2,15 @@
 #define DISCOVERWIDGET_H
 
 #include <QObject>
-#include <QWidget>
+// #include <QWidget>
+#include <QDockWidget>
 #include <discover.h>
 #include <QPushButton>
 #include <QTableWidget>
 
 
 
-class DiscoverWidget : public QWidget
+class DiscoverWidget : public QDockWidget
 {
     Q_OBJECT
 public:
