@@ -2,10 +2,9 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QTableWidget>
-#include <QTreeView>
-#include <QStandardItemModel>
 #include<QTextEdit>
+#include "devicetreewidget.h"
+#include "discoverwidget.h"
 
 class MainWindow : public QMainWindow
 {
@@ -15,29 +14,31 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 private:
+    DeviceTreeWidget *treeWidget = nullptr;
+    DiscoverWidget *m_discoverWidget = nullptr;
     // Теперь они доступны во всем классе
-    QDockWidget *dock1;
-    QDockWidget *dock2;
-    QDockWidget *dockConfig = nullptr;
-    QTableWidget *table; // Чтобы иметь доступ к ней из методов
-    QTreeView *treeView;
-    QTextEdit *configDisplay;
-    QStandardItemModel *treeModel;
+    QDockWidget *dock1 = nullptr;
+    QDockWidget *dock2 = nullptr;
+    // QDockWidget *dockConfig = nullptr;
+    QMap<QString, QDockWidget*> configDocks;
+    QTextEdit *configDisplay = nullptr;
+
 
     inline static const QColor alertColor = QColor(255, 205, 210);
-    bool SendDiscover;
+    // bool SendDiscover;
 
-    void getlbcfg (const QString &ipv6, const QString &name);
+
 
 protected:
     void showEvent(QShowEvent *event) override;
 
 
 private slots:
-    void btnDiscoverClicked(); // Слот для кнопки
-    void showTreeContextMenu(const QPoint &pos);
+    // void showTreeContextMenu(const QPoint &pos);
     void onDeviceSelected(
         const QString& ipv6,
         const QString& name);
+    void getlbcfg (const QString &ipv6, const QString &name);
+
 };
 #endif // MAINWINDOW_H

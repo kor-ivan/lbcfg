@@ -9,11 +9,11 @@
 
 
 
-class discoverWidget : public QWidget
+class DiscoverWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit discoverWidget(QWidget *parent = nullptr);
+    explicit DiscoverWidget(QWidget *parent = nullptr);
 
 signals:
     void deviceSelected(const QString& ipv6,

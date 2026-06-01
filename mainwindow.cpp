@@ -2,16 +2,14 @@
 #include <QDockWidget>
 #include <QLayout>
 #include <QHeaderView>
-#include <QPushButton>
 #include <discover.h>
-#include <QApplication>
 #include <lbclient.h>
 #include <lbprocess.h>
-#include <QMenu>
 #include <QMenuBar>
 #include <QStatusBar>
 #include <QLabel>
-#include "discoverwidget.h"
+#include "configwidget.h"
+
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -30,34 +28,28 @@ MainWindow::MainWindow(QWidget *parent)
     // Или QWidget, или QMdiArea
     addDockWidget(Qt::LeftDockWidgetArea, dock1);
     addDockWidget(Qt::RightDockWidgetArea, dock2);
-
     setDockNestingEnabled(true);
 
 
-    discoverWidget *m_discoverWidget = new discoverWidget(this);
+    treeWidget = new DeviceTreeWidget(this);
+    dock1->setWidget(treeWidget);
 
+    connect(
+        treeWidget,
+        &DeviceTreeWidget::requestConfig,
+        this,
+        &MainWindow::getlbcfg);
+
+
+    m_discoverWidget = new DiscoverWidget(this);
     dock2->setWidget(m_discoverWidget);
 
     connect(
         m_discoverWidget,
-        &discoverWidget::deviceSelected,
+        &DiscoverWidget::deviceSelected,
         this,
         &MainWindow::onDeviceSelected);
 
-
-    // dockConfig = new QDockWidget(tr("Конфигурация"), this);
-    // configDisplay = new QTextEdit(this);
-    // configDisplay->setReadOnly(true); // Только для чтения
-    // dockConfig->setWidget(configDisplay);
-
-    // // Добавляем его в ту же область, где лежит discover (допустим, это dock2)
-    // addDockWidget(Qt::RightDockWidgetArea, dockConfig);
-
-    // // ТАБИФИКАЦИЯ: Эта команда превратит два дока во вкладки
-    // tabifyDockWidget(dock2, dockConfig);
-
-    // // По умолчанию показываем discover
-    // dock2->raise();
 
     // 1. Создаем главное меню
     QMenuBar *menuBar = this->menuBar();
@@ -94,80 +86,6 @@ void MainWindow::showEvent(QShowEvent *event)
     resizeDocks({dock1, dock2}, {totalWidth/3, 2*totalWidth/3}, Qt::Horizontal);
 }
 
-void MainWindow::btnDiscoverClicked()
-{
-    discover *lbd = new discover(this);
-    // table->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
-    table->setRowCount(0); // Очищаем старые строки
-    connect(lbd, &discover::discoverCompleted, this,
-            [this, lbd] (const QMap<QString, discover::lbinfo>& DiscoverMap, const discover::discoverError error, const QString errorStr){
-                if (SendDiscover && error == discover::NoError){
-                    table->setSortingEnabled(false); // Отключаем сортировку на время вставки для скорости
-                    int row = 0;
-                    for (auto it = DiscoverMap.begin(); it != DiscoverMap.end(); ++it) {
-                        qDebug()<<it.value();
-                        table->insertRow(row);
-                        table->setItem(row, 0, new QTableWidgetItem(it.value().name));
-                        table->setItem(row, 1, new QTableWidgetItem(it.value().type));
-                        table->setItem(row, 2, new QTableWidgetItem(it.value().ipv4));
-                        table->setItem(row, 3, new QTableWidgetItem(it.value().mac));
-                        QStringList strList;
-                        for (float val : it.value().delay)
-                            strList << QString::number(val);
-                        table->setItem(row, 4, new QTableWidgetItem(strList.join(",")));
-                        strList.clear();
-                        for (int val : it.value().ifindex)
-                            strList << QString::number(val);
-                        table->setItem(row, 5, new QTableWidgetItem(strList.join(",")));
-                        if (it.value().btn) {
-                            for (int col = 0; col < table->columnCount(); ++col) {
-                                QTableWidgetItem *item = table->item(row, col);
-                                if (item) {
-                                    item->setBackground(alertColor);
-                                    QFont font = item->font();
-                                    font.setBold(true);
-                                    item->setFont(font);
-                                }
-                            }
-                        }
-                        table->setItem(row, 6, new QTableWidgetItem(it.key()));
-                        row++;
-                    }
-                    table->setSortingEnabled(true); // Возвращаем возможность сортировки
-                }
-                SendDiscover = false;
-                lbd->deleteLater();
-            }
-            );
-    if (!SendDiscover){
-        lbd->execute();
-        SendDiscover = true;
-    }
-}
-
-
-void MainWindow::showTreeContextMenu(const QPoint &pos)
-{
-    // Получаем индекс элемента, на который кликнули
-    QModelIndex index = treeView->indexAt(pos);
-    if (!index.isValid() || index.parent().isValid()) return;
-
-
-    QMenu menu(this);
-    QAction *removeAction = menu.addAction(QString("Удалить %1").arg(index.data().toString()));
-    QAction *getConfigAction = menu.addAction(QString("Запросить конфигурацию у %1").arg(index.data().toString()));
-
-    // Вызываем меню в позиции курсора
-    QAction *selectedItem = menu.exec(treeView->viewport()->mapToGlobal(pos));
-
-    if (selectedItem == removeAction) {
-        // Удаляем строку из модели
-        treeModel->removeRow(index.row());
-    }else if (selectedItem == getConfigAction){
-        getlbcfg(index.data(Qt::UserRole).toString(), index.data().toString());
-    }
-}
-
 void MainWindow::onDeviceSelected(const QString &ipv6, const QString &name)
 {
     qDebug() << "Starting process for:"<<ipv6<<" "<<name;
@@ -195,51 +113,7 @@ void MainWindow::onDeviceSelected(const QString &ipv6, const QString &name)
                     qDebug()<<i.key()<<i.value();
                 }
 
-                // 1. Ищем существующий узел (например, через UserRole с IPv6 или по имени)
-                QStandardItem *plcRoot = nullptr;
-                qDebug()<<treeModel->rowCount();
-                for (int i = 0; i < treeModel->rowCount(); ++i) {
-                    if (treeModel->item(i)->data(Qt::UserRole).toString() == ipv6) {
-                        plcRoot = treeModel->item(i);
-                        plcRoot->removeRows(0, plcRoot->rowCount());
-                        break;
-                    }
-                }
-
-
-                // 2. Если не нашли, создаем новый корень
-                QModelIndex rootIndex;
-                if (!plcRoot) {
-                    plcRoot = new QStandardItem(name);
-                    plcRoot->setData(ipv6, Qt::UserRole); // Прячем ID для поиска в будущем
-                    QFont rootFont = plcRoot->font();
-                    rootFont.setBold(true);
-                    rootFont.setPointSize(rootFont.pointSize());
-                    plcRoot->setFont(rootFont);
-                    treeModel->appendRow(plcRoot);
-                    rootIndex = treeModel->index(treeModel->rowCount() - 1, 0);
-                }
-
-                // 3. Итерируем по результатам сканирования
-                for (auto it = scan.begin(); it != scan.end(); ++it) {
-                    const auto &info = it.value();
-                    // Создаем элементы для двух колонок
-                    QStandardItem *col1 = new QStandardItem(QString("Slot %1: %2").arg(it.key()).arg(info.devtype));
-                    // 2. Делаем их жирными
-                    QFont boldFont = col1->font();
-                    boldFont.setBold(true);
-                    col1->setFont(boldFont);
-                    if (info.master)
-                        col1->setText(col1->text() + " [MASTER]");
-                    // Добавляем их в модель как одну строку
-                    plcRoot->appendRow(col1);
-                    // Теперь добавляем подробности ВНУТРЬ (как подветки)
-                    col1->appendRow(new QStandardItem("MAC: " + info.mac));
-                    col1->appendRow(new QStandardItem("Version: " + info.version));
-                    col1->appendRow(new QStandardItem("Serial: " + info.data.at(0)));
-                }
-                // 3. Раскрываем дерево
-                treeView->expand(rootIndex);
+                treeWidget->updateDevice(ipv6, name, scan);
 
                 lbproc->deleteLater();
                 lbc->deleteLater();
@@ -256,7 +130,7 @@ void MainWindow::getlbcfg(const QString &ipv6, const QString &name)
     LBclient *lbc = new LBclient(this, {"getconf"});
     lbc->setTCPaddr(ipv6, 502);
     connect(lbc, &LBclient::ExecuteCompletedJson, this,
-            [lbc, this, name](const QString& lbhost, const QJsonObject& Qjo, const QString& message, const QModbusDevice::Error error){
+            [lbc, this, name, ipv6](const QString& lbhost, const QJsonObject& Qjo, const QString& message, const QModbusDevice::Error error){
                 if(error==QModbusDevice::NoError){
                     qDebug()<<"# BEGIN YAML";
                     lbyaml::printlbconf(Qjo);
@@ -265,43 +139,46 @@ void MainWindow::getlbcfg(const QString &ipv6, const QString &name)
                     // Получаем YAML-текст один раз, чтобы использовать его для сравнения
                     QString yamlContent = lbyaml::getlbconf(Qjo);
 
-                    // 1. Проверяем, создан ли док. Если нет — создаем.
-                    if (!dockConfig) {
-                        dockConfig = new QDockWidget(QString("Конфигурация: %1").arg(name), this);
-                        configDisplay = new QTextEdit(this);
-                        // configDisplay->setReadOnly(true);
-                        configDisplay->setFontFamily("Courier New"); // Моноширинный шрифт для конфига
-                        dockConfig->setWidget(configDisplay);
+                    QDockWidget* dock = nullptr;
+                    ConfigWidget* cfgWidget = nullptr;
 
+                    if (configDocks.contains(ipv6))
+                    {
+                        dock = configDocks[ipv6];
+
+                        cfgWidget = qobject_cast<ConfigWidget*>(dock->widget());
+                    }else{
+                        dock = new QDockWidget(QString("Конфигурация: %1").arg(name), this);
+                        cfgWidget = new ConfigWidget();
+                        dock->setWidget(cfgWidget);
+                        configDocks.insert(ipv6, dock);
                         // Добавляем в ту же область, где ваш основной док (например, dock2)
-                        addDockWidget(Qt::RightDockWidgetArea, dockConfig);
-
+                        addDockWidget(Qt::RightDockWidgetArea, dock);
                         // Превращаем в табы
-                        tabifyDockWidget(dock2, dockConfig);
+                        tabifyDockWidget(dock2, dock);
+                        cfgWidget->setConfig(yamlContent);
                     }
-
-                    // Очищаем старые соединения, если док переиспользуется для нового запроса
-                    configDisplay->disconnect(SIGNAL(textChanged()));
-
-                    // 2. Обновляем содержимое
-                    dockConfig->setWindowTitle(QString("Конфигурация: %1").arg(name));
-                    configDisplay->setPlainText(yamlContent);
-
-                    // 3. Отслеживаем изменения текста (Лямбда-слот)
-                    // Захватываем yamlContent (исходный текст) и name по значению
-                    connect(configDisplay, &QTextEdit::textChanged, this, [this, yamlContent, name]() {
-                        // Если текущий текст отличается от оригинального
-                        if (configDisplay->toPlainText() != yamlContent) {
-                            dockConfig->setWindowTitle(QString("* Конфигурация: %1").arg(name));
-                        } else {
-                            // Если пользователь вернул всё как было, убираем звёздочку
-                            dockConfig->setWindowTitle(QString("Конфигурация: %1").arg(name));
-                        }
-                    });
-
-                    // 3. Выводим на передний план
-                    dockConfig->show();
-                    dockConfig->raise();
+                    connect(dock, &QObject::destroyed, this,
+                        [this, ipv6](){
+                            configDocks.remove(ipv6);
+                        });
+                    connect(
+                        cfgWidget, &ConfigWidget::modifiedChanged, this,
+                        [dock, name](bool modified)
+                        {
+                            if(modified)
+                            {
+                                dock->setWindowTitle(
+                                    QString("* Конфигурация: %1").arg(name));
+                            }
+                            else
+                            {
+                                dock->setWindowTitle(
+                                    QString("Конфигурация: %1").arg(name));
+                            }
+                        });
+                    dock->show();
+                    dock->raise();
                 }
                 else
                     qDebug().noquote()<<message;
