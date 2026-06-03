@@ -1,14 +1,14 @@
-#ifndef CONFIGWIDGET_H
-#define CONFIGWIDGET_H
+#ifndef CONFIGDOCKWIDGET_H
+#define CONFIGDOCKWIDGET_H
 
 #include <QDockWidget>
 #include <QTextEdit>
 
-class ConfigWidget : public QDockWidget
+class ConfigDockWidget : public QDockWidget
 {
     Q_OBJECT
 public:
-    explicit ConfigWidget(const QString& name, QWidget *parent = nullptr);
+    explicit ConfigDockWidget(const QString& name, QWidget *parent = nullptr);
     void setConfig(const QString& yaml);
     QString config() const;
     bool isModified() const;
@@ -25,4 +25,4 @@ private:
     QString plcName;
 };
 
-#endif // CONFIGWIDGET_H
+#endif // CONFIGDOCKWIDGET_H

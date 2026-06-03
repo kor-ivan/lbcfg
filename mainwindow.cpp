@@ -1,7 +1,5 @@
 #include "mainwindow.h"
 #include <QDockWidget>
-// #include <QLayout>
-// #include <QHeaderView>
 #include <discover.h>
 #include <lbclient.h>
 #include <lbprocess.h>
@@ -20,32 +18,25 @@ MainWindow::MainWindow(QWidget *parent)
     setCentralWidget(dummy);
     dummy->hide(); // Скрываем, чтобы доки сомкнулись в центре
 
-    dock1 = new DeviceTreeWidget(this);
-    dock2 = new DiscoverWidget(this);
+    treeDock = new DeviceTreeWidget(this);
+    discoverDock = new DiscoverWidget(this);
     // Разрешаем прикрепление ко всем сторонам: Left, Right, Top, Bottom
-    dock1->setAllowedAreas(Qt::AllDockWidgetAreas);
-    dock2->setAllowedAreas(Qt::AllDockWidgetAreas);
+    treeDock->setAllowedAreas(Qt::AllDockWidgetAreas);
+    discoverDock->setAllowedAreas(Qt::AllDockWidgetAreas);
     // Или QWidget, или QMdiArea
-    addDockWidget(Qt::LeftDockWidgetArea, dock1);
-    addDockWidget(Qt::RightDockWidgetArea, dock2);
+    addDockWidget(Qt::LeftDockWidgetArea, treeDock);
+    addDockWidget(Qt::RightDockWidgetArea, discoverDock);
     setDockNestingEnabled(true);
 
 
-    // treeWidget = new DeviceTreeWidget(this);
-    // dock1->setWidget(treeWidget);
-
     connect(
-        dock1,
+        treeDock,
         &DeviceTreeWidget::requestConfig,
         this,
         &MainWindow::getlbcfg);
 
-
-    // m_discoverWidget = new DiscoverWidget(this);
-    // dock2->setWidget(m_discoverWidget);
-
     connect(
-        dock2,
+        discoverDock,
         &DiscoverWidget::deviceSelected,
         this,
         &MainWindow::onDeviceSelected);
@@ -83,7 +74,7 @@ void MainWindow::showEvent(QShowEvent *event)
     int totalWidth = this->width();
 
     // Задаем пропорции 1/3 и 2/3
-    resizeDocks({dock1, dock2}, {totalWidth/3, 2*totalWidth/3}, Qt::Horizontal);
+    resizeDocks({treeDock, discoverDock}, {totalWidth/3, 2*totalWidth/3}, Qt::Horizontal);
 }
 
 void MainWindow::onDeviceSelected(const QString &ipv6, const QString &name)
@@ -108,12 +99,11 @@ void MainWindow::onDeviceSelected(const QString &ipv6, const QString &name)
             );
     connect(lbproc, &lbprocess::scanCompleted, this,
             [ipv6, name, lbc, lbproc, this](const QMap<qsizetype, lbprocess::scaninfo>& scan){
-                auto i = scan.begin();
                 for (auto i = scan.begin(); i != scan.end(); ++i) {
                     qDebug()<<i.key()<<i.value();
                 }
 
-                dock1->updateDevice(ipv6, name, scan);
+                treeDock->updateDevice(ipv6, name, scan);
 
                 lbproc->deleteLater();
                 lbc->deleteLater();
@@ -135,49 +125,23 @@ void MainWindow::getlbcfg(const QString &ipv6, const QString &name)
                     qDebug()<<"# BEGIN YAML";
                     lbyaml::printlbconf(Qjo);
                     qDebug()<<"# END YAML";
-
                     // Получаем YAML-текст один раз, чтобы использовать его для сравнения
                     QString yamlContent = lbyaml::getlbconf(Qjo);
-
-                    ConfigWidget* dock = nullptr;
-                    // ConfigWidget* cfgWidget = nullptr;
-
+                    ConfigDockWidget* dock = nullptr;
                     if (configDocks.contains(ipv6))
                     {
                         dock = configDocks[ipv6];
-
-                        // cfgWidget = qobject_cast<ConfigWidget*>(dock->widget());
                     }else{
-                        dock = new ConfigWidget(name,this);
-                        // dock = new QDockWidget(QString("Конфигурация: %1").arg(name), this);
-                        // cfgWidget = new ConfigWidget();
-                        // dock->setWidget(cfgWidget);
+                        dock = new ConfigDockWidget(name,this);
                         configDocks.insert(ipv6, dock);
-                        // Добавляем в ту же область, где ваш основной док (например, dock2)
-                        addDockWidget(Qt::RightDockWidgetArea, dock);
-                        // Превращаем в табы
-                        tabifyDockWidget(dock2, dock);
-                        dock->setConfig(yamlContent);
+                        addDockWidget(Qt::RightDockWidgetArea, dock); // Добавляем в ту же область, где ваш основной док (например, dock2)
+                        tabifyDockWidget(discoverDock, dock); // Превращаем в табы
+                        connect(dock, &QObject::destroyed, this,
+                                [this, ipv6](){
+                                    configDocks.remove(ipv6);
+                                });
                     }
-                    connect(dock, &QObject::destroyed, this,
-                        [this, ipv6](){
-                            configDocks.remove(ipv6);
-                        });
-                    // connect(
-                    //     dock, &ConfigWidget::modifiedChanged, this,
-                    //     [dock, name](bool modified)
-                    //     {
-                    //         if(modified)
-                    //         {
-                    //             dock->setWindowTitle(
-                    //                 QString("* Конфигурация: %1").arg(name));
-                    //         }
-                    //         else
-                    //         {
-                    //             dock->setWindowTitle(
-                    //                 QString("Конфигурация: %1").arg(name));
-                    //         }
-                    //     });
+                    dock->setConfig(yamlContent);
                     dock->show();
                     dock->raise();
                 }

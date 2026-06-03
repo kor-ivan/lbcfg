@@ -1,7 +1,7 @@
-#include "configwidget.h"
+#include "configdockwidget.h"
 #include <QVBoxLayout>
 
-ConfigWidget::ConfigWidget(const QString &name, QWidget *parent)
+ConfigDockWidget::ConfigDockWidget(const QString &name, QWidget *parent)
     : QDockWidget(QString("Конфигурация: %1").arg(name),parent)
 {
     plcName = name;
@@ -11,10 +11,10 @@ ConfigWidget::ConfigWidget(const QString &name, QWidget *parent)
     editor = new QTextEdit(this);
     editor->setFontFamily("Courier New");
     layout->addWidget(editor);
-    connect(editor, &QTextEdit::textChanged, this, &ConfigWidget::onTextChanged);
+    connect(editor, &QTextEdit::textChanged, this, &ConfigDockWidget::onTextChanged);
 }
 
-void ConfigWidget::setConfig(const QString &yaml)
+void ConfigDockWidget::setConfig(const QString &yaml)
 {
     originalYaml = yaml;
     editor->blockSignals(true);
@@ -24,17 +24,17 @@ void ConfigWidget::setConfig(const QString &yaml)
 
 }
 
-QString ConfigWidget::config() const
+QString ConfigDockWidget::config() const
 {
     return editor->toPlainText();
 }
 
-bool ConfigWidget::isModified() const
+bool ConfigDockWidget::isModified() const
 {
     return modified;
 }
 
-void ConfigWidget::onTextChanged()
+void ConfigDockWidget::onTextChanged()
 {
     if (editor->toPlainText() != originalYaml){
         modified = true;
