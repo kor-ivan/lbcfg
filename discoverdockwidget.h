@@ -1,8 +1,7 @@
-#ifndef DISCOVERWIDGET_H
-#define DISCOVERWIDGET_H
+#ifndef DISCOVERDOCKWIDGET_H
+#define DISCOVERDOCKWIDGET_H
 
 #include <QObject>
-// #include <QWidget>
 #include <QDockWidget>
 #include <discover.h>
 #include <QPushButton>
@@ -10,11 +9,11 @@
 
 
 
-class DiscoverWidget : public QDockWidget
+class DiscoverDockWidget : public QDockWidget
 {
     Q_OBJECT
 public:
-    explicit DiscoverWidget(QWidget *parent = nullptr);
+    explicit DiscoverDockWidget(QWidget *parent = nullptr);
 
 signals:
     void deviceSelected(const QString& ipv6,
@@ -39,4 +38,4 @@ private:
 
 };
 
-#endif // DISCOVERWIDGET_H
+#endif // DISCOVERDOCKWIDGET_H

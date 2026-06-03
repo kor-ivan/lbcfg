@@ -12,14 +12,14 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    resize(1280, 720); // Ширина 800, Высота 600
+    resize(1280, 720);
 
     QWidget* dummy = new QWidget(this);
     setCentralWidget(dummy);
     dummy->hide(); // Скрываем, чтобы доки сомкнулись в центре
 
-    treeDock = new DeviceTreeWidget(this);
-    discoverDock = new DiscoverWidget(this);
+    treeDock = new DeviceTreeDockWidget(this);
+    discoverDock = new DiscoverDockWidget(this);
     // Разрешаем прикрепление ко всем сторонам: Left, Right, Top, Bottom
     treeDock->setAllowedAreas(Qt::AllDockWidgetAreas);
     discoverDock->setAllowedAreas(Qt::AllDockWidgetAreas);
@@ -31,13 +31,13 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(
         treeDock,
-        &DeviceTreeWidget::requestConfig,
+        &DeviceTreeDockWidget::requestConfig,
         this,
         &MainWindow::getlbcfg);
 
     connect(
         discoverDock,
-        &DiscoverWidget::deviceSelected,
+        &DiscoverDockWidget::deviceSelected,
         this,
         &MainWindow::onDeviceSelected);
 

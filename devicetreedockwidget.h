@@ -1,16 +1,16 @@
-#ifndef DEVICETREEWIDGET_H
-#define DEVICETREEWIDGET_H
+#ifndef DEVICETREEDOCKWIDGET_H
+#define DEVICETREEDOCKWIDGET_H
 
 #include <QDockWidget>
 #include <QTreeView>
 #include <QStandardItemModel>
 #include <lbprocess.h>
 
-class DeviceTreeWidget : public QDockWidget
+class DeviceTreeDockWidget : public QDockWidget
 {
     Q_OBJECT
 public:
-    explicit DeviceTreeWidget(QWidget *parent = nullptr);
+    explicit DeviceTreeDockWidget(QWidget *parent = nullptr);
     void updateDevice(const QString& ipv6, const QString& name,
                       const QMap<qsizetype,lbprocess::scaninfo>& scan);
 
@@ -27,4 +27,4 @@ private:
     QStandardItem *findPlcRoot(const QString& ipv6);
 };
 
-#endif // DEVICETREEWIDGET_H
+#endif // DEVICETREEDOCKWIDGET_H

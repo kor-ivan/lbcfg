@@ -1,8 +1,8 @@
-#include "devicetreewidget.h"
+#include "devicetreedockwidget.h"
 #include <QVBoxLayout>
 #include <QMenu>
 
-DeviceTreeWidget::DeviceTreeWidget(QWidget *parent)
+DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent)
     : QDockWidget("Tree View", parent)
 {
     QWidget *content = new QWidget(this);
@@ -15,11 +15,11 @@ DeviceTreeWidget::DeviceTreeWidget(QWidget *parent)
     treeView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     treeView->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(treeView, &QTreeView::customContextMenuRequested,
-            this, &DeviceTreeWidget::showContextMenu);
+            this, &DeviceTreeDockWidget::showContextMenu);
     layout->addWidget(treeView);
 }
 
-void DeviceTreeWidget::updateDevice(const QString &ipv6, const QString &name, const QMap<qsizetype, lbprocess::scaninfo> &scan)
+void DeviceTreeDockWidget::updateDevice(const QString &ipv6, const QString &name, const QMap<qsizetype, lbprocess::scaninfo> &scan)
 {
     QStandardItem* plcRoot = findPlcRoot(ipv6);
     QModelIndex rootIndex;
@@ -62,7 +62,7 @@ void DeviceTreeWidget::updateDevice(const QString &ipv6, const QString &name, co
     treeView->expand(rootIndex);
 }
 
-void DeviceTreeWidget::showContextMenu(const QPoint &pos)
+void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
 {
     // Получаем индекс элемента, на который кликнули
     QModelIndex index = treeView->indexAt(pos);
@@ -86,7 +86,7 @@ void DeviceTreeWidget::showContextMenu(const QPoint &pos)
     }
 }
 
-QStandardItem *DeviceTreeWidget::findPlcRoot(const QString &ipv6)
+QStandardItem *DeviceTreeDockWidget::findPlcRoot(const QString &ipv6)
 {
     for (int i = 0; i < treeModel->rowCount(); ++i) {
         auto *item = treeModel->item(i);

@@ -1,9 +1,9 @@
-#include "discoverwidget.h"
+#include "discoverdockwidget.h"
 #include <QVBoxLayout>
 #include <QHeaderView>
 #include <QApplication>
 
-DiscoverWidget::DiscoverWidget(QWidget *parent)
+DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
     : QDockWidget("Discover", parent)
 {
     QWidget *content = new QWidget(this);
@@ -48,13 +48,13 @@ DiscoverWidget::DiscoverWidget(QWidget *parent)
         btnDiscover,
         &QPushButton::clicked,
         this,
-        &DiscoverWidget::startDiscover);
+        &DiscoverDockWidget::startDiscover);
 
     connect(
         table,
         &QTableWidget::cellDoubleClicked,
         this,
-        &DiscoverWidget::onTableDoubleClicked);
+        &DiscoverDockWidget::onTableDoubleClicked);
 
     wgtdiscover = new discover(this);
 
@@ -68,7 +68,7 @@ DiscoverWidget::DiscoverWidget(QWidget *parent)
             );
 }
 
-void DiscoverWidget::startDiscover()
+void DiscoverDockWidget::startDiscover()
 {
     if (discoverRunning)
         return;
@@ -78,7 +78,7 @@ void DiscoverWidget::startDiscover()
 
 }
 
-void DiscoverWidget::onTableDoubleClicked(int row, int column)
+void DiscoverDockWidget::onTableDoubleClicked(int row, int column)
 {
     Q_UNUSED(column);
     if (QApplication::mouseButtons() != Qt::LeftButton) {
@@ -92,7 +92,7 @@ void DiscoverWidget::onTableDoubleClicked(int row, int column)
     emit deviceSelected(ipv6,name);
 }
 
-void DiscoverWidget::fillTable(const QMap<QString, discover::lbinfo> &discoverMap)
+void DiscoverDockWidget::fillTable(const QMap<QString, discover::lbinfo> &discoverMap)
 {
     table->setSortingEnabled(false); // Отключаем сортировку на время вставки для скорости
     int row = 0;

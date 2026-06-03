@@ -3,8 +3,8 @@
 
 #include <QMainWindow>
 #include<QTextEdit>
-#include "devicetreewidget.h"
-#include "discoverwidget.h"
+#include "devicetreedockwidget.h"
+#include "discoverdockwidget.h"
 #include "configdockwidget.h"
 
 class MainWindow : public QMainWindow
@@ -15,8 +15,8 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 private:
-    DeviceTreeWidget *treeDock = nullptr;
-    DiscoverWidget *discoverDock = nullptr;
+    DeviceTreeDockWidget *treeDock = nullptr;
+    DiscoverDockWidget *discoverDock = nullptr;
     QMap<QString, ConfigDockWidget*> configDocks;
 
 protected:
