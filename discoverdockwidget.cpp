@@ -2,6 +2,7 @@
 #include <QVBoxLayout>
 #include <QHeaderView>
 #include <QApplication>
+#include <QMenu>
 
 DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
     : QDockWidget("Discover", parent)
@@ -16,7 +17,7 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
     vbox->addLayout(hbox);
 
     // Создаем таблицу
-    table = new QTableWidget();
+    table = new QTableWidget(this);
     table->setColumnCount(7);
     table->setHorizontalHeaderLabels({"Name", "Type", "IPv4", "MAC", "Delays (ms)", "IF"});
     // Выделять строку целиком при клике на любую ячейку
@@ -44,6 +45,10 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
     table->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     vbox->addWidget(table);
 
+    table->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(table, &QTableView::customContextMenuRequested, this, &DiscoverDockWidget::showContextMenu);
+
+
     connect(
         btnDiscover,
         &QPushButton::clicked,
@@ -55,23 +60,23 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
         &QTableWidget::cellDoubleClicked,
         this,
         &DiscoverDockWidget::onTableDoubleClicked);
+}
 
+void DiscoverDockWidget::startDiscover()
+{
+    qDebug()<<"startDiscover "<<discoverRunning;
+    if (discoverRunning)
+        return;
     wgtdiscover = new discover(this);
-
     connect(wgtdiscover, &discover::discoverCompleted, this,
             [this] (const QMap<QString, discover::lbinfo>& DiscoverMap, const discover::discoverError error, const QString errorStr){
                 discoverRunning = false;
                 if (error != discover::NoError)
                     return;
                 fillTable(DiscoverMap);
+                wgtdiscover->deleteLater();
             }
             );
-}
-
-void DiscoverDockWidget::startDiscover()
-{
-    if (discoverRunning)
-        return;
     discoverRunning = true;
     table->setRowCount(0); // Очищаем старые строки
     wgtdiscover -> execute();
@@ -90,6 +95,38 @@ void DiscoverDockWidget::onTableDoubleClicked(int row, int column)
     item = table->item(row, 0);
     QString name = item->text();
     emit deviceSelected(ipv6,name);
+}
+
+void DiscoverDockWidget::showContextMenu(const QPoint &pos)
+{
+    QTableWidgetItem *item = table->itemAt(pos);
+    if (!item) return;
+
+    QString ipv6 = table->item(item->row(), 6)->text();
+    QString name = table->item(item->row(), 0)->text();
+
+    QMenu menu(this);
+    QAction *AddDivice = menu.addAction("Добавить");
+    // 2. Делаем его жирным
+    QFont font = AddDivice->font();
+    font.setBold(true);
+    AddDivice->setFont(font);
+    QAction *copy = menu.addAction("Копировать");
+    QAction *Allcopy = menu.addAction("Копировать всё");
+    QAction *getConf = menu.addAction("Запросить конфигурацию");
+
+    QAction *selectedItem = menu.exec(table->viewport()->mapToGlobal(pos));
+
+    if (selectedItem == AddDivice){
+        emit deviceSelected(ipv6,name);
+    }else if (selectedItem == copy) {
+
+    }else if (selectedItem == Allcopy) {
+
+    }else if (selectedItem == getConf) {
+
+    }
+
 }
 
 void DiscoverDockWidget::fillTable(const QMap<QString, discover::lbinfo> &discoverMap)

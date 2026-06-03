@@ -22,6 +22,7 @@ signals:
 private slots:
     void startDiscover();
     void onTableDoubleClicked(int row, int column);
+    void showContextMenu(const QPoint& pos);
 
 private:
     void fillTable(
