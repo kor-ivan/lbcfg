@@ -16,8 +16,8 @@ public:
     explicit DiscoverDockWidget(QWidget *parent = nullptr);
 
 signals:
-    void deviceSelected(const QString& ipv6,
-                        const QString& name);
+    void deviceSelected(const QString& ipv6, const QString& name);
+    void requestConfig(const QString& ipv6, const QString& name);
 
 private slots:
     void startDiscover();
@@ -25,12 +25,12 @@ private slots:
     void showContextMenu(const QPoint& pos);
 
 private:
-    void fillTable(
-        const QMap<QString, discover::lbinfo>& discoverMap);
+    void fillTable();
 
     QPushButton* btnDiscover = nullptr;
     QTableWidget* table = nullptr;
     discover* wgtdiscover = nullptr;
+    QMap<QString, discover::lbinfo> ldmap;
 
     bool discoverRunning = false;
 

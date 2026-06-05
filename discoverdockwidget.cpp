@@ -3,6 +3,7 @@
 #include <QHeaderView>
 #include <QApplication>
 #include <QMenu>
+#include <QClipboard>
 
 DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
     : QDockWidget("Discover", parent)
@@ -73,7 +74,8 @@ void DiscoverDockWidget::startDiscover()
                 discoverRunning = false;
                 if (error != discover::NoError)
                     return;
-                fillTable(DiscoverMap);
+                ldmap = DiscoverMap;
+                fillTable();
                 wgtdiscover->deleteLater();
             }
             );
@@ -116,25 +118,29 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
     QAction *getConf = menu.addAction("Запросить конфигурацию");
 
     QAction *selectedItem = menu.exec(table->viewport()->mapToGlobal(pos));
+    QClipboard *clipboard = QGuiApplication::clipboard();
 
     if (selectedItem == AddDivice){
         emit deviceSelected(ipv6,name);
     }else if (selectedItem == copy) {
-
+        clipboard->setText(ldmap.value(ipv6).toString());
     }else if (selectedItem == Allcopy) {
-
+        QStringList qstr;
+        for (auto i : ldmap) {
+            qstr << i.toString();
+        }
+        clipboard->setText(qstr.join("\n"));
     }else if (selectedItem == getConf) {
-
+        emit requestConfig(ipv6, name);
     }
-
 }
 
-void DiscoverDockWidget::fillTable(const QMap<QString, discover::lbinfo> &discoverMap)
+void DiscoverDockWidget::fillTable()
 {
     table->setSortingEnabled(false); // Отключаем сортировку на время вставки для скорости
     int row = 0;
-    for (auto it = discoverMap.begin(); it != discoverMap.end(); ++it) {
-        qDebug()<<it.value();
+    for (auto it = ldmap.begin(); it != ldmap.end(); ++it) {
+        qDebug().noquote() << it.value().toString();
         table->insertRow(row);
         table->setItem(row, 0, new QTableWidgetItem(it.value().name));
         table->setItem(row, 1, new QTableWidgetItem(it.value().type));
@@ -148,10 +154,12 @@ void DiscoverDockWidget::fillTable(const QMap<QString, discover::lbinfo> &discov
         for (int val : it.value().ifindex)
             strList << QString::number(val);
         table->setItem(row, 5, new QTableWidgetItem(strList.join(",")));
-        if (it.value().btn) {
-            for (int col = 0; col < table->columnCount(); ++col) {
-                QTableWidgetItem *item = table->item(row, col);
-                if (item) {
+
+        for (int col = 0; col < table->columnCount(); ++col) {
+            QTableWidgetItem *item = table->item(row, col);
+            if (item) {
+                item->setToolTip(it.key());
+                if (it.value().btn) {
                     item->setBackground(alertColor);
                     QFont font = item->font();
                     font.setBold(true);

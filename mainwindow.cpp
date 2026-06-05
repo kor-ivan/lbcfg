@@ -41,6 +41,9 @@ MainWindow::MainWindow(QWidget *parent)
         this,
         &MainWindow::onDeviceSelected);
 
+    connect(discoverDock, &DiscoverDockWidget::requestConfig,
+            this, &MainWindow::getlbcfg);
+
 
     // 1. Создаем главное меню
     QMenuBar *menuBar = this->menuBar();
