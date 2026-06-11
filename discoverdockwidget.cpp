@@ -131,6 +131,7 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
         }
         clipboard->setText(qstr.join("\n"));
     }else if (selectedItem == getConf) {
+        emit deviceSelected(ipv6,name);
         emit requestConfig(ipv6, name);
     }
 }
