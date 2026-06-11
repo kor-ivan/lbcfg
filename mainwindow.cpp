@@ -44,6 +44,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(discoverDock, &DiscoverDockWidget::requestConfig,
             this, &MainWindow::getlbcfg);
 
+    connect(discoverDock, &DiscoverDockWidget::newConfig,
+            this, [this] (const QString &ipv6, const QString &name){
+                CreateConfig(ipv6, name);
+            }
+            );
+
 
     // 1. Создаем главное меню
     QMenuBar *menuBar = this->menuBar();
@@ -105,9 +111,7 @@ void MainWindow::onDeviceSelected(const QString &ipv6, const QString &name)
                 for (auto i = scan.begin(); i != scan.end(); ++i) {
                     qDebug()<<i.key()<<i.value();
                 }
-
                 treeDock->updateDevice(ipv6, name, scan);
-
                 lbproc->deleteLater();
                 lbc->deleteLater();
             }
@@ -130,23 +134,7 @@ void MainWindow::getlbcfg(const QString &ipv6, const QString &name)
                     qDebug()<<"# END YAML";
                     // Получаем YAML-текст один раз, чтобы использовать его для сравнения
                     QString yamlContent = lbyaml::getlbconf(Qjo);
-                    ConfigDockWidget* dock = nullptr;
-                    if (configDocks.contains(ipv6))
-                    {
-                        dock = configDocks[ipv6];
-                    }else{
-                        dock = new ConfigDockWidget(name,this);
-                        configDocks.insert(ipv6, dock);
-                        addDockWidget(Qt::RightDockWidgetArea, dock); // Добавляем в ту же область, где ваш основной док (например, dock2)
-                        tabifyDockWidget(discoverDock, dock); // Превращаем в табы
-                        connect(dock, &QObject::destroyed, this,
-                                [this, ipv6](){
-                                    configDocks.remove(ipv6);
-                                });
-                    }
-                    dock->setConfig(yamlContent);
-                    dock->show();
-                    dock->raise();
+                    CreateConfig(ipv6, name, yamlContent);
                 }
                 else
                     qDebug().noquote()<<message;
@@ -154,4 +142,25 @@ void MainWindow::getlbcfg(const QString &ipv6, const QString &name)
             }
             );
     lbc->Execute();
+}
+
+void MainWindow::CreateConfig(const QString &ipv6, const QString &name, const QString &content)
+{
+    ConfigDockWidget* dock = nullptr;
+    if (configDocks.contains(ipv6))
+    {
+        dock = configDocks[ipv6];
+    }else{
+        dock = new ConfigDockWidget(name,this);
+        configDocks.insert(ipv6, dock);
+        addDockWidget(Qt::RightDockWidgetArea, dock); // Добавляем в ту же область, где ваш основной док (например, dock2)
+        tabifyDockWidget(discoverDock, dock); // Превращаем в табы
+        connect(dock, &QObject::destroyed, this,
+                [this, ipv6](){
+                    configDocks.remove(ipv6);
+                });
+    }
+    dock->setConfig(content);
+    dock->show();
+    dock->raise();
 }

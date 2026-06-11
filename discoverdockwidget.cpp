@@ -113,9 +113,10 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
     QFont font = AddDivice->font();
     font.setBold(true);
     AddDivice->setFont(font);
+    QAction *getConf = menu.addAction("Запросить конфигурацию");
+    QAction *newConf = menu.addAction("Создать новую конфигурацию");
     QAction *copy = menu.addAction("Копировать");
     QAction *Allcopy = menu.addAction("Копировать всё");
-    QAction *getConf = menu.addAction("Запросить конфигурацию");
 
     QAction *selectedItem = menu.exec(table->viewport()->mapToGlobal(pos));
     QClipboard *clipboard = QGuiApplication::clipboard();
@@ -133,6 +134,8 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
     }else if (selectedItem == getConf) {
         emit deviceSelected(ipv6,name);
         emit requestConfig(ipv6, name);
+    }else if (selectedItem == newConf){
+        emit newConfig(ipv6, name);
     }
 }
 

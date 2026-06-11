@@ -18,6 +18,7 @@ public:
 signals:
     void deviceSelected(const QString& ipv6, const QString& name);
     void requestConfig(const QString& ipv6, const QString& name);
+    void newConfig(const QString& ipv6, const QString& name);
 
 private slots:
     void startDiscover();
