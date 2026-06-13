@@ -27,6 +27,7 @@ private slots:
     void onDeviceSelected(const QString& ipv6, const QString& name);
     void getlbcfg (const QString &ipv6, const QString &name);
     void CreateConfig(const QString &ipv6, const QString &name, const QString &content = {});
+    void onSaveConfigAsTriggered();
 
 };
 #endif // MAINWINDOW_H

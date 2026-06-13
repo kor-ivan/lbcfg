@@ -13,16 +13,26 @@ public:
     QString config() const;
     bool isModified() const;
 
-// signals:
+    bool openFile(const QString &filePath);
+    bool saveFile();
+    bool saveFileAs(const QString &filePath);
+
+    QString getCurrentFilePath() const;
+signals:
+    void configSaved();
 
 private slots:
     void onTextChanged();
+    void showCustomContextMenu(const QPoint &pos);
 
 private:
     QTextEdit* editor = nullptr;
     QString originalYaml;
     bool modified = false;
     QString plcName;
+
+    QString currentFilePath;
+    void updateTitle();
 };
 
 #endif // CONFIGDOCKWIDGET_H

@@ -6,6 +6,7 @@
 #include <QMenuBar>
 #include <QStatusBar>
 #include <QLabel>
+#include <QFileDialog>
 
 
 
@@ -63,6 +64,32 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Соединяем клик по меню с закрытием программы
     connect(exitAction, &QAction::triggered, this, &QWidget::close);
+
+    QAction *openFile = fileMenu->addAction("Открыть");
+    connect(openFile, &QAction::triggered, this, [this](){
+        QString fileName = QFileDialog::getOpenFileName(this, "Открыть конфигурацию", "", "YAML Files (*.yaml *.yml);;All Files (*)");
+        if (!fileName.isEmpty()) {
+            CreateConfig("", "");
+            // if (!activeDock->openFile(fileName)) {
+            //     QMessageBox::critical(this, "Ошибка", "Не удалось открыть файл");
+            // }
+        }
+    });
+
+    QAction *saveFileAs = fileMenu->addAction("Сохранить как ...");
+    connect(saveFileAs, &QAction::triggered, this, &MainWindow::onSaveConfigAsTriggered);
+
+    QAction *saveFile = fileMenu->addAction("Сохранить");
+    connect(saveFile, &QAction::triggered, this, [this](){
+        ConfigDockWidget *activeDock = qobject_cast<ConfigDockWidget*>(focusWidget());
+        if (!activeDock) return;
+
+        if (activeDock->getCurrentFilePath().isEmpty()) {
+            onSaveConfigAsTriggered(); // Если файл новый, перенаправляем на "Сохранить как"
+        } else {
+            activeDock->saveFile();
+        }
+    });
 
     // 2. Создаем строку состояния (Status Bar)
     QStatusBar *statusBar = this->statusBar();
@@ -163,4 +190,17 @@ void MainWindow::CreateConfig(const QString &ipv6, const QString &name, const QS
     dock->setConfig(content);
     dock->show();
     dock->raise();
+}
+
+void MainWindow::onSaveConfigAsTriggered()
+{
+    ConfigDockWidget *activeDock = qobject_cast<ConfigDockWidget*>(focusWidget());
+    if (!activeDock) return;
+
+    QString fileName = QFileDialog::getSaveFileName(this, "Сохранить конфигурацию как...", "", "YAML Files (*.yaml *.yml);;All Files (*)");
+    if (!fileName.isEmpty()) {
+        if (!activeDock->saveFileAs(fileName)) {
+            QMessageBox::critical(this, "Ошибка", "Не удалось сохранить файл");
+        }
+    }
 }
