@@ -18,6 +18,8 @@ public:
     bool saveFileAs(const QString &filePath);
 
     QString getCurrentFilePath() const;
+    QString getPlcName() const;
+
 signals:
     void configSaved();
 

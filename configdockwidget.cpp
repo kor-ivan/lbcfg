@@ -95,6 +95,11 @@ void ConfigDockWidget::showCustomContextMenu(const QPoint &pos)
     delete standardMenu;
 }
 
+QString ConfigDockWidget::getPlcName() const
+{
+    return plcName;
+}
+
 void ConfigDockWidget::updateTitle()
 {
     QString prefix = modified ? "* " : "";

@@ -69,10 +69,26 @@ MainWindow::MainWindow(QWidget *parent)
     connect(openFile, &QAction::triggered, this, [this](){
         QString fileName = QFileDialog::getOpenFileName(this, "Открыть конфигурацию", "", "YAML Files (*.yaml *.yml);;All Files (*)");
         if (!fileName.isEmpty()) {
-            CreateConfig("", "");
-            // if (!activeDock->openFile(fileName)) {
-            //     QMessageBox::critical(this, "Ошибка", "Не удалось открыть файл");
-            // }
+            QString baseName = QFileInfo(fileName).fileName();
+            ConfigDockWidget* dock = nullptr;
+            if (configDocks.contains(fileName))
+            {
+                dock = configDocks[fileName];
+            }else{
+                dock = new ConfigDockWidget(baseName,this);
+                configDocks.insert(fileName, dock);
+                addDockWidget(Qt::RightDockWidgetArea, dock); // Добавляем в ту же область, где ваш основной док (например, dock2)
+                tabifyDockWidget(discoverDock, dock); // Превращаем в табы
+                connect(dock, &QObject::destroyed, this,
+                        [this, fileName](){
+                            configDocks.remove(fileName);
+                        });
+            }
+            if (!dock->openFile(fileName)) {
+                QMessageBox::critical(this, "Ошибка", "Не удалось открыть файл");
+            }
+            dock->show();
+            dock->raise();
         }
     });
 
@@ -81,13 +97,13 @@ MainWindow::MainWindow(QWidget *parent)
 
     QAction *saveFile = fileMenu->addAction("Сохранить");
     connect(saveFile, &QAction::triggered, this, [this](){
-        ConfigDockWidget *activeDock = qobject_cast<ConfigDockWidget*>(focusWidget());
+        ConfigDockWidget *activeDock = findActiveConfigDockWidget();
         if (!activeDock) return;
 
         if (activeDock->getCurrentFilePath().isEmpty()) {
             onSaveConfigAsTriggered(); // Если файл новый, перенаправляем на "Сохранить как"
         } else {
-            activeDock->saveFile();
+            qDebug()<<activeDock->saveFile();
         }
     });
 
@@ -148,6 +164,18 @@ void MainWindow::onDeviceSelected(const QString &ipv6, const QString &name)
 
 MainWindow::~MainWindow() {}
 
+ConfigDockWidget* MainWindow::findActiveConfigDockWidget()
+{
+    QList<ConfigDockWidget*> allDocks = this->findChildren<ConfigDockWidget*>();
+    for (ConfigDockWidget *dock : allDocks) {
+        // Из всех объединенных доков видимым (isVisible) будет только тот,
+        // вкладку которого пользователь выбрал на экране
+        if (dock->isVisible())
+            return dock;
+    }
+    return nullptr;
+}
+
 void MainWindow::getlbcfg(const QString &ipv6, const QString &name)
 {
     qDebug()<<"getlbcfg: "<<ipv6<<name;
@@ -194,10 +222,12 @@ void MainWindow::CreateConfig(const QString &ipv6, const QString &name, const QS
 
 void MainWindow::onSaveConfigAsTriggered()
 {
-    ConfigDockWidget *activeDock = qobject_cast<ConfigDockWidget*>(focusWidget());
+    ConfigDockWidget *activeDock = findActiveConfigDockWidget();
     if (!activeDock) return;
-
-    QString fileName = QFileDialog::getSaveFileName(this, "Сохранить конфигурацию как...", "", "YAML Files (*.yaml *.yml);;All Files (*)");
+    qDebug()<<activeDock->getPlcName();
+    QString fileName = QFileDialog::getSaveFileName(this, "Сохранить конфигурацию как...",
+                                                    activeDock->getPlcName(),
+                                                    "YAML Files (*.yaml *.yml);;All Files (*)");
     if (!fileName.isEmpty()) {
         if (!activeDock->saveFileAs(fileName)) {
             QMessageBox::critical(this, "Ошибка", "Не удалось сохранить файл");

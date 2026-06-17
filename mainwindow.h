@@ -18,6 +18,7 @@ private:
     DeviceTreeDockWidget *treeDock = nullptr;
     DiscoverDockWidget *discoverDock = nullptr;
     QMap<QString, ConfigDockWidget*> configDocks;
+    ConfigDockWidget* findActiveConfigDockWidget();
 
 protected:
     void showEvent(QShowEvent *event) override;
