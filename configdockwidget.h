@@ -27,6 +27,7 @@ private slots:
     void onTextChanged();
     void showCustomContextMenu(const QPoint &pos);
 
+
 private:
     QTextEdit* editor = nullptr;
     QString originalYaml;

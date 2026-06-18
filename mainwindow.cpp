@@ -7,6 +7,7 @@
 #include <QStatusBar>
 #include <QLabel>
 #include <QFileDialog>
+#include <QApplication>
 
 
 
@@ -51,6 +52,26 @@ MainWindow::MainWindow(QWidget *parent)
             }
             );
 
+    connect(this, &QMainWindow::tabifiedDockWidgetActivated, this, [this](QDockWidget *dock) {
+        checkConfigDockWidget(dock);
+    });
+
+    connect(qApp, &QApplication::focusChanged, this, [this](QWidget *oldFocus, QWidget *newFocus) {
+        Q_UNUSED(oldFocus);
+        if (!newFocus) return;
+        QWidget *parentCheck = newFocus;
+        QDockWidget *foundDock = nullptr;
+        while (parentCheck) {
+            foundDock = qobject_cast<QDockWidget*>(parentCheck);
+            if (foundDock)
+                break;
+            parentCheck = parentCheck->parentWidget();
+        }
+        if (foundDock){
+            checkConfigDockWidget(foundDock);
+        }
+    });
+
 
     // 1. Создаем главное меню
     QMenuBar *menuBar = this->menuBar();
@@ -67,45 +88,40 @@ MainWindow::MainWindow(QWidget *parent)
 
     QAction *openFile = fileMenu->addAction("Открыть");
     connect(openFile, &QAction::triggered, this, [this](){
-        QString fileName = QFileDialog::getOpenFileName(this, "Открыть конфигурацию", "", "YAML Files (*.yaml *.yml);;All Files (*)");
-        if (!fileName.isEmpty()) {
-            QString baseName = QFileInfo(fileName).fileName();
-            ConfigDockWidget* dock = nullptr;
-            if (configDocks.contains(fileName))
-            {
-                dock = configDocks[fileName];
-            }else{
-                dock = new ConfigDockWidget(baseName,this);
-                configDocks.insert(fileName, dock);
-                addDockWidget(Qt::RightDockWidgetArea, dock); // Добавляем в ту же область, где ваш основной док (например, dock2)
-                tabifyDockWidget(discoverDock, dock); // Превращаем в табы
-                connect(dock, &QObject::destroyed, this,
-                        [this, fileName](){
-                            configDocks.remove(fileName);
-                        });
-            }
-            if (!dock->openFile(fileName)) {
+        QString filePath = QFileDialog::getOpenFileName(this, "Открыть конфигурацию", "", "YAML Files (*.yaml *.yml);;All Files (*)");
+        if (!filePath.isEmpty()) {
+            QString fileName = QFileInfo(filePath).fileName();
+            ConfigDockWidget* dock = CreateConfDockWidget(filePath, fileName);
+
+            if (!dock->openFile(filePath)) {
                 QMessageBox::critical(this, "Ошибка", "Не удалось открыть файл");
+                delete dock;
+                return;
             }
             dock->show();
             dock->raise();
+            dock->setFocus();
         }
     });
 
-    QAction *saveFileAs = fileMenu->addAction("Сохранить как ...");
-    connect(saveFileAs, &QAction::triggered, this, &MainWindow::onSaveConfigAsTriggered);
+    saveFileAs = fileMenu->addAction("Сохранить как ...");
+    connect(saveFileAs, &QAction::triggered, this, [this](){
+        if (!activeConfDockWidget) return;
+        SaveConfigAs(activeConfDockWidget);
+    });
 
-    QAction *saveFile = fileMenu->addAction("Сохранить");
+    saveFile = fileMenu->addAction("Сохранить");
     connect(saveFile, &QAction::triggered, this, [this](){
-        ConfigDockWidget *activeDock = findActiveConfigDockWidget();
-        if (!activeDock) return;
-
-        if (activeDock->getCurrentFilePath().isEmpty()) {
-            onSaveConfigAsTriggered(); // Если файл новый, перенаправляем на "Сохранить как"
+        if (!activeConfDockWidget) return;
+        if (activeConfDockWidget->getCurrentFilePath().isEmpty()) {
+            SaveConfigAs(activeConfDockWidget);
         } else {
-            qDebug()<<activeDock->saveFile();
+            qDebug()<<activeConfDockWidget->saveFile();
         }
     });
+
+    saveFile->setEnabled(false);
+    saveFileAs->setEnabled(false);
 
     // 2. Создаем строку состояния (Status Bar)
     QStatusBar *statusBar = this->statusBar();
@@ -164,17 +180,96 @@ void MainWindow::onDeviceSelected(const QString &ipv6, const QString &name)
 
 MainWindow::~MainWindow() {}
 
-ConfigDockWidget* MainWindow::findActiveConfigDockWidget()
+bool MainWindow::isConfigDockWidget()
 {
-    QList<ConfigDockWidget*> allDocks = this->findChildren<ConfigDockWidget*>();
-    for (ConfigDockWidget *dock : allDocks) {
-        // Из всех объединенных доков видимым (isVisible) будет только тот,
-        // вкладку которого пользователь выбрал на экране
-        if (dock->isVisible())
-            return dock;
+    if (!activeConfDockWidget) {
+        QMessageBox::warning(this,
+                             "Внимание",
+                             "Не выбрано активное окно конфигурации.");
+        return false;
     }
-    return nullptr;
+    return true;
 }
+
+void MainWindow::checkConfigDockWidget(QDockWidget *dock)
+{
+    // qDebug()<< "Фокус на Dock:" <<dock;
+    ConfigDockWidget *configDock = qobject_cast<ConfigDockWidget*>(dock);
+    if (configDock) {
+        qDebug() << "Выбран ConfigDockWidget: " << configDock;
+        activeConfDockWidget = configDock;
+        QString plcName = activeConfDockWidget->getPlcName();
+        if (saveFile){
+            saveFile->setEnabled(true);
+            saveFile->setText(QString("Сохранить %1").arg(plcName));
+        }
+        if (saveFileAs) {
+            saveFileAs->setEnabled(true);
+            saveFileAs->setText(QString("Сохранить %1 как ...").arg(plcName));
+        }
+
+        // return;
+    }
+    // if (!(activeConfDockWidget && activeConfDockWidget->isFloating())) {
+    //     activeConfDockWidget = nullptr;
+    //     qDebug() << "Активный виджет сброшен.";
+    // }
+}
+
+void MainWindow::SaveConfigAs(ConfigDockWidget* activeDock)
+{
+    qDebug()<<activeDock->getPlcName();
+    QString fileName = QFileDialog::getSaveFileName(this, "Сохранить конфигурацию как...",
+                                                    activeDock->getPlcName(),
+                                                    "YAML Files (*.yaml *.yml);;All Files (*)");
+    if (!fileName.isEmpty()) {
+        if (!activeDock->saveFileAs(fileName)) {
+            QMessageBox::critical(this, "Ошибка", "Не удалось сохранить файл");
+        }
+    }
+}
+
+ConfigDockWidget *MainWindow::CreateConfDockWidget(const QString &key, const QString &name)
+{
+    ConfigDockWidget* dock = nullptr;
+    if (configDocks.contains(key)) {
+        dock = configDocks[key];
+    } else {
+        dock = new ConfigDockWidget(name, this);
+        dock->setAttribute(Qt::WA_DeleteOnClose);
+
+        configDocks.insert(key, dock);
+        addDockWidget(Qt::RightDockWidgetArea, dock);
+        tabifyDockWidget(discoverDock, dock);
+
+        connect(dock, &QObject::destroyed, this, [this, key]() {
+            qDebug() << "destroy";
+            configDocks.remove(key);
+            activeConfDockWidget = nullptr;
+            saveFile->setEnabled(false);
+            saveFile->setText("Сохранить");
+            saveFileAs->setEnabled(false);
+            saveFileAs->setText("Сохранить как ...");
+        });
+    }
+
+    return dock;
+}
+
+// ConfigDockWidget* MainWindow::findActiveConfigDockWidget()
+// {
+//     // QList<ConfigDockWidget*> allDocks = this->findChildren<ConfigDockWidget*>();
+//     // for (ConfigDockWidget *dock : allDocks) {
+//     //     // Из всех объединенных доков видимым (isVisible) будет только тот,
+//     //     // вкладку которого пользователь выбрал на экране
+//     //     // if (dock->isVisible())
+//     //     //     return dock;
+//     //     qDebug()<<dock->getPlcName();
+//     //     qDebug()<<dock->isVisible();
+//     //     qDebug()<<dock->isActiveWindow();
+//     // }
+//     // return nullptr;
+// }
 
 void MainWindow::getlbcfg(const QString &ipv6, const QString &name)
 {
@@ -201,36 +296,9 @@ void MainWindow::getlbcfg(const QString &ipv6, const QString &name)
 
 void MainWindow::CreateConfig(const QString &ipv6, const QString &name, const QString &content)
 {
-    ConfigDockWidget* dock = nullptr;
-    if (configDocks.contains(ipv6))
-    {
-        dock = configDocks[ipv6];
-    }else{
-        dock = new ConfigDockWidget(name,this);
-        configDocks.insert(ipv6, dock);
-        addDockWidget(Qt::RightDockWidgetArea, dock); // Добавляем в ту же область, где ваш основной док (например, dock2)
-        tabifyDockWidget(discoverDock, dock); // Превращаем в табы
-        connect(dock, &QObject::destroyed, this,
-                [this, ipv6](){
-                    configDocks.remove(ipv6);
-                });
-    }
+    ConfigDockWidget* dock = CreateConfDockWidget(ipv6, name);
     dock->setConfig(content);
     dock->show();
     dock->raise();
-}
-
-void MainWindow::onSaveConfigAsTriggered()
-{
-    ConfigDockWidget *activeDock = findActiveConfigDockWidget();
-    if (!activeDock) return;
-    qDebug()<<activeDock->getPlcName();
-    QString fileName = QFileDialog::getSaveFileName(this, "Сохранить конфигурацию как...",
-                                                    activeDock->getPlcName(),
-                                                    "YAML Files (*.yaml *.yml);;All Files (*)");
-    if (!fileName.isEmpty()) {
-        if (!activeDock->saveFileAs(fileName)) {
-            QMessageBox::critical(this, "Ошибка", "Не удалось сохранить файл");
-        }
-    }
+    // dock->setFocus();
 }

@@ -2,11 +2,13 @@
 #include "qmenu.h"
 #include <QVBoxLayout>
 #include <QFile>
+#include <QFileInfo>
 
 ConfigDockWidget::ConfigDockWidget(const QString &name, QWidget *parent)
     : QDockWidget(QString("Конфигурация: %1").arg(name),parent)
 {
     plcName = name;
+    qDebug()<<name<<"into ConfigDockWidget";
     QWidget *content = new QWidget(this);
     setWidget(content);
     QVBoxLayout* layout = new QVBoxLayout(content);
@@ -66,6 +68,7 @@ bool ConfigDockWidget::saveFileAs(const QString &filePath)
     currentFilePath = filePath;
     originalYaml = editor->toPlainText(); // Сбрасываем флаг модификации
     modified = false;
+    plcName = QFileInfo(filePath).fileName();
     updateTitle();
     emit configSaved();
     return true;
@@ -87,7 +90,7 @@ void ConfigDockWidget::showCustomContextMenu(const QPoint &pos)
     // Создаем стандартное меню для QTextEdit, чтобы не терять логику (Undo, Copy, Paste)
     QMenu *standardMenu = editor->createStandardContextMenu(pos);
     standardMenu->addSeparator();
-    QAction *saveAction = standardMenu->addAction("Сохранить");
+    QAction *saveAction = standardMenu->addAction("Сконфигурировать");
     connect(saveAction, &QAction::triggered, this, [this](){
         ;
     });
