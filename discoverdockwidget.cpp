@@ -13,6 +13,7 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
     QVBoxLayout *vbox = new QVBoxLayout(content);
     btnDiscover = new QPushButton("Send Discover");
     QHBoxLayout *hbox = new QHBoxLayout();
+    vbox->setSpacing(0);
     hbox->addWidget(btnDiscover);
     hbox->addStretch();
     vbox->addLayout(hbox);
