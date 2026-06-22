@@ -25,13 +25,15 @@ public:
     QString getPlcName() const;
 
 signals:
-    void configSaved();
+    void getSaveFile();
+    void updateScan(const QString& ipv6, const QString& name);
 
 private slots:
     void onTextChanged();
     void showCustomContextMenu(const QPoint &pos);
     void onConfigureClicked();
     void scrollToSelectedPlc(int index);
+
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;

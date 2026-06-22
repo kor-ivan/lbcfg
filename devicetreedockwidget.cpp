@@ -45,6 +45,7 @@ void DeviceTreeDockWidget::updateDevice(const QString &ipv6, const QString &name
         rootIndex = treeModel->index(treeModel->rowCount() - 1, 0);
     }else{
         plcRoot->removeRows(0, plcRoot->rowCount());
+        plcRoot->setText(name);
         rootIndex = plcRoot->index();
     }
 

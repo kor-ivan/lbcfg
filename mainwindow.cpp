@@ -111,14 +111,7 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     saveFile = fileMenu->addAction("Сохранить");
-    connect(saveFile, &QAction::triggered, this, [this](){
-        if (!activeConfDockWidget) return;
-        if (activeConfDockWidget->getCurrentFilePath().isEmpty()) {
-            SaveConfigAs(activeConfDockWidget);
-        } else {
-            qDebug()<<activeConfDockWidget->saveFile();
-        }
-    });
+    connect(saveFile, &QAction::triggered, this, &MainWindow::onSaveFileTriggered);
 
     saveFile->setEnabled(false);
     saveFileAs->setEnabled(false);
@@ -180,16 +173,16 @@ void MainWindow::onDeviceSelected(const QString &ipv6, const QString &name)
 
 MainWindow::~MainWindow() {}
 
-bool MainWindow::isConfigDockWidget()
-{
-    if (!activeConfDockWidget) {
-        QMessageBox::warning(this,
-                             "Внимание",
-                             "Не выбрано активное окно конфигурации.");
-        return false;
-    }
-    return true;
-}
+// bool MainWindow::isConfigDockWidget()
+// {
+//     if (!activeConfDockWidget) {
+//         QMessageBox::warning(this,
+//                              "Внимание",
+//                              "Не выбрано активное окно конфигурации.");
+//         return false;
+//     }
+//     return true;
+// }
 
 void MainWindow::checkConfigDockWidget(QDockWidget *dock)
 {
@@ -222,6 +215,7 @@ void MainWindow::SaveConfigAs(ConfigDockWidget* activeDock)
     QString fileName = QFileDialog::getSaveFileName(this, "Сохранить конфигурацию как...",
                                                     activeDock->getPlcName(),
                                                     "YAML Files (*.yaml *.yml);;All Files (*)");
+    qDebug()<<fileName;
     if (!fileName.isEmpty()) {
         if (!activeDock->saveFileAs(fileName)) {
             QMessageBox::critical(this, "Ошибка", "Не удалось сохранить файл");
@@ -251,6 +245,8 @@ ConfigDockWidget *MainWindow::CreateConfDockWidget(const QString &key, const QSt
             saveFileAs->setEnabled(false);
             saveFileAs->setText("Сохранить как ...");
         });
+        connect(dock, &ConfigDockWidget::getSaveFile, this, &MainWindow::onSaveFileTriggered);
+        connect(dock, &ConfigDockWidget::updateScan, this, &MainWindow::onDeviceSelected);
     }
 
     return dock;
@@ -301,4 +297,14 @@ void MainWindow::CreateConfig(const QString &ipv6, const QString &name, const QS
     dock->show();
     dock->raise();
     // dock->setFocus();
+}
+
+void MainWindow::onSaveFileTriggered()
+{
+    if (!activeConfDockWidget) return;
+    if (activeConfDockWidget->getCurrentFilePath().isEmpty()) {
+        SaveConfigAs(activeConfDockWidget);
+    } else {
+        qDebug()<<activeConfDockWidget->saveFile();
+    }
 }

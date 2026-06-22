@@ -14,13 +14,15 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+
+
 private:
     DeviceTreeDockWidget *treeDock = nullptr;
     DiscoverDockWidget *discoverDock = nullptr;
     QMap<QString, ConfigDockWidget*> configDocks;
 
     ConfigDockWidget* activeConfDockWidget = nullptr;
-    bool isConfigDockWidget();
+    // bool isConfigDockWidget();
     void checkConfigDockWidget(QDockWidget *dock);
     void SaveConfigAs(ConfigDockWidget* activeDock);
 
@@ -37,7 +39,7 @@ private slots:
     void onDeviceSelected(const QString& ipv6, const QString& name);
     void getlbcfg (const QString &ipv6, const QString &name);
     void CreateConfig(const QString &ipv6, const QString &name, const QString &content = {});
-
+    void onSaveFileTriggered();
 
 };
 #endif // MAINWINDOW_H

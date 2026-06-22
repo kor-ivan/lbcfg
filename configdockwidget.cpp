@@ -8,6 +8,7 @@
 #include <QHeaderView>
 #include <QTextBlock>
 #include <QScrollBar>
+#include <QMessageBox>
 #include "lbyaml.h"
 #include "lbclient.h"
 
@@ -30,7 +31,7 @@ ConfigDockWidget::ConfigDockWidget(const QString &name, QWidget *parent)
 
 
     plcSelector = new QComboBox(this);
-    // plcSelector->setPlaceholderText("Выберите ПЛК..."); // Подсказка, если список пуст
+    plcSelector->setPlaceholderText("Выберите ПЛК..."); // Подсказка, если список пуст
     QTableView* tableView = new QTableView(this);
     tableView->setSelectionBehavior(QAbstractItemView::SelectRows); // Выделять всю строку целиком
     tableView->setSelectionMode(QAbstractItemView::SingleSelection); // Только один ПЛК за раз
@@ -117,7 +118,7 @@ bool ConfigDockWidget::saveFileAs(const QString &filePath)
     modified = false;
     plcName = QFileInfo(filePath).fileName();
     updateTitle();
-    emit configSaved();
+    // emit configSaved();
     return true;
 }
 
@@ -147,30 +148,64 @@ void ConfigDockWidget::showCustomContextMenu(const QPoint &pos)
 
 void ConfigDockWidget::onConfigureClicked()
 {
-    int currentRow = plcSelector->currentIndex();
-    if (currentRow < 0) {
-        qDebug() << "Конфигурирование невозможно: ПЛК не выбран";
+    QString currentSelected = plcSelector->currentText();
+    plcSelector->blockSignals(true);
+    plcSelector->clear();
+
+    // Передаем актуальный текст из редактора в наш метод
+    plcSelector->setModel(createPlcModel(editor->toPlainText()));
+    plcSelector->setModelColumn(0);
+
+    // Восстанавливаем позицию
+    int index = plcSelector->findText(currentSelected);
+    plcSelector->setCurrentIndex(index); // Если index == -1, Qt сам покажет placeholder
+
+    // int currentRow = plcSelector->currentIndex();
+    if (index < 0) {
+        QMessageBox::warning(this,
+                             "Внимание",
+                             "Не выбрана конфигурация");
         return;
     }
-    QString selectedPlc = plcSelector->currentText();
+    // QString selectedPlc = plcSelector->currentText();
     QStandardItemModel* model = qobject_cast<QStandardItemModel*>(plcSelector->model());
     QString mac;
     if (model) {
-        mac = model->item(currentRow, 1)->text();
-        qDebug() << "Запуск конфигурации для:" << selectedPlc << "с MAC-адресом:" << mac;
+        mac = model->item(index, 1)->text();
+        qDebug() << "Запуск конфигурации для:" << currentSelected << "с MAC-адресом:" << mac;
+    }
+
+    if (modified || currentFilePath.isEmpty()){
+        QMessageBox msgBox(QMessageBox::Question,
+                           "Внимание",
+                           "Конфигурация была изменена или не сохранена.\n"
+                           "Сохранить и сконфигурировать?",
+                           QMessageBox::Ok | QMessageBox::Cancel,
+                           this);
+        // Запускаем в синхронном режиме и получаем результат
+        int result = msgBox.exec();
+        if (result == QMessageBox::Ok) {
+            // Код для сохранения файла
+            emit getSaveFile();
+        } else if (result == QMessageBox::Cancel) {
+            // Код для отмены действия
+            return;
+        }
     }
     LBclient *lbc = new LBclient(this, {"conf"});
-    lbc->setTCPaddr(lbyaml::MacToIPv6(mac), 502);
+    // lbc->setTCPaddr(lbyaml::MacToIPv6(mac), 502);
+    lbc->setlbHost(currentSelected, currentFilePath);
     connect(lbc, &LBclient::ExecuteCompletedStr, this, [this]
             (const QString& lbstr, const QString& message, const QModbusDevice::Error error){
         qDebug()<<lbstr<<message;
 
     });
-    connect(lbc, &LBclient::lbDisconnect, this, [lbc]
+    connect(lbc, &LBclient::lbDisconnect, this, [lbc, mac, currentSelected, this]
             (const QString& lbhost, const QString& message, const QModbusDevice::Error error){
         qDebug()<<lbhost<<message;
         lbc->deleteLater();
         qDebug()<<"delete lbc for conf";
+        updateScan(lbyaml::MacToIPv6(mac), currentSelected);
     });
     lbc->Execute();
 }
