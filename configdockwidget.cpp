@@ -9,12 +9,13 @@
 #include <QTextBlock>
 #include <QScrollBar>
 #include <QMessageBox>
+#include <QFileDialog>
 #include "lbyaml.h"
 #include "lbclient.h"
 
 
-ConfigDockWidget::ConfigDockWidget(const QString &name, QWidget *parent)
-    : QDockWidget(QString("Конфигурация: %1").arg(name),parent)
+ConfigDockWidget::ConfigDockWidget(const QString &name, DeviceTreeDockWidget *treeDock, QWidget *parent)
+    : QDockWidget(QString("Конфигурация: %1").arg(name),parent), treeDockWidget(treeDock)
 {
     plcName = name;
     qDebug()<<name<<"into ConfigDockWidget";
@@ -101,14 +102,28 @@ bool ConfigDockWidget::openFile(const QString &filePath)
 
 bool ConfigDockWidget::saveFile()
 {
-    if (currentFilePath.isEmpty()) return false; // Если файла нет, MainWindow должно вызвать SaveAs
-    return saveFileAs(currentFilePath);
+    if (currentFilePath.isEmpty())
+        return saveFileAs();
+    else
+        return writeFile(currentFilePath);
 }
 
-bool ConfigDockWidget::saveFileAs(const QString &filePath)
+bool ConfigDockWidget::saveFileAs()
+{
+    QString filePath = QFileDialog::getSaveFileName(this, "Сохранить конфигурацию как...",
+                                                    plcName,
+                                                    "YAML Files (*.yaml *.yml);;All Files (*)");
+    if (filePath.isEmpty())
+        return false;
+
+    return writeFile(filePath);
+}
+
+bool ConfigDockWidget::writeFile(const QString &filePath)
 {
     QFile file(filePath);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::critical(this, "Ошибка", "Не удалось сохранить файл");
         return false;
     }
     QTextStream out(&file);
@@ -118,7 +133,6 @@ bool ConfigDockWidget::saveFileAs(const QString &filePath)
     modified = false;
     plcName = QFileInfo(filePath).fileName();
     updateTitle();
-    // emit configSaved();
     return true;
 }
 
@@ -186,7 +200,7 @@ void ConfigDockWidget::onConfigureClicked()
         int result = msgBox.exec();
         if (result == QMessageBox::Ok) {
             // Код для сохранения файла
-            emit getSaveFile();
+            saveFile();
         } else if (result == QMessageBox::Cancel) {
             // Код для отмены действия
             return;
@@ -205,7 +219,9 @@ void ConfigDockWidget::onConfigureClicked()
         qDebug()<<lbhost<<message;
         lbc->deleteLater();
         qDebug()<<"delete lbc for conf";
-        updateScan(lbyaml::MacToIPv6(mac), currentSelected);
+        qDebug()<<"treeDockWidget->contains(ipv6)"<<treeDockWidget->containsName(currentSelected);
+        if (!(treeDockWidget->containsName(currentSelected)))
+            updateScan(lbyaml::MacToIPv6(mac), currentSelected);
     });
     lbc->Execute();
 }
@@ -263,6 +279,7 @@ bool ConfigDockWidget::eventFilter(QObject *watched, QEvent *event)
 
     return QDockWidget::eventFilter(watched, event);
 }
+
 
 QString ConfigDockWidget::getPlcName() const
 {

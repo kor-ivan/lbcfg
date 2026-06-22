@@ -24,6 +24,7 @@ public:
             return isSlot() ? QString("%1/slot %2").arg(name).arg(slot) : name;
         }
     };
+    bool containsName(const QString& name);
 
 signals:
     void requestConfig(const QString& ipv6, const QString& name);

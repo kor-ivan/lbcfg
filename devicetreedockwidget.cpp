@@ -73,6 +73,17 @@ void DeviceTreeDockWidget::updateDevice(const QString &ipv6, const QString &name
     treeView->expand(rootIndex);
 }
 
+bool DeviceTreeDockWidget::containsName(const QString &name)
+{
+    qDebug()<<"into DeviceTreeDockWidget::contains "<<name;
+    for (int i = 0; i < treeModel->rowCount(); ++i) {
+        auto *item = treeModel->item(i);
+        if (item->text() == name)
+            return true;
+    }
+    return false;
+}
+
 void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
 {
     // Получаем индекс элемента, на который кликнули

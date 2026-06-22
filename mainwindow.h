@@ -24,7 +24,7 @@ private:
     ConfigDockWidget* activeConfDockWidget = nullptr;
     // bool isConfigDockWidget();
     void checkConfigDockWidget(QDockWidget *dock);
-    void SaveConfigAs(ConfigDockWidget* activeDock);
+    // void SaveConfigAs(ConfigDockWidget* activeDock);
 
     ConfigDockWidget* CreateConfDockWidget(const QString &key, const QString &name);
     QAction *saveFileAs = nullptr;
@@ -39,7 +39,7 @@ private slots:
     void onDeviceSelected(const QString& ipv6, const QString& name);
     void getlbcfg (const QString &ipv6, const QString &name);
     void CreateConfig(const QString &ipv6, const QString &name, const QString &content = {});
-    void onSaveFileTriggered();
+    // void onSaveFileTriggered();
 
 };
 #endif // MAINWINDOW_H
