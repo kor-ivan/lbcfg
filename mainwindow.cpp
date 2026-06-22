@@ -37,6 +37,9 @@ MainWindow::MainWindow(QWidget *parent)
         this,
         &MainWindow::getlbcfg);
 
+    connect(treeDock, &DeviceTreeDockWidget::requestUpdate,
+            this, &MainWindow::onDeviceSelected);
+
     connect(
         discoverDock,
         &DiscoverDockWidget::deviceSelected,

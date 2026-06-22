@@ -111,6 +111,11 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
             emit requestConfig(ctx.ipv6, ctx.name);
         });
 
+        QAction *update = menu.addAction("Обновить");
+        connect(update, &QAction::triggered, this, [this, ctx](){
+            emit requestUpdate(ctx.ipv6, ctx.name);
+        });
+
         QAction *removeAction = menu.addAction(QString("Удалить %1").arg(ctx.name));
         connect(removeAction, &QAction::triggered, this, [this, index]() {
             treeModel->removeRow(index.row());

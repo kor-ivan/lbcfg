@@ -97,6 +97,7 @@ bool ConfigDockWidget::openFile(const QString &filePath)
     QTextStream in(&file);
     setConfig(in.readAll());
     currentFilePath = filePath;
+    updateTitle();
     return true;
 }
 
@@ -152,9 +153,13 @@ void ConfigDockWidget::showCustomContextMenu(const QPoint &pos)
     // Создаем стандартное меню для QTextEdit, чтобы не терять логику (Undo, Copy, Paste)
     QMenu *standardMenu = editor->createStandardContextMenu(pos);
     standardMenu->addSeparator();
-    QAction *saveAction = standardMenu->addAction("Сконфигурировать");
+    QAction *saveAction = standardMenu->addAction("Сохранить");
     connect(saveAction, &QAction::triggered, this, [this](){
-        ;
+        saveFile();
+    });
+    QAction *confAction = standardMenu->addAction("Сконфигурировать");
+    connect(confAction, &QAction::triggered, this, [this](){
+        onConfigureClicked();
     });
     standardMenu->exec(editor->mapToGlobal(pos));
     delete standardMenu;
@@ -218,10 +223,8 @@ void ConfigDockWidget::onConfigureClicked()
             (const QString& lbhost, const QString& message, const QModbusDevice::Error error){
         qDebug()<<lbhost<<message;
         lbc->deleteLater();
-        qDebug()<<"delete lbc for conf";
-        qDebug()<<"treeDockWidget->contains(ipv6)"<<treeDockWidget->containsName(currentSelected);
         if (!(treeDockWidget->containsName(currentSelected)))
-            updateScan(lbyaml::MacToIPv6(mac), currentSelected);
+            emit updateScan(lbyaml::MacToIPv6(mac), currentSelected);
     });
     lbc->Execute();
 }
@@ -290,6 +293,11 @@ void ConfigDockWidget::updateTitle()
 {
     QString prefix = modified ? "* " : "";
     setWindowTitle(QString("%1Конфигурация: %2").arg(prefix, plcName));
+    if (!currentFilePath.isEmpty()) {
+        setToolTip(currentFilePath);
+    } else {
+        setToolTip("");
+    }
 }
 
 QStandardItemModel *ConfigDockWidget::createPlcModel(const QString &yamlText)
