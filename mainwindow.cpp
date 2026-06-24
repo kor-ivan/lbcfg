@@ -8,6 +8,8 @@
 #include <QLabel>
 #include <QFileDialog>
 #include <QApplication>
+#include <QHelpEvent>
+#include <QToolTip>
 
 
 
@@ -144,6 +146,42 @@ void MainWindow::showEvent(QShowEvent *event)
     resizeDocks({treeDock, discoverDock}, {totalWidth/3, 2*totalWidth/3}, Qt::Horizontal);
 }
 
+bool MainWindow::eventFilter(QObject *watched, QEvent *event)
+{
+    // Проверяем, что событие происходит на панели вкладок
+    QTabBar *tabBar = qobject_cast<QTabBar*>(watched);
+
+    if (tabBar && event->type() == QEvent::ToolTip) {
+        QHelpEvent *helpEvent = static_cast<QHelpEvent*>(event);
+        // Определяем индекс вкладки, на которую указывает курсор
+        int index = tabBar->tabAt(helpEvent->pos());
+
+        if (index != -1) {
+            QString tabText = tabBar->tabText(index);
+
+            // Ищем документ, соответствующий этой вкладке
+            for (ConfigDockWidget *dock : configDocks.values()) {
+                if (dock && dock->windowTitle() == tabText) {
+                    QString filePath = dock->getCurrentFilePath();
+
+                    if (!filePath.isEmpty()) {
+                        // Выводим подсказку на экран в глобальных координатах курсора
+                        QToolTip::showText(helpEvent->globalPos(), filePath, tabBar);
+                    } else {
+                        // Если пути нет, принудительно скрываем подсказку
+                        QToolTip::hideText();
+                    }
+                    return true; // Сообщаем Qt, что событие полностью обработано
+                }
+            }
+        }
+        // Если это вкладка "Discover" или любой другой не наш док, скрываем старый текст
+        QToolTip::hideText();
+    }
+
+    return QMainWindow::eventFilter(watched, event);
+}
+
 void MainWindow::onDeviceSelected(const QString &ipv6, const QString &name)
 {
     qDebug() << "Starting process for:"<<ipv6<<" "<<name;
@@ -235,6 +273,9 @@ ConfigDockWidget *MainWindow::CreateConfDockWidget(const QString &key, const QSt
         configDocks.insert(key, dock);
         addDockWidget(Qt::RightDockWidgetArea, dock);
         tabifyDockWidget(discoverDock, dock);
+        for (QTabBar *tabBar : this->findChildren<QTabBar *>()) {
+            tabBar->installEventFilter(this);
+        }
 
         connect(dock, &QObject::destroyed, this, [this, key]() {
             qDebug() << "destroy";

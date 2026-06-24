@@ -293,11 +293,6 @@ void ConfigDockWidget::updateTitle()
 {
     QString prefix = modified ? "* " : "";
     setWindowTitle(QString("%1Конфигурация: %2").arg(prefix, plcName));
-    if (!currentFilePath.isEmpty()) {
-        setToolTip(currentFilePath);
-    } else {
-        setToolTip("");
-    }
 }
 
 QStandardItemModel *ConfigDockWidget::createPlcModel(const QString &yamlText)
