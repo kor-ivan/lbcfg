@@ -150,20 +150,16 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
     // Проверяем, что событие происходит на панели вкладок
     QTabBar *tabBar = qobject_cast<QTabBar*>(watched);
-
     if (tabBar && event->type() == QEvent::ToolTip) {
         QHelpEvent *helpEvent = static_cast<QHelpEvent*>(event);
         // Определяем индекс вкладки, на которую указывает курсор
         int index = tabBar->tabAt(helpEvent->pos());
-
         if (index != -1) {
             QString tabText = tabBar->tabText(index);
-
             // Ищем документ, соответствующий этой вкладке
             for (ConfigDockWidget *dock : configDocks.values()) {
                 if (dock && dock->windowTitle() == tabText) {
                     QString filePath = dock->getCurrentFilePath();
-
                     if (!filePath.isEmpty()) {
                         // Выводим подсказку на экран в глобальных координатах курсора
                         QToolTip::showText(helpEvent->globalPos(), filePath, tabBar);
@@ -178,7 +174,6 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
         // Если это вкладка "Discover" или любой другой не наш док, скрываем старый текст
         QToolTip::hideText();
     }
-
     return QMainWindow::eventFilter(watched, event);
 }
 
