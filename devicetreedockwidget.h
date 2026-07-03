@@ -29,6 +29,7 @@ public:
 signals:
     void requestConfig(const QString& ipv6, const QString& name);
     void requestUpdate(const QString& ipv6, const QString& name);
+    void requestFlash(const QString& ipv6, const int& slot);
 
 private slots:
     void showContextMenu(const QPoint& pos);

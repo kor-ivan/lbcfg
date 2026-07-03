@@ -168,6 +168,10 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
             return QString("Команда на перезагрузку %1 отправлена").arg(ctx.displayName());
         });
     });
+    QAction *flash = menu.addAction("Загрузить прошивку ...");
+    connect(flash, &QAction::triggered, this, [this, ctx](){
+        emit requestFlash(ctx.ipv6, ctx.slot);
+    });
 
     menu.exec(treeView->viewport()->mapToGlobal(pos));
 

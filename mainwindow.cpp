@@ -42,6 +42,14 @@ MainWindow::MainWindow(QWidget *parent)
     connect(treeDock, &DeviceTreeDockWidget::requestUpdate,
             this, &MainWindow::onDeviceSelected);
 
+    connect(treeDock, &DeviceTreeDockWidget::requestFlash, this, [this]
+            (const QString& ipv6, const int& slot){
+        QString filePath = QFileDialog::getOpenFileName(this, "Загрузить прошивку ...", "", "BIN Files (*.bin);;All Files (*)");
+        if (!filePath.isEmpty()) {
+            startFirmware(ipv6, filePath);
+        }
+    });
+
     connect(
         discoverDock,
         &DiscoverDockWidget::deviceSelected,
@@ -130,9 +138,20 @@ MainWindow::MainWindow(QWidget *parent)
     // Временное сообщение (исчезнет через 5000 миллисекунд / 5 секунд)
     statusBar->showMessage(tr("Программа готова к работе"), 5000);
 
-    // Постоянный индикатор (например, имя пользователя или статус сети)
-    QLabel *statusLabel = new QLabel(tr("Сеть: ОК"), this);
-    statusBar->addPermanentWidget(statusLabel);
+    // Инициализируем ProgressBar для прошивки
+    firmwareProgressBar = new QProgressBar(this);
+    firmwareProgressBar->setRange(0, 100);
+    firmwareProgressBar->setValue(0);
+    firmwareProgressBar->setTextVisible(true);
+    firmwareProgressBar->setFormat("Прошивка: %p%");
+    firmwareProgressBar->setMaximumWidth(200);
+    firmwareProgressBar->hide(); // Скрываем по умолчанию, пока прошивка не запущена
+
+    statusBar->addPermanentWidget(firmwareProgressBar);
+
+    // // Постоянный индикатор (например, имя пользователя или статус сети)
+    // QLabel *statusLabel = new QLabel(tr("Сеть: ОК"), this);
+    // statusBar->addPermanentWidget(statusLabel);
 
 }
 
@@ -212,20 +231,9 @@ void MainWindow::onDeviceSelected(const QString &ipv6, const QString &name)
 
 MainWindow::~MainWindow() {}
 
-// bool MainWindow::isConfigDockWidget()
-// {
-//     if (!activeConfDockWidget) {
-//         QMessageBox::warning(this,
-//                              "Внимание",
-//                              "Не выбрано активное окно конфигурации.");
-//         return false;
-//     }
-//     return true;
-// }
 
 void MainWindow::checkConfigDockWidget(QDockWidget *dock)
 {
-    // qDebug()<< "Фокус на Dock:" <<dock;
     ConfigDockWidget *configDock = qobject_cast<ConfigDockWidget*>(dock);
     if (configDock) {
         qDebug() << "Выбран ConfigDockWidget: " << configDock;
@@ -239,22 +247,8 @@ void MainWindow::checkConfigDockWidget(QDockWidget *dock)
             saveFileAs->setEnabled(true);
             saveFileAs->setText(QString("Сохранить %1 как ...").arg(plcName));
         }
-
-        // return;
     }
-    // if (!(activeConfDockWidget && activeConfDockWidget->isFloating())) {
-    //     activeConfDockWidget = nullptr;
-    //     qDebug() << "Активный виджет сброшен.";
-    // }
 }
-
-// void MainWindow::SaveConfigAs(ConfigDockWidget* activeDock)
-// {
-//     // qDebug()<<activeDock->getPlcName();
-
-//     // qDebug()<<fileName;
-
-// }
 
 ConfigDockWidget *MainWindow::CreateConfDockWidget(const QString &key, const QString &name)
 {
@@ -281,27 +275,42 @@ ConfigDockWidget *MainWindow::CreateConfDockWidget(const QString &key, const QSt
             saveFileAs->setEnabled(false);
             saveFileAs->setText("Сохранить как ...");
         });
-        // connect(dock, &ConfigDockWidget::getSaveFile, this, &MainWindow::onSaveFileTriggered);
         connect(dock, &ConfigDockWidget::updateScan, this, &MainWindow::onDeviceSelected);
     }
 
     return dock;
 }
 
-// ConfigDockWidget* MainWindow::findActiveConfigDockWidget()
-// {
-//     // QList<ConfigDockWidget*> allDocks = this->findChildren<ConfigDockWidget*>();
-//     // for (ConfigDockWidget *dock : allDocks) {
-//     //     // Из всех объединенных доков видимым (isVisible) будет только тот,
-//     //     // вкладку которого пользователь выбрал на экране
-//     //     // if (dock->isVisible())
-//     //     //     return dock;
-//     //     qDebug()<<dock->getPlcName();
-//     //     qDebug()<<dock->isVisible();
-//     //     qDebug()<<dock->isActiveWindow();
-//     // }
-//     // return nullptr;
-// }
+void MainWindow::startFirmware(const QString &ipv6, const QString &filePath, const int &slot)
+{
+    // Показываем прогресс-бар и сбрасываем в 0
+    firmwareProgressBar->setValue(0);
+    firmwareProgressBar->show();
+    this->statusBar()->showMessage(QString("Запуск прошивки устройства %1...").arg(ipv6));
+
+    LBclient *lbc = new LBclient(this, {"ota"});
+    lbc->setTCPaddr(ipv6, 502);
+    lbc->setOtaFilename(filePath);
+    if (slot!=-1)
+        lbc->setSlot(slot);
+    connect(lbc, &LBclient::ExecuteCompleted, this, [this]
+            (const QString &lbhost, const QStringList &result, const QString &message, const QModbusDevice::Error error){
+        if(error==QModbusDevice::NoError){
+            int prc = (int)result.at(1).toFloat();
+            firmwareProgressBar->setValue(prc);
+        }else{
+            this->statusBar()->showMessage(message);
+        }
+    });
+    connect(lbc, &LBclient::lbDisconnect, this, [this, lbc]
+            (const QString &lbhost, const QString &message, const QModbusDevice::Error error){
+        this->statusBar()->showMessage(message);
+        firmwareProgressBar->setValue(0);
+        firmwareProgressBar->hide();
+        lbc->deleteLater();
+    });
+    lbc->Execute();
+}
 
 void MainWindow::getlbcfg(const QString &ipv6, const QString &name)
 {
@@ -334,13 +343,3 @@ void MainWindow::CreateConfig(const QString &ipv6, const QString &name, const QS
     dock->raise();
     // dock->setFocus();
 }
-
-// void MainWindow::onSaveFileTriggered()
-// {
-//     if (!activeConfDockWidget) return;
-//     if (activeConfDockWidget->getCurrentFilePath().isEmpty()) {
-//         SaveConfigAs(activeConfDockWidget);
-//     } else {
-//         qDebug()<<activeConfDockWidget->saveFile();
-//     }
-// }

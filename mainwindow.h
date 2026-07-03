@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include<QTextEdit>
+#include <QProgressBar>
 #include "devicetreedockwidget.h"
 #include "discoverdockwidget.h"
 #include "configdockwidget.h"
@@ -30,6 +31,9 @@ private:
     QAction *saveFileAs = nullptr;
     QAction *saveFile = nullptr;
 
+    QProgressBar *firmwareProgressBar = nullptr;
+    void startFirmware(const QString &ipv6, const QString &filePath, const int &slot=-1);
+
 
 protected:
     void showEvent(QShowEvent *event) override;
@@ -40,7 +44,7 @@ private slots:
     void onDeviceSelected(const QString& ipv6, const QString& name);
     void getlbcfg (const QString &ipv6, const QString &name);
     void CreateConfig(const QString &ipv6, const QString &name, const QString &content = {});
-    // void onSaveFileTriggered();
+
 
 };
 #endif // MAINWINDOW_H
