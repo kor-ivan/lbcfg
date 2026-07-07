@@ -10,6 +10,9 @@
 #include <QApplication>
 #include <QHelpEvent>
 #include <QToolTip>
+// #include <QPixmap>
+// #include <QPainter>
+#include <QHBoxLayout>
 
 
 
@@ -46,7 +49,7 @@ MainWindow::MainWindow(QWidget *parent)
             (const QString& ipv6, const int& slot){
         QString filePath = QFileDialog::getOpenFileName(this, "Загрузить прошивку ...", "", "BIN Files (*.bin);;All Files (*)");
         if (!filePath.isEmpty()) {
-            startFirmware(ipv6, filePath);
+            startFirmware(ipv6, filePath, slot);
         }
     });
 
@@ -138,21 +141,65 @@ MainWindow::MainWindow(QWidget *parent)
     // Временное сообщение (исчезнет через 5000 миллисекунд / 5 секунд)
     statusBar->showMessage(tr("Программа готова к работе"), 5000);
 
+    // 1. Создаем общий контейнер-виджет
+    firmwareContainer = new QWidget(this);
+
+    // 2. Создаем горизонтальный слой с нулевыми отступами
+    QHBoxLayout *firmwareLayout = new QHBoxLayout(firmwareContainer);
+    firmwareLayout->setContentsMargins(0, 0, 0, 0); // Убираем внешние отступы слоя
+    firmwareLayout->setSpacing(4);
+    int buttonSize = 14; // Высота и ширина кнопки равны высоте прогресс-бара
+
     // Инициализируем ProgressBar для прошивки
-    firmwareProgressBar = new QProgressBar(this);
+    firmwareProgressBar = new QProgressBar(firmwareContainer);
     firmwareProgressBar->setRange(0, 100);
     firmwareProgressBar->setValue(0);
     firmwareProgressBar->setTextVisible(true);
     firmwareProgressBar->setFormat("Прошивка: %p%");
     firmwareProgressBar->setMaximumWidth(200);
-    firmwareProgressBar->hide(); // Скрываем по умолчанию, пока прошивка не запущена
+    firmwareProgressBar->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    firmwareProgressBar->setFixedHeight(buttonSize);
 
-    statusBar->addPermanentWidget(firmwareProgressBar);
+    // Получаем текущую палитру прогресс-бара
+    QPalette progressPalette = firmwareProgressBar->palette();
+    // Жестко задаем цвет текста поверх заполненной части (HighlightedText)
+    // и незаполненной части (Text/WindowText) как черный
+    progressPalette.setColor(QPalette::HighlightedText, Qt::black);
+    progressPalette.setColor(QPalette::Text, Qt::black);
+    progressPalette.setColor(QPalette::WindowText, Qt::black);
 
-    // // Постоянный индикатор (например, имя пользователя или статус сети)
-    // QLabel *statusLabel = new QLabel(tr("Сеть: ОК"), this);
-    // statusBar->addPermanentWidget(statusLabel);
+    // Применяем измененную палитру к прогресс-бару
+    firmwareProgressBar->setPalette(progressPalette);
 
+    // 4. Инициализируем квадратную кнопку "Стоп"
+    stopFirmwareButton = new QPushButton(firmwareContainer);
+
+    stopFirmwareButton->setFixedSize(buttonSize, buttonSize);
+    QPalette buttonPalette = stopFirmwareButton->palette();
+    stopFirmwareButton->setStyleSheet(
+        "QPushButton {"
+        "   background-color: #FF0000;" /* Чистый красный цвет */
+        "   border: 1px solid #CC0000;" /* Темно-красная аккуратная рамка */
+        "   border-radius: 1px;"        /* Минимальное сглаживание углов */
+        "}"
+        "QPushButton:hover {"
+        "   background-color: #D60000;" /* Цвет при наведении курсора (становится темнее) */
+        "}"
+        "QPushButton:pressed {"
+        "   background-color: #A30000;" /* Цвет при клике (эффект нажатия) */
+        "}"
+        );
+    stopFirmwareButton->setToolTip(tr("Остановить"));
+
+    // 5. Собираем всё внутри слоя контейнера
+    firmwareLayout->addWidget(stopFirmwareButton);
+    firmwareLayout->addWidget(firmwareProgressBar);
+
+    firmwareLayout->setSizeConstraint(QLayout::SetFixedSize);
+    firmwareContainer->hide();
+
+    // 6. Добавляем готовый контейнер в QStatusBar
+    this->statusBar()->addPermanentWidget(firmwareContainer);
 }
 
 void MainWindow::showEvent(QShowEvent *event)
@@ -283,9 +330,12 @@ ConfigDockWidget *MainWindow::CreateConfDockWidget(const QString &key, const QSt
 
 void MainWindow::startFirmware(const QString &ipv6, const QString &filePath, const int &slot)
 {
+    qDebug()<<"startFirmware slot="<<slot;
     // Показываем прогресс-бар и сбрасываем в 0
     firmwareProgressBar->setValue(0);
-    firmwareProgressBar->show();
+    firmwareContainer->show();
+    stopFirmwareButton->setEnabled(true);
+
     this->statusBar()->showMessage(QString("Запуск прошивки устройства %1...").arg(ipv6));
 
     LBclient *lbc = new LBclient(this, {"ota"});
@@ -306,7 +356,15 @@ void MainWindow::startFirmware(const QString &ipv6, const QString &filePath, con
             (const QString &lbhost, const QString &message, const QModbusDevice::Error error){
         this->statusBar()->showMessage(message);
         firmwareProgressBar->setValue(0);
-        firmwareProgressBar->hide();
+        firmwareContainer->hide();
+        lbc->deleteLater();
+    });
+    stopFirmwareButton->disconnect();
+    connect(stopFirmwareButton, &QPushButton::clicked, this, [this, lbc]() {
+        this->statusBar()->showMessage(tr("Прерывание прошивки..."));
+        stopFirmwareButton->setEnabled(false);
+        firmwareProgressBar->setValue(0);
+        firmwareContainer->hide();
         lbc->deleteLater();
     });
     lbc->Execute();

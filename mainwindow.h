@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include<QTextEdit>
 #include <QProgressBar>
+#include <QPushButton>
 #include "devicetreedockwidget.h"
 #include "discoverdockwidget.h"
 #include "configdockwidget.h"
@@ -32,6 +33,8 @@ private:
     QAction *saveFile = nullptr;
 
     QProgressBar *firmwareProgressBar = nullptr;
+    QPushButton *stopFirmwareButton = nullptr;
+    QWidget *firmwareContainer = nullptr;
     void startFirmware(const QString &ipv6, const QString &filePath, const int &slot=-1);
 
 
