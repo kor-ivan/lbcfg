@@ -5,8 +5,8 @@
 #include <QMenu>
 #include <QClipboard>
 
-DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
-    : QDockWidget("Discover", parent)
+DiscoverDockWidget::DiscoverDockWidget(QWidget *parent, plcManager *plc)
+    : QDockWidget("Discover", parent), lbplc(plc)
 {
     QWidget *content = new QWidget(this);
     setWidget(content);
@@ -57,6 +57,9 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
         this,
         &DiscoverDockWidget::startDiscover);
 
+    connect(lbplc, &plcManager::discoverCompleted,
+            this, &DiscoverDockWidget::discoverReceived);
+
     connect(
         table,
         &QTableWidget::cellDoubleClicked,
@@ -66,24 +69,8 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
 
 void DiscoverDockWidget::startDiscover()
 {
-    qDebug()<<"startDiscover "<<discoverRunning;
-    if (discoverRunning)
-        return;
-    wgtdiscover = new discover(this);
-    connect(wgtdiscover, &discover::discoverCompleted, this,
-            [this] (const QMap<QString, discover::lbinfo>& DiscoverMap, const discover::discoverError error, const QString errorStr){
-                discoverRunning = false;
-                if (error != discover::NoError)
-                    return;
-                ldmap = DiscoverMap;
-                fillTable();
-                wgtdiscover->deleteLater();
-            }
-            );
-    discoverRunning = true;
+    lbplc->startDiscover();
     table->setRowCount(0); // Очищаем старые строки
-    wgtdiscover -> execute();
-
 }
 
 void DiscoverDockWidget::onTableDoubleClicked(int row, int column)
@@ -140,8 +127,14 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
     }
 }
 
-void DiscoverDockWidget::fillTable()
+// void DiscoverDockWidget::fillTable()
+// {
+
+// }
+
+void DiscoverDockWidget::discoverReceived(const QMap<QString, discover::lbinfo> &DiscoverMap)
 {
+    ldmap = DiscoverMap;
     table->setSortingEnabled(false); // Отключаем сортировку на время вставки для скорости
     int row = 0;
     for (auto it = ldmap.begin(); it != ldmap.end(); ++it) {

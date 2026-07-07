@@ -8,6 +8,7 @@
 #include "devicetreedockwidget.h"
 #include "discoverdockwidget.h"
 #include "configdockwidget.h"
+#include "plcmanager.h"
 
 class MainWindow : public QMainWindow
 {
@@ -19,6 +20,7 @@ public:
 
 
 private:
+    plcManager *lbplc = nullptr;
     DeviceTreeDockWidget *treeDock = nullptr;
     DiscoverDockWidget *discoverDock = nullptr;
     QMap<QString, ConfigDockWidget*> configDocks;
@@ -35,7 +37,7 @@ private:
     QProgressBar *firmwareProgressBar = nullptr;
     QPushButton *stopFirmwareButton = nullptr;
     QWidget *firmwareContainer = nullptr;
-    void startFirmware(const QString &ipv6, const QString &filePath, const int &slot=-1);
+    // void startFirmware(const QString &ipv6, const QString &filePath, const int &slot=-1);
 
 
 protected:
@@ -44,8 +46,8 @@ protected:
 
 
 private slots:
-    void onDeviceSelected(const QString& ipv6, const QString& name);
-    void getlbcfg (const QString &ipv6, const QString &name);
+    // void onDeviceSelected(const QString& ipv6, const QString& name);
+    // void getlbcfg (const QString &ipv6, const QString &name);
     void CreateConfig(const QString &ipv6, const QString &name, const QString &content = {});
 
 
