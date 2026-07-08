@@ -6,7 +6,7 @@
 #include <QComboBox>
 #include <QPushButton>
 #include <QStandardItemModel>
-#include "devicetreedockwidget.h"
+#include "plcmanager.h"
 
 
 class ConfigDockWidget : public QDockWidget
@@ -14,8 +14,8 @@ class ConfigDockWidget : public QDockWidget
     Q_OBJECT
 public:
     explicit ConfigDockWidget(const QString& name,
-                              DeviceTreeDockWidget *treeDock,
-                              QWidget *parent = nullptr);
+                              QWidget *parent = nullptr,
+                              plcManager *plc = nullptr);
     void setConfig(const QString& yaml);
     QString config() const;
     bool isModified() const;
@@ -42,6 +42,7 @@ protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
+    plcManager *lbplc = nullptr;
     QTextEdit* editor = nullptr;
     QComboBox *plcSelector = nullptr;
     QPushButton *configButton = nullptr;
@@ -49,7 +50,6 @@ private:
     bool modified = false;
     QString plcName;
     bool writeFile(const QString &filePath);
-    DeviceTreeDockWidget *treeDockWidget = nullptr;
 
     QString currentFilePath;
     void updateTitle();

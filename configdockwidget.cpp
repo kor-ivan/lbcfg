@@ -10,12 +10,11 @@
 #include <QScrollBar>
 #include <QMessageBox>
 #include <QFileDialog>
-#include "lbyaml.h"
-#include "lbclient.h"
 
 
-ConfigDockWidget::ConfigDockWidget(const QString &name, DeviceTreeDockWidget *treeDock, QWidget *parent)
-    : QDockWidget(QString("Конфигурация: %1").arg(name),parent), treeDockWidget(treeDock)
+ConfigDockWidget::ConfigDockWidget(const QString &name, QWidget *parent, plcManager *plc)
+    : QDockWidget(QString("Конфигурация: %1").arg(name),parent),
+    lbplc(plc)
 {
     plcName = name;
     qDebug()<<name<<"into ConfigDockWidget";
@@ -211,22 +210,8 @@ void ConfigDockWidget::onConfigureClicked()
             return;
         }
     }
-    LBclient *lbc = new LBclient(this, {"conf"});
-    // lbc->setTCPaddr(lbyaml::MacToIPv6(mac), 502);
-    lbc->setlbHost(currentSelected, currentFilePath);
-    connect(lbc, &LBclient::ExecuteCompletedStr, this, [this]
-            (const QString& lbstr, const QString& message, const QModbusDevice::Error error){
-        qDebug()<<lbstr<<message;
-
-    });
-    connect(lbc, &LBclient::lbDisconnect, this, [lbc, mac, currentSelected, this]
-            (const QString& lbhost, const QString& message, const QModbusDevice::Error error){
-        qDebug()<<lbhost<<message;
-        lbc->deleteLater();
-        if (!(treeDockWidget->containsName(currentSelected)))
-            emit updateScan(lbyaml::MacToIPv6(mac), currentSelected);
-    });
-    lbc->Execute();
+    if (lbplc)
+        lbplc->startConf(currentSelected, currentFilePath);
 }
 
 void ConfigDockWidget::scrollToSelectedPlc(int index)

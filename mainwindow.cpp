@@ -1,8 +1,5 @@
 #include "mainwindow.h"
 #include <QDockWidget>
-// #include <discover.h>
-// #include <lbclient.h>
-// #include <lbprocess.h>
 #include <QMenuBar>
 #include <QStatusBar>
 #include <QLabel>
@@ -42,22 +39,21 @@ MainWindow::MainWindow(QWidget *parent)
         }
     });
 
-    connect(lbplc, &plcManager::firmwareStarted, this, [this](){
+    connect(lbplc, &plcManager::firmwareStarted, this, [this](const QString &ipv6){
+        qDebug()<<"plcManager::firmwareStarted"<<ipv6;
         firmwareProgressBar->setValue(0);
         firmwareContainer->show();
         stopFirmwareButton->setEnabled(true);
     });
 
-    connect(lbplc, &plcManager::firmwareProgressChanged, firmwareProgressBar, &QProgressBar::setValue);
-
-    connect(lbplc, &plcManager::firmwareProgressChanged, this, [this](){
-        firmwareProgressBar->setValue(0);
-        firmwareContainer->hide();
+    connect(lbplc, &plcManager::firmwareProgressChanged, this, [this](int prc){
+        firmwareProgressBar->setValue(prc);
     });
 
-    connect(stopFirmwareButton, &QPushButton::clicked, this, [this](){
+    connect(lbplc, &plcManager::firmwareFinished, this, [this](){
+        firmwareProgressBar->setValue(0);
         stopFirmwareButton->setEnabled(false);
-        lbplc->stopFirmware();
+        firmwareContainer->hide();
     });
 
     connect(discoverDock, &DiscoverDockWidget::newConfig,
@@ -205,6 +201,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(treeDock, &DeviceTreeDockWidget::requestConfig,
             lbplc, &plcManager::requestConfig);
     connect(lbplc, &plcManager::errorOccurred, this, [this](const QString &msg){
+        this->statusBar()->showMessage(msg);
+    });
+    connect(lbplc, &plcManager::eventOccurred, this, [this](const QString &msg){
+        qDebug()<<"into error Occured"<<msg;
         this->statusBar()->showMessage(msg, 5000);
     });
     connect(discoverDock, &DiscoverDockWidget::deviceSelected,
@@ -215,6 +215,11 @@ MainWindow::MainWindow(QWidget *parent)
             treeDock, &DeviceTreeDockWidget::updateDevice);
     connect(lbplc, &plcManager::configReceived,
             this, &MainWindow::CreateConfig);
+
+    connect(stopFirmwareButton, &QPushButton::clicked, this, [this](){
+        stopFirmwareButton->setEnabled(false);
+        lbplc->stopFirmware();
+    });
 
 }
 
@@ -286,7 +291,7 @@ ConfigDockWidget *MainWindow::CreateConfDockWidget(const QString &key, const QSt
     if (configDocks.contains(key)) {
         dock = configDocks[key];
     } else {
-        dock = new ConfigDockWidget(name, treeDock, this);
+        dock = new ConfigDockWidget(name, this, lbplc);
         dock->setAttribute(Qt::WA_DeleteOnClose);
 
         configDocks.insert(key, dock);
@@ -305,52 +310,14 @@ ConfigDockWidget *MainWindow::CreateConfDockWidget(const QString &key, const QSt
             saveFileAs->setEnabled(false);
             saveFileAs->setText("Сохранить как ...");
         });
-        connect(dock, &ConfigDockWidget::updateScan, lbplc, &plcManager::scanDevice);
+        // connect(dock, &ConfigDockWidget::updateScan, lbplc, &plcManager::scanDevice);
+        connect(lbplc, &plcManager::confCompleted, this, [this](const QString &ipv6, const QString &name){
+            if(!(treeDock->containsName(name)))
+                lbplc->scanDevice(ipv6, name);
+        });
     }
-
     return dock;
 }
-
-// void MainWindow::startFirmware(const QString &ipv6, const QString &filePath, const int &slot)
-// {
-//     // Показываем прогресс-бар и сбрасываем в 0
-//     firmwareProgressBar->setValue(0);
-//     firmwareContainer->show();
-//     stopFirmwareButton->setEnabled(true);
-
-//     this->statusBar()->showMessage(QString("Запуск прошивки устройства %1...").arg(ipv6));
-
-//     LBclient *lbc = new LBclient(this, {"ota"});
-//     lbc->setTCPaddr(ipv6, 502);
-//     lbc->setOtaFilename(filePath);
-//     if (slot!=-1)
-//         lbc->setSlot(slot);
-//     connect(lbc, &LBclient::ExecuteCompleted, this, [this]
-//             (const QString &lbhost, const QStringList &result, const QString &message, const QModbusDevice::Error error){
-//         if(error==QModbusDevice::NoError){
-//             int prc = (int)result.at(1).toFloat();
-//             firmwareProgressBar->setValue(prc);
-//         }else{
-//             this->statusBar()->showMessage(message);
-//         }
-//     });
-//     connect(lbc, &LBclient::lbDisconnect, this, [this, lbc]
-//             (const QString &lbhost, const QString &message, const QModbusDevice::Error error){
-//         this->statusBar()->showMessage(message);
-//         firmwareProgressBar->setValue(0);
-//         firmwareContainer->hide();
-//         lbc->deleteLater();
-//     });
-//     stopFirmwareButton->disconnect();
-//     connect(stopFirmwareButton, &QPushButton::clicked, this, [this, lbc]() {
-//         this->statusBar()->showMessage(tr("Прерывание прошивки..."));
-//         stopFirmwareButton->setEnabled(false);
-//         firmwareProgressBar->setValue(0);
-//         firmwareContainer->hide();
-//         lbc->deleteLater();
-//     });
-//     lbc->Execute();
-// }
 
 void MainWindow::CreateConfig(const QString &ipv6, const QString &name, const QString &content)
 {

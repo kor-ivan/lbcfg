@@ -90,9 +90,8 @@ void plcManager::startDiscover()
 void plcManager::startFirmware(const QString &ipv6, const QString &filePath, int slot)
 {
     qDebug() << "PLCManager: startFirmware slot=" << slot;
-
     if (activeOtaClient) {
-        emit errorOccurred("Прошивка уже выполняется на другом устройстве");
+        emit eventOccurred("Прошивка уже выполняется на другом устройстве");
         return;
     }
     emit firmwareStarted(ipv6);
@@ -112,7 +111,7 @@ void plcManager::startFirmware(const QString &ipv6, const QString &filePath, int
             });
     connect(activeOtaClient, &LBclient::lbDisconnect, this, [this]
             (const QString &lbhost, const QString &message, const QModbusDevice::Error error){
-                emit errorOccurred(message);
+                emit eventOccurred(message);
                 emit firmwareFinished();
                 activeOtaClient->deleteLater();
                 activeOtaClient = nullptr;
@@ -127,4 +126,24 @@ void plcManager::stopFirmware()
     emit firmwareFinished();
     activeOtaClient->deleteLater();
     activeOtaClient = nullptr;
+}
+
+void plcManager::startConf(const QString &name, const QString &yamlFilePath)
+{
+    qDebug()<<"plcManager::startConf for "<<name;
+    LBclient *lbc = new LBclient(this, {"conf"});
+    lbc->setlbHost(name, yamlFilePath);
+    connect(lbc, &LBclient::ExecuteCompletedStr, this, [this]
+            (const QString& lbstr, const QString& message, const QModbusDevice::Error error){
+                if (lbstr!="OK")
+                    emit errorOccurred(lbstr);
+                else
+                    emit eventOccurred(lbstr);
+            });
+    connect(lbc, &LBclient::lbDisconnect, this, [lbc, name, this]
+            (const QString& lbhost, const QString& message, const QModbusDevice::Error error){
+                emit confCompleted(lbhost, name);
+                lbc->deleteLater();
+            });
+    lbc->Execute();
 }

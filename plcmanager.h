@@ -17,17 +17,19 @@ public:
     void startDiscover();
     void startFirmware(const QString &ipv6, const QString &filePath, int slot);
     void stopFirmware();
+    void startConf(const QString &name, const QString &yamlFilePath);
 
 signals:
     void scanCompleted(const QString &ipv6, const QString &name, const QMap<qsizetype, lbprocess::scaninfo> &scanData);
     void configReceived(const QString &ipv6, const QString &name, const QString &yamlContent);
     void errorOccurred(const QString &message);
+    void eventOccurred(const QString &message);
     void discoverCompleted(const QMap<QString, discover::lbinfo>& DiscoverMap);
-
     void firmwareStarted(const QString &ipv6);
     void firmwareProgressChanged(int prc);
     // void firmwareStatusChanged(const QString &message);
     void firmwareFinished();
+    void confCompleted(const QString &ipv6, const QString &name);
 
 private:
     static constexpr int port = 502;
