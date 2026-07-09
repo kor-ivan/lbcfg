@@ -8,6 +8,7 @@
 #include <QHelpEvent>
 #include <QToolTip>
 #include <QHBoxLayout>
+#include <QMessageBox>
 
 
 
@@ -21,7 +22,7 @@ MainWindow::MainWindow(QWidget *parent)
     dummy->hide(); // Скрываем, чтобы доки сомкнулись в центре
 
     lbplc = new plcManager(this);
-    treeDock = new DeviceTreeDockWidget(this);
+    treeDock = new DeviceTreeDockWidget(this, lbplc);
     discoverDock = new DiscoverDockWidget(this, lbplc);
     // Разрешаем прикрепление ко всем сторонам: Left, Right, Top, Bottom
     treeDock->setAllowedAreas(Qt::AllDockWidgetAreas);
@@ -32,15 +33,39 @@ MainWindow::MainWindow(QWidget *parent)
     setDockNestingEnabled(true);
 
     connect(treeDock, &DeviceTreeDockWidget::requestFlash, this, [this]
-            (const QString& ipv6, const int& slot){
+            (const plcManager::CommandContext &ctx){
         QString filePath = QFileDialog::getOpenFileName(this, "Загрузить прошивку ...", "", "BIN Files (*.bin);;All Files (*)");
         if (!filePath.isEmpty()) {
-            lbplc->startFirmware(ipv6, filePath, slot);
+            lbplc->startFirmware(ctx, filePath,
+                                 "Загрузка уже выполняется, дождитесь окончания",
+                                 QString("Загрузка прошивки в %1 ...").arg(ctx.displayName()));
         }
     });
 
-    connect(lbplc, &plcManager::firmwareStarted, this, [this](const QString &ipv6){
-        qDebug()<<"plcManager::firmwareStarted"<<ipv6;
+    connect(treeDock, &DeviceTreeDockWidget::requestFlashAll, this, [this]
+            (const plcManager::CommandContext &ctx){
+        QString filePath = QFileDialog::getExistingDirectory(this, "Выберите директорию для прошивки ...", "", QFileDialog::DontResolveSymlinks);
+        if (!filePath.isEmpty()) {
+            lbplc->startFirmwareAll(ctx, filePath,
+                                 "Загрузка уже выполняется, дождитесь окончания",
+                                 QString("Загрузка прошивки в %1 ...").arg(ctx.displayName()));
+        }
+    });
+
+    connect(treeDock, &DeviceTreeDockWidget::requestFboot, this, [this]
+            (const plcManager::CommandContext &ctx){
+                QString filePath = QFileDialog::getOpenFileName(this, "Загрузить fboot ...", "", "Fboot Files (*.fboot);;All Files (*)");                if (!filePath.isEmpty()) {
+                    lbplc->startFirmware(ctx, filePath,
+                                         "Загрузка уже выполняется, дождитесь окончания",
+                                         QString("Загрузка fboot в %1 ...").arg(ctx.displayName()),
+                                         "fboot");
+                }
+            });
+
+    connect(lbplc, &plcManager::firmwareStarted, this, [this]
+            (const plcManager::CommandContext &ctx, const QString &message){
+        qDebug()<<"plcManager::firmwareStarted"<<ctx.ipv6<<ctx.name;
+        this->statusBar()->showMessage(message);
         firmwareProgressBar->setValue(0);
         firmwareContainer->show();
         stopFirmwareButton->setEnabled(true);
@@ -204,7 +229,6 @@ MainWindow::MainWindow(QWidget *parent)
         this->statusBar()->showMessage(msg);
     });
     connect(lbplc, &plcManager::eventOccurred, this, [this](const QString &msg){
-        qDebug()<<"into error Occured"<<msg;
         this->statusBar()->showMessage(msg, 5000);
     });
     connect(discoverDock, &DiscoverDockWidget::deviceSelected,

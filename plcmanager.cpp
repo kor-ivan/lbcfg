@@ -1,5 +1,5 @@
 #include "plcmanager.h"
-#include "lbclient.h"
+
 
 plcManager::plcManager(QObject *parent)
     : QObject{parent}
@@ -87,28 +87,20 @@ void plcManager::startDiscover()
     wgtdiscover -> execute();
 }
 
-void plcManager::startFirmware(const QString &ipv6, const QString &filePath, int slot)
+void plcManager::startFirmware(const CommandContext &ctx, const QString &filePath, const QString &checkMessage, const QString &startMessage, const QString &lbkey)
 {
-    qDebug() << "PLCManager: startFirmware slot=" << slot;
+    qDebug() << "PLCManager: startFirmware slot=" << ctx.slot;
     if (activeOtaClient) {
-        emit eventOccurred("Прошивка уже выполняется на другом устройстве");
+        emit eventOccurred(checkMessage);
         return;
     }
-    emit firmwareStarted(ipv6);
-    activeOtaClient = new LBclient(this, {"ota"});
-    activeOtaClient->setTCPaddr(ipv6, 502);
+    emit firmwareStarted(ctx, startMessage);
+    activeOtaClient = new LBclient(this, {lbkey});
+    activeOtaClient->setTCPaddr(ctx.ipv6, port);
     activeOtaClient->setOtaFilename(filePath);
-    if (slot!=-1)
-        activeOtaClient->setSlot(slot);
-    connect(activeOtaClient, &LBclient::ExecuteCompleted, this, [this]
-            (const QString &lbhost, const QStringList &result, const QString &message, const QModbusDevice::Error error){
-                if(error==QModbusDevice::NoError){
-                    int prc = (int)result.at(1).toFloat();
-                    emit firmwareProgressChanged(prc);
-                }else
-                    emit errorOccurred(message);
-
-            });
+    if (ctx.slot!=-1)
+        activeOtaClient->setSlot(ctx.slot);
+    connect(activeOtaClient, &LBclient::ExecuteCompleted, this, &plcManager::prcOtaSender);
     connect(activeOtaClient, &LBclient::lbDisconnect, this, [this]
             (const QString &lbhost, const QString &message, const QModbusDevice::Error error){
                 emit eventOccurred(message);
@@ -124,8 +116,13 @@ void plcManager::stopFirmware()
     if (!activeOtaClient) return;
     activeOtaClient->disconnect();
     emit firmwareFinished();
-    activeOtaClient->deleteLater();
+    if (prcActiveOtaClient){
+        prcActiveOtaClient->deleteLater();
+        prcActiveOtaClient = nullptr;
+    }else
+        activeOtaClient->deleteLater();
     activeOtaClient = nullptr;
+
 }
 
 void plcManager::startConf(const QString &name, const QString &yamlFilePath)
@@ -146,4 +143,64 @@ void plcManager::startConf(const QString &name, const QString &yamlFilePath)
                 lbc->deleteLater();
             });
     lbc->Execute();
+}
+
+void plcManager::startFirmwareAll(const CommandContext &ctx, const QString &filePath, const QString &checkMessage, const QString &startMessage)
+{
+    qDebug() << "plcManager::startFirmwareAll" << ctx.name;
+    if (activeOtaClient) {
+        emit eventOccurred(checkMessage);
+        return;
+    }
+    activeOtaClient = new LBclient(this);
+    activeOtaClient->setTCPaddr(ctx.ipv6, port);
+    prcActiveOtaClient = new lbprocess(this, activeOtaClient);
+    prcActiveOtaClient->setOtaPath(filePath);
+    emit firmwareStarted(ctx, startMessage);
+    connect(prcActiveOtaClient, &lbprocess::outMessage, this, [this]
+            (const QString& lbstr, const QString& message, const QModbusDevice::Error error){
+                // qDebug()<<lbstr<<message<<error;
+                emit errorOccurred(lbstr);
+            });
+    connect(prcActiveOtaClient, &lbprocess::outOta, this, &plcManager::prcOtaSender);
+    connect(activeOtaClient, &LBclient::lbDisconnect, this, [this]
+            (const QString &lbhost, const QString &message, const QModbusDevice::Error error){
+                // qDebug()<<lbhost<<message<<error;
+                if (!message.isEmpty())
+                    emit eventOccurred(message);
+                emit firmwareFinished();
+                prcActiveOtaClient->deleteLater();
+                activeOtaClient = nullptr;
+                prcActiveOtaClient = nullptr;
+            });
+    prcActiveOtaClient->run(lbprocess::autoota);
+}
+
+void plcManager::startRestartAll(const CommandContext &ctx)
+{
+    qDebug()<<"plcManager::startRestartAll for"<<ctx.ipv6;
+    LBclient *lbc = new LBclient (this);
+    lbc->setTCPaddr(ctx.ipv6, port);
+    lbprocess *prc = new lbprocess(this, lbc);
+    connect(prc, &lbprocess::outMessage, this, [this]
+            (const QString& lbstr, const QString& message, const QModbusDevice::Error error){
+                emit eventOccurred(lbstr);
+            });
+    connect(lbc, &LBclient::lbDisconnect, this, [this, prc, ctx]
+            (const QString& lbhost, const QString& message, const QModbusDevice::Error error){
+                qDebug()<<"plcManager::startRestartAll disconnect"<<message;
+                emit restartAllCompleted(ctx);
+                prc->deleteLater();
+            });
+    prc->run(lbprocess::restartall);
+}
+
+void plcManager::prcOtaSender(const QString &lbhost, const QStringList &result, const QString &message, const QModbusDevice::Error error)
+{
+    if(error==QModbusDevice::NoError){
+        int prc = (int)result.value(1, "").toFloat();
+        emit firmwareProgressChanged(prc);
+    }
+    if (!message.isEmpty())
+        emit errorOccurred(message);
 }

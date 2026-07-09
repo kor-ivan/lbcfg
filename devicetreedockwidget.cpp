@@ -1,10 +1,10 @@
 #include "devicetreedockwidget.h"
 #include <QVBoxLayout>
 #include <QMenu>
+#include <QMessageBox>
 
-
-DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent)
-    : QDockWidget("Tree View", parent)
+DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent, plcManager *plc)
+    : QDockWidget("Tree View", parent), lbplc(plc)
 {
     QWidget *content = new QWidget(this);
     setWidget(content);
@@ -26,6 +26,14 @@ DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent)
                                        index.data().toString());
             }
             );
+    connect(lbplc, &plcManager::showMessage, this, [this](const QString &title, const QString &message){
+        QMessageBox::information(this, title, message);
+    });
+    connect(lbplc, &plcManager::restartAllCompleted, this, [this]
+            (const plcManager::CommandContext &ctx){
+                QMessageBox::information(this, "Перезагрузить все",
+                                         QString("Команда на перезагрузку всех модулей %1 отправлена").arg(ctx.name));
+            });
 }
 
 void DeviceTreeDockWidget::updateDevice(const QString &ipv6, const QString &name, const QMap<qsizetype, lbprocess::scaninfo> &scan)
@@ -90,7 +98,7 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
     QModelIndex index = treeView->indexAt(pos);
     if (!index.isValid()) return;
     bool isRoot = !index.parent().isValid();
-    CommandContext ctx;
+    plcManager::CommandContext ctx;
     if (isRoot) {
         ctx.name = index.data().toString();
         ctx.ipv6 = index.data(Qt::UserRole).toString();
@@ -124,20 +132,8 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
         QAction *restartAll = menu.addAction("Перезагрузить все");
         connect(restartAll, &QAction::triggered, this,
                 [this, ctx](){
-            qDebug()<<"Перезагрузить все";
-                    LBclient *lbc = new LBclient (this);
-                    lbc->setTCPaddr(ctx.ipv6, 502);
-                        //connect disconnect event
-                    lbprocess *prc = new lbprocess(this, lbc);
-                    connect(prc, &lbprocess::outMessage, this, [this, prc]
-                            (const QString &lbstr, const QString &message, const QModbusDevice::Error error){
-                                if (message == "END"){
-                                    prc->deleteLater();
-                                    qDebug()<<message;
-                                }
-                            }
-                            );
-                    prc->run(lbprocess::restartall);
+                    qDebug()<<"Перезагрузить все";
+                    lbplc->startRestartAll(ctx);
                 });
 
         QAction *fsformat = menu.addAction("Сбросить к заводским");
@@ -148,29 +144,46 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
                                                QMessageBox::Yes | QMessageBox::No,
                                                QMessageBox::No); // Кнопка по умолчанию
             if (reply == QMessageBox::Yes)
-                lbc_executeCommand(ctx, {"fsformat"}, "Сброс к заводским", [ctx, this] (const QStringList& res){
+                lbplc->lbc_executeCommand(ctx, {"fsformat"}, "Сброс к заводским", [ctx, this] (const QStringList& res){
                     return QString("%1 сброшено к заводским настройкам. Требуется перезагрузка.")
                         .arg(ctx.name);
                 });
+        });
+
+        QAction *flashAll = menu.addAction(QString("Прошить все модули %1").arg(ctx.name));
+        connect(flashAll, &QAction::triggered, this, [this, ctx](){
+            emit requestFlashAll(ctx);
+        });
+
+        QAction *fboot = menu.addAction(QString("Загрузить fboot в %1").arg(ctx.name));
+        connect(fboot, &QAction::triggered, this, [this, ctx](){
+            emit requestFboot(ctx);
+        });
+
+        QAction *nofboot = menu.addAction(QString("Удалить fboot в %1").arg(ctx.name));
+        connect(nofboot, &QAction::triggered, this, [this, ctx]() {
+            lbplc->lbc_executeCommand(ctx, {"nofboot"}, "Удалить fboot", [ctx](const QStringList&) {
+                return QString("Команда на удаление fboot %1 отправлена").arg(ctx.displayName());
+            });
         });
     }
     // --- Общие действия ---
     QAction *getUptime = menu.addAction("Время работы");
     connect(getUptime, &QAction::triggered, this, [this, ctx]() {
-        lbc_executeCommand(ctx, {"get", "sys.uptime"}, "Время работы", [ctx, this](const QStringList& res) {
+        lbplc->lbc_executeCommand(ctx, {"get", "sys.uptime"}, "Время работы", [ctx, this](const QStringList& res) {
             QString uptime = res.isEmpty() ? toBold("none") : toBold(res.at(0));
             return QString("Время работы %1 %2 сек").arg(ctx.displayName(), uptime);
         });
     });
     QAction *restart = menu.addAction("Перезагрузить");
     connect(restart, &QAction::triggered, this, [this, ctx]() {
-        lbc_executeCommand(ctx, {"set", "sys.restart=1"}, "Перезагрузка", [ctx](const QStringList&) {
+        lbplc->lbc_executeCommand(ctx, {"set", "sys.restart=1"}, "Перезагрузка", [ctx](const QStringList&) {
             return QString("Команда на перезагрузку %1 отправлена").arg(ctx.displayName());
         });
     });
     QAction *flash = menu.addAction("Загрузить прошивку ...");
     connect(flash, &QAction::triggered, this, [this, ctx](){
-        emit requestFlash(ctx.ipv6, ctx.slot);
+        emit requestFlash(ctx);
     });
 
     menu.exec(treeView->viewport()->mapToGlobal(pos));
