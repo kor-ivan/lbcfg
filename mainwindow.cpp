@@ -62,25 +62,6 @@ MainWindow::MainWindow(QWidget *parent)
                 }
             });
 
-    connect(lbplc, &plcManager::firmwareStarted, this, [this]
-            (const plcManager::CommandContext &ctx, const QString &message){
-        qDebug()<<"plcManager::firmwareStarted"<<ctx.ipv6<<ctx.name;
-        this->statusBar()->showMessage(message);
-        firmwareProgressBar->setValue(0);
-        firmwareContainer->show();
-        stopFirmwareButton->setEnabled(true);
-    });
-
-    connect(lbplc, &plcManager::firmwareProgressChanged, this, [this](int prc){
-        firmwareProgressBar->setValue(prc);
-    });
-
-    connect(lbplc, &plcManager::firmwareFinished, this, [this](){
-        firmwareProgressBar->setValue(0);
-        stopFirmwareButton->setEnabled(false);
-        firmwareContainer->hide();
-    });
-
     connect(discoverDock, &DiscoverDockWidget::newConfig,
             this, [this] (const QString &ipv6, const QString &name){
                 CreateConfig(ipv6, name);
@@ -160,66 +141,21 @@ MainWindow::MainWindow(QWidget *parent)
     // Временное сообщение (исчезнет через 5000 миллисекунд / 5 секунд)
     statusBar->showMessage(tr("Программа готова к работе"), 5000);
 
-    // 1. Создаем общий контейнер-виджет
-    firmwareContainer = new QWidget(this);
+    fwWidget = new FirmwareWidget(this);
+    statusBar->addPermanentWidget(fwWidget);
 
-    // 2. Создаем горизонтальный слой с нулевыми отступами
-    QHBoxLayout *firmwareLayout = new QHBoxLayout(firmwareContainer);
-    firmwareLayout->setContentsMargins(0, 0, 0, 0); // Убираем внешние отступы слоя
-    firmwareLayout->setSpacing(4);
-    int buttonSize = 14; // Высота и ширина кнопки равны высоте прогресс-бара
+    connect(lbplc, &plcManager::firmwareStarted, this, [this]
+            (const plcManager::CommandContext &ctx, const QString &message){
+                qDebug()<<"plcManager::firmwareStarted"<<ctx.ipv6<<ctx.name;
+                this->statusBar()->showMessage(message);
+                fwWidget->showStatus();
+            });
 
-    // Инициализируем ProgressBar для прошивки
-    firmwareProgressBar = new QProgressBar(firmwareContainer);
-    firmwareProgressBar->setRange(0, 100);
-    firmwareProgressBar->setValue(0);
-    firmwareProgressBar->setTextVisible(true);
-    firmwareProgressBar->setFormat("Прошивка: %p%");
-    firmwareProgressBar->setMaximumWidth(200);
-    firmwareProgressBar->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    firmwareProgressBar->setFixedHeight(buttonSize);
+    connect(lbplc, &plcManager::firmwareProgressChanged,
+            fwWidget, &FirmwareWidget::setProgress);
 
-    // Получаем текущую палитру прогресс-бара
-    QPalette progressPalette = firmwareProgressBar->palette();
-    // Жестко задаем цвет текста поверх заполненной части (HighlightedText)
-    // и незаполненной части (Text/WindowText) как черный
-    progressPalette.setColor(QPalette::HighlightedText, Qt::black);
-    progressPalette.setColor(QPalette::Text, Qt::black);
-    progressPalette.setColor(QPalette::WindowText, Qt::black);
-
-    // Применяем измененную палитру к прогресс-бару
-    firmwareProgressBar->setPalette(progressPalette);
-
-    // 4. Инициализируем квадратную кнопку "Стоп"
-    stopFirmwareButton = new QPushButton(firmwareContainer);
-
-    stopFirmwareButton->setFixedSize(buttonSize, buttonSize);
-    QPalette buttonPalette = stopFirmwareButton->palette();
-    stopFirmwareButton->setStyleSheet(
-        "QPushButton {"
-        "   background-color: #FF0000;" /* Чистый красный цвет */
-        "   border: 1px solid #CC0000;" /* Темно-красная аккуратная рамка */
-        "   border-radius: 1px;"        /* Минимальное сглаживание углов */
-        "}"
-        "QPushButton:hover {"
-        "   background-color: #D60000;" /* Цвет при наведении курсора (становится темнее) */
-        "}"
-        "QPushButton:pressed {"
-        "   background-color: #A30000;" /* Цвет при клике (эффект нажатия) */
-        "}"
-        );
-    stopFirmwareButton->setToolTip(tr("Остановить"));
-
-    // 5. Собираем всё внутри слоя контейнера
-    firmwareLayout->addWidget(stopFirmwareButton);
-    firmwareLayout->addWidget(firmwareProgressBar);
-
-    firmwareLayout->setSizeConstraint(QLayout::SetFixedSize);
-    firmwareContainer->hide();
-
-    // 6. Добавляем готовый контейнер в QStatusBar
-    this->statusBar()->addPermanentWidget(firmwareContainer);
-
+    connect(lbplc, &plcManager::firmwareFinished,
+            fwWidget, &FirmwareWidget::resetAndHide);
 
     connect(treeDock, &DeviceTreeDockWidget::requestUpdate,
             lbplc, &plcManager::scanDevice);
@@ -240,8 +176,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(lbplc, &plcManager::configReceived,
             this, &MainWindow::CreateConfig);
 
-    connect(stopFirmwareButton, &QPushButton::clicked, this, [this](){
-        stopFirmwareButton->setEnabled(false);
+    connect(fwWidget, &FirmwareWidget::stopButtonPressed, this, [this](){
         lbplc->stopFirmware();
     });
 

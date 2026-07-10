@@ -2,9 +2,8 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include<QTextEdit>
-#include <QProgressBar>
-#include <QPushButton>
+// #include<QTextEdit>
+#include "firmwarewidget.h"
 #include "devicetreedockwidget.h"
 #include "discoverdockwidget.h"
 #include "configdockwidget.h"
@@ -34,10 +33,12 @@ private:
     QAction *saveFileAs = nullptr;
     QAction *saveFile = nullptr;
 
-    QProgressBar *firmwareProgressBar = nullptr;
-    QPushButton *stopFirmwareButton = nullptr;
-    QWidget *firmwareContainer = nullptr;
+    FirmwareWidget *fwWidget = nullptr;
+    // QProgressBar *firmwareProgressBar = nullptr;
+    // QPushButton *stopFirmwareButton = nullptr;
+    // QWidget *firmwareContainer = nullptr;
     // void startFirmware(const QString &ipv6, const QString &filePath, const int &slot=-1);
+    void CreateConfig(const QString &ipv6, const QString &name, const QString &content = {});
 
 
 protected:
@@ -45,10 +46,9 @@ protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
 
 
-private slots:
+// private slots:
     // void onDeviceSelected(const QString& ipv6, const QString& name);
     // void getlbcfg (const QString &ipv6, const QString &name);
-    void CreateConfig(const QString &ipv6, const QString &name, const QString &content = {});
 
 
 };
