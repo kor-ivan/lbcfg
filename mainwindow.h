@@ -2,12 +2,15 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QMenuBar>
 // #include<QTextEdit>
 #include "firmwarewidget.h"
 #include "devicetreedockwidget.h"
 #include "discoverdockwidget.h"
 #include "configdockwidget.h"
 #include "plcmanager.h"
+#include "mainmenu.h"
+
 
 class MainWindow : public QMainWindow
 {
@@ -24,14 +27,15 @@ private:
     DiscoverDockWidget *discoverDock = nullptr;
     QMap<QString, ConfigDockWidget*> configDocks;
 
-    ConfigDockWidget* activeConfDockWidget = nullptr;
+    // ConfigDockWidget* activeConfDockWidget = nullptr;
     // bool isConfigDockWidget();
-    void checkConfigDockWidget(QDockWidget *dock);
+    // void checkConfigDockWidget(QDockWidget *dock);
     // void SaveConfigAs(ConfigDockWidget* activeDock);
 
     ConfigDockWidget* CreateConfDockWidget(const QString &key, const QString &name);
-    QAction *saveFileAs = nullptr;
-    QAction *saveFile = nullptr;
+    // QAction *saveFileAs = nullptr;
+    // QAction *saveFile = nullptr;
+    MainMenu *menu = nullptr;
 
     FirmwareWidget *fwWidget = nullptr;
     // QProgressBar *firmwareProgressBar = nullptr;

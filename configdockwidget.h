@@ -27,6 +27,8 @@ public:
     QString getCurrentFilePath() const;
     QString getPlcName() const;
 
+    QTextEdit *getEditor() const;
+
 signals:
     // void getSaveFile();
     void updateScan(const QString& ipv6, const QString& name);

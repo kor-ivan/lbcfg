@@ -1,5 +1,6 @@
 #include "configdockwidget.h"
 #include "qmenu.h"
+#include "commandmanager.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFile>
@@ -152,10 +153,16 @@ void ConfigDockWidget::showCustomContextMenu(const QPoint &pos)
     // Создаем стандартное меню для QTextEdit, чтобы не терять логику (Undo, Copy, Paste)
     QMenu *standardMenu = editor->createStandardContextMenu(pos);
     standardMenu->addSeparator();
-    QAction *saveAction = standardMenu->addAction("Сохранить");
-    connect(saveAction, &QAction::triggered, this, [this](){
-        saveFile();
-    });
+    QAction *saveAction = CommandManager::instance()->getSaveAction();
+    if (saveAction)
+        standardMenu->addAction(saveAction);
+    QAction *saveAsAction = CommandManager::instance()->getSaveAsAction();
+    if (saveAsAction)
+        standardMenu->addAction(saveAsAction);
+    // QAction *saveAction = standardMenu->addAction("Сохранить");
+    // connect(saveAction, &QAction::triggered, this, [this](){
+    //     saveFile();
+    // });
     QAction *confAction = standardMenu->addAction("Сконфигурировать");
     connect(confAction, &QAction::triggered, this, [this](){
         onConfigureClicked();
@@ -266,6 +273,11 @@ bool ConfigDockWidget::eventFilter(QObject *watched, QEvent *event)
     }
 
     return QDockWidget::eventFilter(watched, event);
+}
+
+QTextEdit *ConfigDockWidget::getEditor() const
+{
+    return editor;
 }
 
 
