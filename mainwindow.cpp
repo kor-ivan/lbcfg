@@ -71,39 +71,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this, &QMainWindow::tabifiedDockWidgetActivated,
             CommandManager::instance(), &CommandManager::checkConfigDockWidget);
 
-    // connect(qApp, &QApplication::focusChanged, this, [this](QWidget *oldFocus, QWidget *newFocus) {
-    //     Q_UNUSED(oldFocus);
-    //     if (!newFocus) return;
-    //     QWidget *parentCheck = newFocus;
-    //     QDockWidget *foundDock = nullptr;
-    //     while (parentCheck) {
-    //         foundDock = qobject_cast<QDockWidget*>(parentCheck);
-    //         if (foundDock)
-    //             break;
-    //         parentCheck = parentCheck->parentWidget();
-    //     }
-    //     if (foundDock){
-    //         checkConfigDockWidget(foundDock);
-    //     }
-    // });
-
-
     // 1. Создаем главное меню
     menu = new MainMenu(this->menuBar(), this);
 
-    // QMenuBar *menuBar = this->menuBar();
-
-    // // Добавляем вкладку "Файл"
-    // QMenu *fileMenu = menuBar->addMenu("&Файл");
-
-    // // Добавляем действие "Выход" в меню "Файл"
-    // QAction *exitAction = fileMenu->addAction("&Выход");
-    // exitAction->setShortcut(QKeySequence::Quit); // Горячая клавиша
-
-    // // Соединяем клик по меню с закрытием программы
-    // connect(exitAction, &QAction::triggered, this, &QWidget::close);
-
-    // QAction *openFile = fileMenu->addAction("Открыть");
     connect(menu, &MainMenu::openFileRequested, this, [this](){
         QString filePath = QFileDialog::getOpenFileName(this, "Открыть конфигурацию", "", "YAML Files (*.yaml *.yml);;All Files (*)");
         if (!filePath.isEmpty()) {
@@ -120,21 +90,6 @@ MainWindow::MainWindow(QWidget *parent)
             dock->setFocus();
         }
     });
-
-    // saveFileAs = fileMenu->addAction("Сохранить как ...");
-    // connect(saveFileAs, &QAction::triggered, this, [this](){
-    //     if (!activeConfDockWidget) return;
-    //     activeConfDockWidget->saveFileAs();
-    // });
-
-    // saveFile = fileMenu->addAction("Сохранить");
-    // connect(saveFile, &QAction::triggered, this, [this](){
-    //     if (!activeConfDockWidget) return;
-    //     activeConfDockWidget->saveFile();
-    // });
-
-    // saveFile->setEnabled(false);
-    // saveFileAs->setEnabled(false);
 
     // 2. Создаем строку состояния (Status Bar)
     QStatusBar *statusBar = this->statusBar();
@@ -226,25 +181,6 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 
 MainWindow::~MainWindow() {}
 
-
-// void MainWindow::checkConfigDockWidget(QDockWidget *dock)
-// {
-//     ConfigDockWidget *configDock = qobject_cast<ConfigDockWidget*>(dock);
-//     if (configDock) {
-//         qDebug() << "Выбран ConfigDockWidget: " << configDock;
-//         activeConfDockWidget = configDock;
-//         QString plcName = activeConfDockWidget->getPlcName();
-//         if (saveFile){
-//             saveFile->setEnabled(true);
-//             saveFile->setText(QString("Сохранить %1").arg(plcName));
-//         }
-//         if (saveFileAs) {
-//             saveFileAs->setEnabled(true);
-//             saveFileAs->setText(QString("Сохранить %1 как ...").arg(plcName));
-//         }
-//     }
-// }
-
 ConfigDockWidget *MainWindow::CreateConfDockWidget(const QString &key, const QString &name)
 {
     ConfigDockWidget* dock = nullptr;
@@ -265,13 +201,7 @@ ConfigDockWidget *MainWindow::CreateConfDockWidget(const QString &key, const QSt
             qDebug() << "destroy";
             configDocks.remove(key);
             CommandManager::instance()->resetActiveConfDockWidget();
-            // activeConfDockWidget = nullptr;
-            // saveFile->setEnabled(false);
-            // saveFile->setText("Сохранить");
-            // saveFileAs->setEnabled(false);
-            // saveFileAs->setText("Сохранить как ...");
         });
-        // connect(dock, &ConfigDockWidget::updateScan, lbplc, &plcManager::scanDevice);
         connect(lbplc, &plcManager::confCompleted, this, [this](const QString &ipv6, const QString &name){
             if(!(treeDock->containsName(name)))
                 lbplc->scanDevice(ipv6, name);

@@ -63,48 +63,8 @@ void MainMenu::initFileMenu(QMenuBar *menuBar)
 
 void MainMenu::initEditMenu(QMenuBar *menuBar)
 {
-    QMenu *editMenu = menuBar->addMenu("&Правка");
-
+    editMenu = menuBar->addMenu("&Правка");
     connect(editMenu, &QMenu::aboutToShow, this, &MainMenu::onEditMenuAboutToShow);
-    // undoAction = editMenu->addAction(tr("&Отменить"));
-    // undoAction->setShortcut(QKeySequence::Undo);
-    // connect(undoAction,  &QAction::triggered, [](){
-    //     CommandManager::instance()->getActiveConfDockWidget()->
-    //         getEditor()->undo();
-    // });
-
-    // redoAction = editMenu->addAction(tr("&Повторить"));
-    // redoAction->setShortcut(QKeySequence::Redo);
-    // connect(redoAction,  &QAction::triggered, [](){
-    //     CommandManager::instance()->getActiveConfDockWidget()->
-    //         getEditor()->redo();
-    // });
-
-    // editMenu->addSeparator();
-
-    // cutAction = editMenu->addAction(tr("Выре&зать"));
-    // cutAction->setShortcut(QKeySequence::Cut);
-    // connect(cutAction,  &QAction::triggered, [](){
-    //     CommandManager::instance()->getActiveConfDockWidget()->
-    //         getEditor()->cut();
-    // });
-
-    // copyAction = editMenu->addAction(tr("&Копировать"));
-    // copyAction->setShortcut(QKeySequence::Copy);
-    // connect(copyAction,  &QAction::triggered, [](){
-    //     CommandManager::instance()->getActiveConfDockWidget()->
-    //         getEditor()->copy();
-    // });
-
-    // pasteAction = editMenu->addAction(tr("Вс&тавить"));
-    // pasteAction->setShortcut(QKeySequence::Paste);
-    // connect(pasteAction,  &QAction::triggered, [](){
-    //     CommandManager::instance()->getActiveConfDockWidget()->
-    //         getEditor()->paste();
-    // });
-
-    // 3. САМОЕ ВАЖНОЕ: Ловим момент, когда пользователь кликнул на меню "Правка" мышкой
-
 }
 
 void MainMenu::onEditMenuAboutToShow()

@@ -25,13 +25,6 @@ private:
     QAction *saveAsAction = nullptr;
 
     QMenu *editMenu = nullptr;
-
-    // QAction *undoAction = nullptr;
-    // QAction *redoAction = nullptr;
-    // QAction *cutAction = nullptr;
-    // QAction *copyAction = nullptr;
-    // QAction *pasteAction = nullptr;
-
     void onEditMenuAboutToShow();
     QList<QAction*> activeTextActions() const;
 
