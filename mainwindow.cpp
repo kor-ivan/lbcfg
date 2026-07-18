@@ -22,57 +22,16 @@ MainWindow::MainWindow(QWidget *parent)
     dummy->hide(); // Скрываем, чтобы доки сомкнулись в центре
 
     lbplc = new plcManager(this);
-    treeDock = new DeviceTreeDockWidget(this, lbplc);
-    discoverDock = new DiscoverDockWidget(this, lbplc);
-    // Разрешаем прикрепление ко всем сторонам: Left, Right, Top, Bottom
-    treeDock->setAllowedAreas(Qt::AllDockWidgetAreas);
-    discoverDock->setAllowedAreas(Qt::AllDockWidgetAreas);
-    // Или QWidget, или QMdiArea
-    addDockWidget(Qt::LeftDockWidgetArea, treeDock);
-    addDockWidget(Qt::RightDockWidgetArea, discoverDock);
+    // treeDock = new DeviceTreeDockWidget(this, lbplc);
+    createTreeDockWidget();
+    // discoverDock = new DiscoverDockWidget(this, lbplc);
+    createDiscoverDockWidget();
     setDockNestingEnabled(true);
-
-    connect(treeDock, &DeviceTreeDockWidget::requestFlash, this, [this]
-            (const plcManager::CommandContext &ctx){
-        QString filePath = QFileDialog::getOpenFileName(this, "Загрузить прошивку ...", "", "BIN Files (*.bin);;All Files (*)");
-        if (!filePath.isEmpty()) {
-            lbplc->startFirmware(ctx, filePath,
-                                 "Загрузка уже выполняется, дождитесь окончания",
-                                 QString("Загрузка прошивки в %1 ...").arg(ctx.displayName()));
-        }
-    });
-
-    connect(treeDock, &DeviceTreeDockWidget::requestFlashAll, this, [this]
-            (const plcManager::CommandContext &ctx){
-        QString filePath = QFileDialog::getExistingDirectory(this, "Выберите директорию для прошивки ...", "", QFileDialog::DontResolveSymlinks);
-        if (!filePath.isEmpty()) {
-            lbplc->startFirmwareAll(ctx, filePath,
-                                 "Загрузка уже выполняется, дождитесь окончания",
-                                 QString("Загрузка прошивки в %1 ...").arg(ctx.displayName()));
-        }
-    });
-
-    connect(treeDock, &DeviceTreeDockWidget::requestFboot, this, [this]
-            (const plcManager::CommandContext &ctx){
-                QString filePath = QFileDialog::getOpenFileName(this, "Загрузить fboot ...", "", "Fboot Files (*.fboot);;All Files (*)");                if (!filePath.isEmpty()) {
-                    lbplc->startFirmware(ctx, filePath,
-                                         "Загрузка уже выполняется, дождитесь окончания",
-                                         QString("Загрузка fboot в %1 ...").arg(ctx.displayName()),
-                                         "fboot");
-                }
-            });
-
-    connect(discoverDock, &DiscoverDockWidget::newConfig,
-            this, [this] (const QString &ipv6, const QString &name){
-                CreateConfig(ipv6, name);
-            }
-            );
-
     connect(this, &QMainWindow::tabifiedDockWidgetActivated,
             CommandManager::instance(), &CommandManager::checkConfigDockWidget);
 
     // 1. Создаем главное меню
-    menu = new MainMenu(this->menuBar(), this);
+    menu = new MainMenu(this);
 
     connect(menu, &MainMenu::openFileRequested, this, [this](){
         QString filePath = QFileDialog::getOpenFileName(this, "Открыть конфигурацию", "", "YAML Files (*.yaml *.yml);;All Files (*)");
@@ -90,8 +49,7 @@ MainWindow::MainWindow(QWidget *parent)
             dock->setFocus();
         }
     });
-
-    // 2. Создаем строку состояния (Status Bar)
+    // Создаем строку состояния (Status Bar)
     QStatusBar *statusBar = this->statusBar();
 
     // Временное сообщение (исчезнет через 5000 миллисекунд / 5 секунд)
@@ -106,29 +64,18 @@ MainWindow::MainWindow(QWidget *parent)
                 this->statusBar()->showMessage(message);
                 fwWidget->showStatus();
             });
-
     connect(lbplc, &plcManager::firmwareProgressChanged,
             fwWidget, &FirmwareWidget::setProgress);
 
     connect(lbplc, &plcManager::firmwareFinished,
             fwWidget, &FirmwareWidget::resetAndHide);
 
-    connect(treeDock, &DeviceTreeDockWidget::requestUpdate,
-            lbplc, &plcManager::scanDevice);
-    connect(treeDock, &DeviceTreeDockWidget::requestConfig,
-            lbplc, &plcManager::requestConfig);
     connect(lbplc, &plcManager::errorOccurred, this, [this](const QString &msg){
         this->statusBar()->showMessage(msg);
     });
     connect(lbplc, &plcManager::eventOccurred, this, [this](const QString &msg){
         this->statusBar()->showMessage(msg, 5000);
     });
-    connect(discoverDock, &DiscoverDockWidget::deviceSelected,
-        lbplc, &plcManager::scanDevice);
-    connect(discoverDock, &DiscoverDockWidget::requestConfig,
-            lbplc, &plcManager::requestConfig);
-    connect(lbplc, &plcManager::scanCompleted,
-            treeDock, &DeviceTreeDockWidget::updateDevice);
     connect(lbplc, &plcManager::configReceived,
             this, &MainWindow::CreateConfig);
 
@@ -181,6 +128,16 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 
 MainWindow::~MainWindow() {}
 
+QPointer<DeviceTreeDockWidget> MainWindow::getTreeDock() const
+{
+    return treeDock.get();
+}
+
+QPointer<DiscoverDockWidget> MainWindow::getDiscoverDock() const
+{
+    return discoverDock.get();
+}
+
 ConfigDockWidget *MainWindow::CreateConfDockWidget(const QString &key, const QString &name)
 {
     ConfigDockWidget* dock = nullptr;
@@ -208,6 +165,82 @@ ConfigDockWidget *MainWindow::CreateConfDockWidget(const QString &key, const QSt
         });
     }
     return dock;
+}
+
+DeviceTreeDockWidget *MainWindow::createTreeDockWidget()
+{
+    if (treeDock)
+        return treeDock.get();
+    treeDock = new DeviceTreeDockWidget(this, lbplc);
+    treeDock->setAttribute(Qt::WA_DeleteOnClose); // Чтобы док уничтожался при нажатии на крестик
+    treeDock->setWindowTitle("Device Tree");
+    treeDock->setAllowedAreas(Qt::AllDockWidgetAreas);
+
+    connect(treeDock, &DeviceTreeDockWidget::requestFlash, this, [this]
+            (const plcManager::CommandContext &ctx){
+                QString filePath = QFileDialog::getOpenFileName(this, "Загрузить прошивку ...", "", "BIN Files (*.bin);;All Files (*)");
+                if (!filePath.isEmpty()) {
+                    lbplc->startFirmware(ctx, filePath,
+                                         "Загрузка уже выполняется, дождитесь окончания",
+                                         QString("Загрузка прошивки в %1 ...").arg(ctx.displayName()));
+                }
+            });
+    connect(treeDock, &DeviceTreeDockWidget::requestFlashAll, this, [this]
+            (const plcManager::CommandContext &ctx){
+                QString filePath = QFileDialog::getExistingDirectory(this, "Выберите директорию для прошивки ...", "", QFileDialog::DontResolveSymlinks);
+                if (!filePath.isEmpty()) {
+                    lbplc->startFirmwareAll(ctx, filePath,
+                                            "Загрузка уже выполняется, дождитесь окончания",
+                                            QString("Загрузка прошивки в %1 ...").arg(ctx.displayName()));
+                }
+            });
+    connect(treeDock, &DeviceTreeDockWidget::requestFboot, this, [this]
+            (const plcManager::CommandContext &ctx){
+                QString filePath = QFileDialog::getOpenFileName(this, "Загрузить fboot ...", "", "Fboot Files (*.fboot);;All Files (*)");                if (!filePath.isEmpty()) {
+                    lbplc->startFirmware(ctx, filePath,
+                                         "Загрузка уже выполняется, дождитесь окончания",
+                                         QString("Загрузка fboot в %1 ...").arg(ctx.displayName()),
+                                         "fboot");
+                }
+            });
+    connect(treeDock, &DeviceTreeDockWidget::requestUpdate,
+            lbplc, &plcManager::scanDevice);
+    connect(treeDock, &DeviceTreeDockWidget::requestConfig,
+            lbplc, &plcManager::requestConfig);
+    connect(lbplc, &plcManager::scanCompleted,
+            treeDock, &DeviceTreeDockWidget::updateDevice);
+
+    addDockWidget(Qt::LeftDockWidgetArea, treeDock);
+
+    return treeDock.get();
+}
+
+DiscoverDockWidget *MainWindow::createDiscoverDockWidget()
+{
+    if (discoverDock)
+        return discoverDock.get();
+    discoverDock = new DiscoverDockWidget(this, lbplc);
+    discoverDock->setAttribute(Qt::WA_DeleteOnClose);
+    discoverDock->setWindowTitle("Discover");
+    discoverDock->setAllowedAreas(Qt::AllDockWidgetAreas);
+    connect(discoverDock, &DiscoverDockWidget::newConfig,
+            this, [this] (const QString &ipv6, const QString &name){
+                CreateConfig(ipv6, name);
+            }
+            );
+    connect(discoverDock, &DiscoverDockWidget::deviceSelected,
+            lbplc, &plcManager::scanDevice);
+    connect(discoverDock, &DiscoverDockWidget::requestConfig,
+            lbplc, &plcManager::requestConfig);
+
+
+    addDockWidget(Qt::RightDockWidgetArea, discoverDock);
+    return discoverDock.get();
+}
+
+QList<ConfigDockWidget *> MainWindow::getConfigDocks() const
+{
+    return configDocks.values();
 }
 
 void MainWindow::CreateConfig(const QString &ipv6, const QString &name, const QString &content)

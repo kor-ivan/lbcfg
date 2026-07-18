@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QPointer>
 #include "firmwarewidget.h"
 #include "devicetreedockwidget.h"
 #include "discoverdockwidget.h"
@@ -19,13 +20,22 @@ public:
     ~MainWindow();
 
 
+    QPointer<DeviceTreeDockWidget> getTreeDock() const;
+
+    QPointer<DiscoverDockWidget> getDiscoverDock() const;
+    DeviceTreeDockWidget *createTreeDockWidget();
+    DiscoverDockWidget* createDiscoverDockWidget();
+
+    QList<ConfigDockWidget*> getConfigDocks() const;
+
 private:
     plcManager *lbplc = nullptr;
-    DeviceTreeDockWidget *treeDock = nullptr;
-    DiscoverDockWidget *discoverDock = nullptr;
+    QPointer<DeviceTreeDockWidget> treeDock = nullptr;
+    QPointer<DiscoverDockWidget> discoverDock = nullptr;
     QMap<QString, ConfigDockWidget*> configDocks;
 
     ConfigDockWidget* CreateConfDockWidget(const QString &key, const QString &name);
+
     MainMenu *menu = nullptr;
 
     FirmwareWidget *fwWidget = nullptr;

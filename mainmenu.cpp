@@ -1,12 +1,17 @@
 #include "mainmenu.h"
 #include "commandmanager.h"
 #include <QApplication>
+#include <QMessageBox>
+#include "mainwindow.h"
 
-MainMenu::MainMenu(QMenuBar *menuBar, QObject *parent)
-    : QObject{parent}
+MainMenu::MainMenu(MainWindow *mainWindow)
+    : QObject{mainWindow}, p_mainWindow(mainWindow), p_menuBar(mainWindow->menuBar())
 {
-    initFileMenu(menuBar);
-    initEditMenu(menuBar);
+
+    initFileMenu(p_menuBar);
+    initEditMenu(p_menuBar);
+    initViewMenu(p_menuBar);
+    initHelpMenu(p_menuBar);
 
     connect(CommandManager::instance(), &CommandManager::activeConfDockWidgetChanged,
             this, &MainMenu::updateMenuState);
@@ -67,6 +72,41 @@ void MainMenu::initEditMenu(QMenuBar *menuBar)
     connect(editMenu, &QMenu::aboutToShow, this, &MainMenu::onEditMenuAboutToShow);
 }
 
+void MainMenu::initViewMenu(QMenuBar *menuBar)
+{
+    viewMenu = menuBar->addMenu("&Вид");
+    connect(viewMenu, &QMenu::aboutToShow, this, &MainMenu::onViewMenuAboutToShow);
+}
+
+void MainMenu::initHelpMenu(QMenuBar *menuBar)
+{
+QMenu *helpMenu = menuBar->addMenu("&Справка");
+
+    QAction *aboutAct = helpMenu->addAction(tr("&О программе..."));
+    aboutAct->setStatusTip(tr("Показать информацию о приложении"));
+
+    connect(aboutAct, &QAction::triggered, this, [this]() {
+        QMessageBox::about(p_mainWindow,
+                           tr("О программе lbcfg"),
+                           tr("<h3>Конфигуратор ПЛК Logic Box</h3>"
+                              "<p>Версия 1.0.0</p>"
+                              "<p>Программа предназначена для сканирования устройств, "
+                              "редактирования файлов конфигурации YAML/YML и безопасной "
+                              "загрузки прошивок в ПЛК.</p>"
+                              "<p>Данное программное обеспечение использует библиотеку Qt, "
+                              "распространяемую на условиях лицензии GNU Lesser General Public License (LGPL) версии 3. "
+                              "Вы имеете право пересобирать приложение с измененной версией библиотеки Qt в соответствии с условиями LGPLv3.</p>"
+                              "<p>Подробную информацию о лицензии Qt можно найти в меню 'О библиотеке Qt'.</p>")
+                           );
+    });
+
+    QAction *aboutQtAct = helpMenu->addAction("О библиотеке &Qt...");
+
+    connect(aboutQtAct, &QAction::triggered, this, [this]() {
+        QMessageBox::aboutQt(p_mainWindow, "О библиотеке Qt");
+    });
+}
+
 void MainMenu::onEditMenuAboutToShow()
 {
     editMenu->clear();
@@ -80,6 +120,65 @@ void MainMenu::onEditMenuAboutToShow()
 
     for (QAction *act : actions) {
         editMenu->addAction(act);
+    }
+}
+
+void MainMenu::onViewMenuAboutToShow()
+{
+    viewMenu->clear();
+    QAction *treeAct = viewMenu->addAction(tr("Дерево устройств"));
+    treeAct->setCheckable(true);
+    // Проверяем через геттер: если док создан и виден — ставим галочку
+    bool treeExistsAndVisible = (p_mainWindow->getTreeDock() && p_mainWindow->getTreeDock()->isVisible());
+    treeAct->setChecked(treeExistsAndVisible);
+
+    connect(treeAct, &QAction::triggered, this, [this, treeExistsAndVisible]() {
+        if (treeExistsAndVisible) {
+            p_mainWindow->getTreeDock()->close(); // Закрываем (и уничтожаем благодаря WA_DeleteOnClose)
+        } else {
+            auto* dock = p_mainWindow->createTreeDockWidget(); // Создаем заново или открываем
+            dock->show();
+            dock->raise();
+        }
+    });
+
+    QAction *discAct = viewMenu->addAction(tr("Поиск устройств"));
+    discAct->setCheckable(true);
+    bool discExistsAndVisible = (p_mainWindow->getDiscoverDock() && p_mainWindow->getDiscoverDock()->isVisible());
+    discAct->setChecked(discExistsAndVisible);
+
+    connect(discAct, &QAction::triggered, this, [this, discExistsAndVisible]() {
+        if (discExistsAndVisible) {
+            p_mainWindow->getDiscoverDock()->close();
+        } else {
+            auto* dock = p_mainWindow->createDiscoverDockWidget();
+            dock->show();
+            dock->raise();
+        }
+    });
+
+    QList<ConfigDockWidget*> openConf = p_mainWindow->getConfigDocks();
+
+    if (!openConf.isEmpty()) {
+        viewMenu->addSeparator();
+        QMenu *confMenu = viewMenu->addMenu("Открытые конфигурации");
+
+        for (ConfigDockWidget *dock : openConf) {
+            QAction *docAct = confMenu->addAction(dock->getPlcName());
+
+            // Если этот файл сейчас редактируется (активен) — ставим галочку
+            if (CommandManager::instance()->getActiveConfDockWidget() == dock) {
+                docAct->setCheckable(true);
+                docAct->setChecked(true);
+            }
+
+            // По клику переключаемся на этот файл
+            connect(docAct, &QAction::triggered, this, [dock]() {
+                dock->show();
+                dock->raise();
+                dock->setFocus();
+            });
+        }
     }
 }
 
