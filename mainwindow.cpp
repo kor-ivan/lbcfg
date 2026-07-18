@@ -148,8 +148,9 @@ ConfigDockWidget *MainWindow::CreateConfDockWidget(const QString &key, const QSt
         dock->setAttribute(Qt::WA_DeleteOnClose);
 
         configDocks.insert(key, dock);
-        addDockWidget(Qt::RightDockWidgetArea, dock);
-        tabifyDockWidget(discoverDock, dock);
+        tabifyDockWidgetTo(dock, Qt::RightDockWidgetArea);
+        // addDockWidget(Qt::RightDockWidgetArea, dock);
+        // tabifyDockWidget(discoverDock, dock);
         for (QTabBar *tabBar : this->findChildren<QTabBar *>()) {
             tabBar->installEventFilter(this);
         }
@@ -210,7 +211,7 @@ DeviceTreeDockWidget *MainWindow::createTreeDockWidget()
     connect(lbplc, &plcManager::scanCompleted,
             treeDock, &DeviceTreeDockWidget::updateDevice);
 
-    addDockWidget(Qt::LeftDockWidgetArea, treeDock);
+    tabifyDockWidgetTo(treeDock, Qt::LeftDockWidgetArea);
 
     return treeDock.get();
 }
@@ -233,24 +234,7 @@ DiscoverDockWidget *MainWindow::createDiscoverDockWidget()
     connect(discoverDock, &DiscoverDockWidget::requestConfig,
             lbplc, &plcManager::requestConfig);
 
-    QList<QDockWidget*> rightDocks = getDocksInArea(Qt::RightDockWidgetArea);
-
-    QDockWidget* targetForTab = nullptr;
-    for (QDockWidget* d : rightDocks) {
-        if (d->isVisible()) {
-            targetForTab = d;
-            break; // Нам нужен любой первый попавшийся видимый док справа
-        }
-    }
-
-    if (targetForTab) {
-        // Табифицируем с ним
-        tabifyDockWidget(targetForTab, discoverDock.data());
-    } else {
-        // Если справа вообще пусто
-        addDockWidget(Qt::RightDockWidgetArea, discoverDock.data());
-    }
-    // addDockWidget(Qt::RightDockWidgetArea, discoverDock);
+    tabifyDockWidgetTo(discoverDock, Qt::RightDockWidgetArea);
     return discoverDock.get();
 }
 
@@ -283,4 +267,23 @@ QList<QDockWidget *> MainWindow::getDocksInArea(Qt::DockWidgetArea area) const
     }
 
     return result;
+}
+
+void MainWindow::tabifyDockWidgetTo(QDockWidget *dock, Qt::DockWidgetArea area)
+{
+    QList<QDockWidget*> areaDocks = getDocksInArea(area);
+
+    QDockWidget* targetForTab = nullptr;
+    for (QDockWidget* d : areaDocks) {
+        if (d->isVisible()) {
+            targetForTab = d;
+            break;
+        }
+    }
+
+    if (targetForTab) {
+        tabifyDockWidget(targetForTab, dock);
+    } else {
+        addDockWidget(area, dock);
+    }
 }
