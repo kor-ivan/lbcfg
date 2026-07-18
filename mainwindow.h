@@ -41,6 +41,7 @@ private:
     FirmwareWidget *fwWidget = nullptr;
     void CreateConfig(const QString &ipv6, const QString &name, const QString &content = {});
 
+    QList<QDockWidget*> getDocksInArea(Qt::DockWidgetArea area) const;
 
 protected:
     void showEvent(QShowEvent *event) override;

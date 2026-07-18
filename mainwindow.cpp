@@ -233,8 +233,24 @@ DiscoverDockWidget *MainWindow::createDiscoverDockWidget()
     connect(discoverDock, &DiscoverDockWidget::requestConfig,
             lbplc, &plcManager::requestConfig);
 
+    QList<QDockWidget*> rightDocks = getDocksInArea(Qt::RightDockWidgetArea);
 
-    addDockWidget(Qt::RightDockWidgetArea, discoverDock);
+    QDockWidget* targetForTab = nullptr;
+    for (QDockWidget* d : rightDocks) {
+        if (d->isVisible()) {
+            targetForTab = d;
+            break; // Нам нужен любой первый попавшийся видимый док справа
+        }
+    }
+
+    if (targetForTab) {
+        // Табифицируем с ним
+        tabifyDockWidget(targetForTab, discoverDock.data());
+    } else {
+        // Если справа вообще пусто
+        addDockWidget(Qt::RightDockWidgetArea, discoverDock.data());
+    }
+    // addDockWidget(Qt::RightDockWidgetArea, discoverDock);
     return discoverDock.get();
 }
 
@@ -250,4 +266,21 @@ void MainWindow::CreateConfig(const QString &ipv6, const QString &name, const QS
     dock->show();
     dock->raise();
     // dock->setFocus();
+}
+
+QList<QDockWidget *> MainWindow::getDocksInArea(Qt::DockWidgetArea area) const
+{
+    QList<QDockWidget*> result;
+
+    // 1. Находим вообще все QDockWidget, принадлежащие главному окну
+    QList<QDockWidget*> allDocks = findChildren<QDockWidget*>();
+
+    // 2. Фильтруем их по текущей области
+    for (QDockWidget *dock : allDocks) {
+        if (dock && dockWidgetArea(dock) == area) {
+            result.append(dock);
+        }
+    }
+
+    return result;
 }
