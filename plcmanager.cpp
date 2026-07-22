@@ -1,4 +1,5 @@
 #include "plcmanager.h"
+#include "logmanager.h"
 
 
 plcManager::plcManager(QObject *parent)
@@ -22,8 +23,10 @@ void plcManager::scanDevice(const QString &ipv6, const QString &name)
     lbprocess *lbproc = new lbprocess(this, lbc);
     connect(lbproc, &lbprocess::outMessage, this,
             [](const QString &lbstr, const QString &message, const QModbusDevice::Error error){
-                if(error==QModbusDevice::NoError)
+                if(error==QModbusDevice::NoError){
                     qDebug().noquote()<<lbstr;
+                    logPLC()<<lbstr;
+                }
                 else
                     qDebug().noquote()<<message;
             }
@@ -32,6 +35,7 @@ void plcManager::scanDevice(const QString &ipv6, const QString &name)
             [ipv6, name, lbc, lbproc, this](const QMap<qsizetype, lbprocess::scaninfo>& scan){
                 for (auto i = scan.begin(); i != scan.end(); ++i) {
                     qDebug()<<i.key()<<i.value();
+                    logPLC()<<i.key()<<i.value();
                 }
                 emit scanCompleted(ipv6, name, scan);
                 lbproc->deleteLater();

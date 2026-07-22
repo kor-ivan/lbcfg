@@ -29,6 +29,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         firmwarewidget.h firmwarewidget.cpp
         commandmanager.h commandmanager.cpp
         mainmenu.h mainmenu.cpp
+        logmanager.h logmanager.cpp
+        logdockwidget.h logdockwidget.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET lbcfg APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

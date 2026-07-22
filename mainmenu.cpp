@@ -157,6 +157,21 @@ void MainMenu::onViewMenuAboutToShow()
         }
     });
 
+    QAction *logAct = viewMenu->addAction(tr("Логи"));
+    logAct->setCheckable(true);
+    bool logExistsAndVisible = (p_mainWindow->getLogDock() &&
+                                p_mainWindow->isVisible());
+    logAct->setChecked(logExistsAndVisible);
+    connect(logAct, &QAction::triggered, this, [this, logExistsAndVisible](){
+        if (logExistsAndVisible)
+            p_mainWindow->getLogDock()->close();
+        else{
+            auto *dock = p_mainWindow->createLogDockWidget();
+            dock->show();
+            dock->raise();
+        }
+    });
+
     QList<ConfigDockWidget*> openConf = p_mainWindow->getConfigDocks();
 
     if (!openConf.isEmpty()) {

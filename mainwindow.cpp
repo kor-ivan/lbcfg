@@ -22,13 +22,12 @@ MainWindow::MainWindow(QWidget *parent)
     dummy->hide(); // Скрываем, чтобы доки сомкнулись в центре
 
     lbplc = new plcManager(this);
-    // treeDock = new DeviceTreeDockWidget(this, lbplc);
     createTreeDockWidget();
-    // discoverDock = new DiscoverDockWidget(this, lbplc);
     createDiscoverDockWidget();
     setDockNestingEnabled(true);
     connect(this, &QMainWindow::tabifiedDockWidgetActivated,
             CommandManager::instance(), &CommandManager::checkConfigDockWidget);
+    createLogDockWidget();
 
     // 1. Создаем главное меню
     menu = new MainMenu(this);
@@ -93,6 +92,11 @@ void MainWindow::showEvent(QShowEvent *event)
 
     // Задаем пропорции 1/3 и 2/3
     resizeDocks({treeDock, discoverDock}, {totalWidth/3, 2*totalWidth/3}, Qt::Horizontal);
+
+    int totalHeight = this->height();
+    if (discoverDock && logDock) {
+        resizeDocks({discoverDock.get(), logDock.get()}, {totalHeight - 150, 150}, Qt::Vertical);
+    }
 }
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
@@ -238,9 +242,28 @@ DiscoverDockWidget *MainWindow::createDiscoverDockWidget()
     return discoverDock.get();
 }
 
+LogDockWidget *MainWindow::createLogDockWidget()
+{
+    if (logDock) return logDock.get();
+
+    logDock = new LogDockWidget(this);
+    addDockWidget(Qt::RightDockWidgetArea, logDock.get());
+
+    if (getDocksInArea(Qt::RightDockWidgetArea).isEmpty()) {
+        splitDockWidget(discoverDock.get(), logDock.get(), Qt::Vertical);
+    }
+    logDock->setAllowedAreas(Qt::AllDockWidgetAreas);
+    return logDock.get();
+}
+
 QList<ConfigDockWidget *> MainWindow::getConfigDocks() const
 {
     return configDocks.values();
+}
+
+QPointer<LogDockWidget> MainWindow::getLogDock() const
+{
+    return logDock;
 }
 
 void MainWindow::CreateConfig(const QString &ipv6, const QString &name, const QString &content)

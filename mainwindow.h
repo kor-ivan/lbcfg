@@ -9,6 +9,7 @@
 #include "configdockwidget.h"
 #include "plcmanager.h"
 #include "mainmenu.h"
+#include "logdockwidget.h"
 
 
 class MainWindow : public QMainWindow
@@ -21,17 +22,19 @@ public:
 
 
     QPointer<DeviceTreeDockWidget> getTreeDock() const;
-
     QPointer<DiscoverDockWidget> getDiscoverDock() const;
+    QPointer<LogDockWidget> getLogDock() const;
+
     DeviceTreeDockWidget *createTreeDockWidget();
     DiscoverDockWidget* createDiscoverDockWidget();
-
+    LogDockWidget* createLogDockWidget();
     QList<ConfigDockWidget*> getConfigDocks() const;
 
 private:
     plcManager *lbplc = nullptr;
     QPointer<DeviceTreeDockWidget> treeDock = nullptr;
     QPointer<DiscoverDockWidget> discoverDock = nullptr;
+    QPointer<LogDockWidget> logDock = nullptr;
     QMap<QString, ConfigDockWidget*> configDocks;
 
     ConfigDockWidget* CreateConfDockWidget(const QString &key, const QString &name);

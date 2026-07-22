@@ -74,7 +74,7 @@ void DeviceTreeDockWidget::updateDevice(const QString &ipv6, const QString &name
         // Теперь добавляем подробности ВНУТРЬ (как подветки)
         col1->appendRow(new QStandardItem("MAC: " + info.mac));
         col1->appendRow(new QStandardItem("Version: " + info.version));
-        col1->appendRow(new QStandardItem("Serial: " + info.data.at(0)));
+        col1->appendRow(new QStandardItem("Serial: " + info.data.value(0)));
     }
 
     // Раскрываем дерево

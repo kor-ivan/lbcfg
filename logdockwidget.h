@@ -1,0 +1,25 @@
+#ifndef LOGDOCKWIDGET_H
+#define LOGDOCKWIDGET_H
+
+#include <QDockWidget>
+#include <QPlainTextEdit>
+#include "logmanager.h"
+
+class LogDockWidget : public QDockWidget
+{
+    Q_OBJECT
+public:
+    explicit LogDockWidget(QWidget *parent = nullptr);
+    QSize sizeHint() const override { return QSize(QWidget::sizeHint().width(), 300); }
+
+signals:
+
+private:
+    void appendLogEntry(const QDateTime &timestamp,
+                        LogCatcher::Source source,
+                        LogCatcher::Level level,
+                        const QString &message);
+    QPlainTextEdit *logViewer = nullptr;
+};
+
+#endif // LOGDOCKWIDGET_H
