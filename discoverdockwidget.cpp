@@ -104,8 +104,10 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
     AddDivice->setFont(font);
     QAction *getConf = menu.addAction("Запросить конфигурацию");
     QAction *newConf = menu.addAction("Создать новую конфигурацию");
-    QAction *copy = menu.addAction("Копировать");
+    QAction *copy = menu.addAction("Копировать строку");
     QAction *Allcopy = menu.addAction("Копировать всё");
+    QAction *MacCopy = menu.addAction("Копировать MAC");
+    QAction *ipv6Copy = menu.addAction("Копировать IPv6");
 
     QAction *selectedItem = menu.exec(table->viewport()->mapToGlobal(pos));
     QClipboard *clipboard = QGuiApplication::clipboard();
@@ -125,6 +127,10 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
         emit requestConfig(ipv6, name);
     }else if (selectedItem == newConf){
         emit newConfig(ipv6, name);
+    }else if (selectedItem == MacCopy){
+        clipboard->setText(ldmap.value(ipv6).mac);
+    }else if (selectedItem == ipv6Copy){
+        clipboard->setText(ipv6);
     }
 }
 

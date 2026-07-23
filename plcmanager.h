@@ -2,6 +2,7 @@
 #define PLCMANAGER_H
 
 #include <QObject>
+#include <QPointer>
 #include "lbprocess.h"
 #include "discover.h"
 #include "lbclient.h"
@@ -37,6 +38,8 @@ public:
                           const QString &startMessage);
     void startRestartAll (const CommandContext &ctx);
     void startFbootDownload(const CommandContext &ctx, const QString &filePath);
+    void startLog (const CommandContext &ctx, const QString &flag);
+    void stopLog();
 
     template <typename F>
     void lbc_executeCommand(const CommandContext &ctx,
@@ -71,6 +74,8 @@ signals:
     void firmwareProgressChanged(int prc);
     // void firmwareStatusChanged(const QString &message);
     void firmwareFinished();
+    void logStarted();
+    void logFinished();
     void confCompleted(const QString &ipv6, const QString &name);
     void showMessage(const QString &title, const QString &message);
     void restartAllCompleted(const CommandContext &ctx);
@@ -81,6 +86,7 @@ private:
     bool discoverRunning = false;
     LBclient *activeOtaClient = nullptr;
     lbprocess * prcActiveOtaClient = nullptr;
+    QPointer<LBclient> activeLogClient = nullptr;
     void prcOtaSender(const QString &lbhost, const QStringList &result, const QString &message, const QModbusDevice::Error error);
 };
 

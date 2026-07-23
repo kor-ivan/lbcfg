@@ -20,11 +20,17 @@ public:
         Debug
     };
     Q_ENUM(Level);
+    enum Wrapped{
+        wrapNo,
+        wrapYes
+    };
+    Q_ENUM(Wrapped);
 signals:
     void newLogEntry(const QDateTime &timestamp,
                      LogCatcher::Source source,
                      LogCatcher::Level level,
-                     const QString &message);
+                     const QString &message,
+                     LogCatcher::Wrapped wrap = LogCatcher::wrapNo);
 };
 
 class LogManager : public QObject
@@ -34,9 +40,10 @@ public:
 
     using Source = LogCatcher::Source;
     using Level = LogCatcher::Level;
+    using Wrapped = LogCatcher::Wrapped;
 
-    LogManager(Source source, Level level = Level::Info);
-    LogManager(const QDateTime &timestamp, Source source, Level level = Level::Info);
+    LogManager(Source source, Level level = Level::Info, Wrapped wrap = Wrapped::wrapNo);
+    LogManager(const QDateTime &timestamp, Source source, Level level = Level::Info, Wrapped wrap = Wrapped::wrapNo);
     ~LogManager();
 
     template <typename T>
@@ -52,6 +59,7 @@ public:
 private:
     Source m_source;
     Level m_level;
+    Wrapped m_wrap;
     QDateTime m_timestamp;
     QString m_buffer;
     Level loglevel = LogCatcher::Debug;
@@ -61,12 +69,15 @@ inline LogManager logApp(LogCatcher::Level level = LogCatcher::Info) {
     return LogManager(LogManager::Source::App, level);
 }
 
-inline LogManager logPLC(LogCatcher::Level level = LogCatcher::Info) {
-    return LogManager(LogCatcher::PLC, level);
+inline LogManager logPLC(LogCatcher::Level level = LogCatcher::Info,
+                         LogCatcher::Wrapped wrap = LogCatcher::wrapNo) {
+    return LogManager(LogCatcher::PLC, level, wrap);
 }
 
-inline LogManager logPLC(const QDateTime &timestamp, LogCatcher::Level level = LogCatcher::Info) {
-    return LogManager(timestamp, LogCatcher::PLC, level);
+inline LogManager logPLC(const QDateTime &timestamp,
+                         LogCatcher::Level level = LogCatcher::Info,
+                         LogCatcher::Wrapped wrap = LogCatcher::wrapNo) {
+    return LogManager(timestamp, LogCatcher::PLC, level, wrap);
 }
 
 inline LogManager debugPLC() {

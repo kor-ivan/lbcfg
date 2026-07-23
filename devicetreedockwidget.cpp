@@ -186,6 +186,23 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
         emit requestFlash(ctx);
     });
 
+    QMenu *logMenu = menu.addMenu("Запросить лог");
+
+    QAction *logAll = logMenu->addAction("Запросить весь лог");
+    connect(logAll, &QAction::triggered, this, [this, ctx](){
+        lbplc->startLog(ctx, "a");
+    });
+
+    QAction *logLast100 = logMenu->addAction("Запросить 100 сообщений");
+    connect(logLast100, &QAction::triggered, this, [this, ctx](){
+        lbplc->startLog(ctx, "a100");
+    });
+
+    QAction *logLast100f = logMenu->addAction("Запросить 100 и следовать");
+    connect(logLast100f, &QAction::triggered, this, [this, ctx](){
+        lbplc->startLog(ctx, "a100f");
+    });
+
     menu.exec(treeView->viewport()->mapToGlobal(pos));
 
 }

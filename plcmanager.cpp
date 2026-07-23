@@ -52,7 +52,8 @@ void plcManager::requestConfig(const QString &ipv6, const QString &name)
                 if(error==QModbusDevice::NoError){
                     QString yamlContent = lbyaml::getlbconf(Qjo);
                     debugApp()<<"# BEGIN YAML";
-                    debugPLC()<<yamlContent;
+                    logPLC(LogCatcher::Debug, LogCatcher::wrapYes)<<yamlContent;
+                    qDebug().noquote()<<yamlContent;
                     // lbyaml::printlbconf(Qjo);
                     debugApp()<<"# END YAML";
                     // Получаем YAML-текст один раз, чтобы использовать его для сравнения
@@ -196,6 +197,42 @@ void plcManager::startRestartAll(const CommandContext &ctx)
                 prc->deleteLater();
             });
     prc->run(lbprocess::restartall);
+}
+
+void plcManager::startLog(const CommandContext &ctx, const QString &flag)
+{
+    debugApp()<<QString("plcManager::startLog for %1 slot %2")
+                      .arg(ctx.ipv6).arg(ctx.slot);
+    if (activeLogClient)
+        return;
+    activeLogClient = new LBclient (this, {"log", flag});
+    if (ctx.slot!=-1)
+        activeLogClient->setSlot(ctx.slot);
+    activeLogClient->setTCPaddr(ctx.ipv6, port);
+    connect(activeLogClient, &LBclient::ExecuteCompletedStr, this, [this]
+            (const QString& lbstr, const QString& message, const QModbusDevice::Error error){
+                if (error==QModbusDevice::NoError)
+                    logPLC()<<lbstr;
+                else
+                    emit errorOccurred(lbstr);
+            });
+    connect(activeLogClient, &LBclient::lbDisconnect, this, [this]
+            (const QString& lbhost, const QString& message, const QModbusDevice::Error error){
+                if (!message.isEmpty())
+                    debugPLC()<<message;
+                activeLogClient->deleteLater();
+                debugApp()<<"disconnect LogClient: "<<lbhost;
+                emit logFinished();
+            });
+    activeLogClient->Execute();
+    emit logStarted();
+}
+
+void plcManager::stopLog()
+{
+    if (!activeLogClient) return;
+    activeLogClient->disconnect();
+    emit logFinished();
 }
 
 void plcManager::prcOtaSender(const QString &lbhost, const QStringList &result, const QString &message, const QModbusDevice::Error error)

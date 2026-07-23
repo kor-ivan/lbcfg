@@ -253,6 +253,10 @@ LogDockWidget *MainWindow::createLogDockWidget()
         splitDockWidget(discoverDock.get(), logDock.get(), Qt::Vertical);
     }
     logDock->setAllowedAreas(Qt::AllDockWidgetAreas);
+    connect(lbplc, &plcManager::logStarted, logDock, &LogDockWidget::onLogStarted);
+    connect(lbplc, &plcManager::logFinished, logDock, &LogDockWidget::onLogFinished);
+    connect(logDock, &LogDockWidget::stopButtonPressed, lbplc, &plcManager::stopLog);
+
     return logDock.get();
 }
 

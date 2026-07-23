@@ -47,8 +47,8 @@ FirmwareWidget::FirmwareWidget(QWidget *parent)
         );
 
     // 4. Собираем виджет вместе
-    layout->addWidget(stopButton);
     layout->addWidget(progressBar);
+    layout->addWidget(stopButton);
     layout->setSizeConstraint(QLayout::SetFixedSize);
 
     // 5. Перенаправляем внутренний клик кнопки во внешний сигнал нашего виджета
