@@ -17,14 +17,13 @@ LogDockWidget::LogDockWidget(QWidget *parent)
 
 void LogDockWidget::appendLogEntry(const QDateTime &timestamp, LogCatcher::Source source, LogCatcher::Level level, const QString &message)
 {
-    qDebug()<<source<<level;
     QString timeStr = timestamp.toString("HH:mm:ss.zzz");
     QString sourceStr;
     QString sourceColor = "gray";
     switch (source) {
     case LogCatcher::App:
         sourceStr = "[APP]";
-        sourceColor = "gray";
+        sourceColor = "SteelBlue";
         break;
     case LogCatcher::PLC:
         sourceStr = "[PLC]";

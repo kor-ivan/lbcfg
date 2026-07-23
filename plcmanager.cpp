@@ -11,31 +11,28 @@ plcManager::~plcManager()
 
 void plcManager::scanDevice(const QString &ipv6, const QString &name)
 {
-    qDebug() << "plcManager::Starting process for:"<<ipv6<<" "<<name;
+    debugApp() << "plcManager::Starting process for:"<<ipv6<<" "<<name;
     LBclient *lbc = new LBclient(this);
     lbc->setTCPaddr(ipv6, port);
     connect(lbc, &LBclient::lbDisconnect, this,
             [lbc](const QString& lbhost, const QString& message, const QModbusDevice::Error error){
-                qDebug()<<message<<"disconnect";
+                debugPLC()<<message<<"disconnect";
                 lbc->deleteLater();
             }
             );
     lbprocess *lbproc = new lbprocess(this, lbc);
     connect(lbproc, &lbprocess::outMessage, this,
             [](const QString &lbstr, const QString &message, const QModbusDevice::Error error){
-                if(error==QModbusDevice::NoError){
-                    qDebug().noquote()<<lbstr;
-                    logPLC()<<lbstr;
-                }
+                if(error==QModbusDevice::NoError)
+                    debugPLC()<<lbstr;
                 else
-                    qDebug().noquote()<<message;
+                    debugPLC()<<message;
             }
             );
     connect(lbproc, &lbprocess::scanCompleted, this,
             [ipv6, name, lbc, lbproc, this](const QMap<qsizetype, lbprocess::scaninfo>& scan){
                 for (auto i = scan.begin(); i != scan.end(); ++i) {
-                    qDebug()<<i.key()<<i.value();
-                    logPLC()<<i.key()<<i.value();
+                    debugPLC()<<i.key()<<i.value();
                 }
                 emit scanCompleted(ipv6, name, scan);
                 lbproc->deleteLater();
@@ -47,21 +44,23 @@ void plcManager::scanDevice(const QString &ipv6, const QString &name)
 
 void plcManager::requestConfig(const QString &ipv6, const QString &name)
 {
-    qDebug()<<"plcManager::getlbcfg: "<<ipv6<<name;
+    debugApp()<<"plcManager::getlbcfg: "<<ipv6<<name;
     LBclient *lbc = new LBclient(this, {"getconf"});
     lbc->setTCPaddr(ipv6, 502);
     connect(lbc, &LBclient::ExecuteCompletedJson, this,
             [lbc, this, name, ipv6](const QString& lbhost, const QJsonObject& Qjo, const QString& message, const QModbusDevice::Error error){
                 if(error==QModbusDevice::NoError){
-                    qDebug()<<"# BEGIN YAML";
-                    lbyaml::printlbconf(Qjo);
-                    qDebug()<<"# END YAML";
-                    // Получаем YAML-текст один раз, чтобы использовать его для сравнения
                     QString yamlContent = lbyaml::getlbconf(Qjo);
+                    debugApp()<<"# BEGIN YAML";
+                    debugPLC()<<yamlContent;
+                    // lbyaml::printlbconf(Qjo);
+                    debugApp()<<"# END YAML";
+                    // Получаем YAML-текст один раз, чтобы использовать его для сравнения
+
                     emit configReceived(ipv6, name, yamlContent);
                 }
                 else{
-                    qDebug().noquote()<<message;
+                    debugPLC()<<message;
                     emit errorOccurred(message);
                 }
                 lbc->deleteLater();
@@ -72,7 +71,7 @@ void plcManager::requestConfig(const QString &ipv6, const QString &name)
 
 void plcManager::startDiscover()
 {
-    qDebug()<<"startDiscover "<<discoverRunning;
+    debugApp()<<"startDiscover "<<discoverRunning;
     if (discoverRunning)
         return;
     discover *wgtdiscover = new discover(this);
@@ -93,7 +92,7 @@ void plcManager::startDiscover()
 
 void plcManager::startFirmware(const CommandContext &ctx, const QString &filePath, const QString &checkMessage, const QString &startMessage, const QString &lbkey)
 {
-    qDebug() << "PLCManager: startFirmware slot=" << ctx.slot;
+    debugApp() << "PLCManager: startFirmware slot=" << ctx.slot;
     if (activeOtaClient) {
         emit eventOccurred(checkMessage);
         return;
@@ -131,7 +130,7 @@ void plcManager::stopFirmware()
 
 void plcManager::startConf(const QString &name, const QString &yamlFilePath)
 {
-    qDebug()<<"plcManager::startConf for "<<name;
+    debugApp()<<"plcManager::startConf for "<<name;
     LBclient *lbc = new LBclient(this, {"conf"});
     lbc->setlbHost(name, yamlFilePath);
     connect(lbc, &LBclient::ExecuteCompletedStr, this, [this]
@@ -151,7 +150,7 @@ void plcManager::startConf(const QString &name, const QString &yamlFilePath)
 
 void plcManager::startFirmwareAll(const CommandContext &ctx, const QString &filePath, const QString &checkMessage, const QString &startMessage)
 {
-    qDebug() << "plcManager::startFirmwareAll" << ctx.name;
+    debugApp() << "plcManager::startFirmwareAll" << ctx.name;
     if (activeOtaClient) {
         emit eventOccurred(checkMessage);
         return;
@@ -182,7 +181,7 @@ void plcManager::startFirmwareAll(const CommandContext &ctx, const QString &file
 
 void plcManager::startRestartAll(const CommandContext &ctx)
 {
-    qDebug()<<"plcManager::startRestartAll for"<<ctx.ipv6;
+    debugApp()<<"plcManager::startRestartAll for"<<ctx.ipv6;
     LBclient *lbc = new LBclient (this);
     lbc->setTCPaddr(ctx.ipv6, port);
     lbprocess *prc = new lbprocess(this, lbc);
@@ -192,7 +191,7 @@ void plcManager::startRestartAll(const CommandContext &ctx)
             });
     connect(lbc, &LBclient::lbDisconnect, this, [this, prc, ctx]
             (const QString& lbhost, const QString& message, const QModbusDevice::Error error){
-                qDebug()<<"plcManager::startRestartAll disconnect"<<message;
+                debugPLC()<<"plcManager::startRestartAll disconnect"<<message;
                 emit restartAllCompleted(ctx);
                 prc->deleteLater();
             });

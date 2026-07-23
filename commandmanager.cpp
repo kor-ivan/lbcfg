@@ -1,5 +1,6 @@
 #include "commandmanager.h"
 #include <QApplication>
+#include "logmanager.h"
 
 CommandManager::CommandManager()
 {
@@ -44,7 +45,7 @@ void CommandManager::checkConfigDockWidget(QDockWidget *dock)
 {
     ConfigDockWidget *configDock = qobject_cast<ConfigDockWidget*>(dock);
     if (configDock) {
-        qDebug() << "Выбран ConfigDockWidget: " << configDock;
+        debugApp() << "Выбран ConfigDockWidget: " << configDock;
         activeConfDockWidget = configDock;
         emit activeConfDockWidgetChanged(configDock);
     }

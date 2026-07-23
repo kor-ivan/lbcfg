@@ -160,7 +160,7 @@ ConfigDockWidget *MainWindow::CreateConfDockWidget(const QString &key, const QSt
         }
 
         connect(dock, &QObject::destroyed, this, [this, key]() {
-            qDebug() << "destroy";
+            debugApp() << "destroy ConfDockWidget: "<<key;
             configDocks.remove(key);
             CommandManager::instance()->resetActiveConfDockWidget();
         });

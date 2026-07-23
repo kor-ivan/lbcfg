@@ -18,7 +18,6 @@ ConfigDockWidget::ConfigDockWidget(const QString &name, QWidget *parent, plcMana
     lbplc(plc)
 {
     plcName = name;
-    qDebug()<<name<<"into ConfigDockWidget";
     QWidget *content = new QWidget(this);
     setWidget(content);
     QVBoxLayout* layout = new QVBoxLayout(content);

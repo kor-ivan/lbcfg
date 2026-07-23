@@ -13,11 +13,11 @@ public:
     };
     Q_ENUM(Source);
     enum Level{
-        Debug,
-        Info,
-        Warning,
+        Critical,
         Alarm,
-        Critical
+        Warning,
+        Info,
+        Debug
     };
     Q_ENUM(Level);
 signals:
@@ -41,17 +41,20 @@ public:
 
     template <typename T>
     LogManager& operator<<(const T& value) {
-        QDebug(&m_buffer) << value;
+        QDebug(&m_buffer).noquote() << value;
         return *this;
     }
 
     static LogCatcher* catcher();
+
+    void setLoglevel(const Level &newLoglevel);
 
 private:
     Source m_source;
     Level m_level;
     QDateTime m_timestamp;
     QString m_buffer;
+    Level loglevel = LogCatcher::Debug;
 };
 
 inline LogManager logApp(LogCatcher::Level level = LogCatcher::Info) {
@@ -64,6 +67,14 @@ inline LogManager logPLC(LogCatcher::Level level = LogCatcher::Info) {
 
 inline LogManager logPLC(const QDateTime &timestamp, LogCatcher::Level level = LogCatcher::Info) {
     return LogManager(timestamp, LogCatcher::PLC, level);
+}
+
+inline LogManager debugPLC() {
+    return LogManager(LogCatcher::PLC, LogCatcher::Debug);
+}
+
+inline LogManager debugApp() {
+    return LogManager(LogCatcher::App, LogCatcher::Debug);
 }
 
 #endif // LOGMANAGER_H

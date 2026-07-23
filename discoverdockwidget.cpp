@@ -4,6 +4,7 @@
 #include <QApplication>
 #include <QMenu>
 #include <QClipboard>
+#include "logmanager.h"
 
 DiscoverDockWidget::DiscoverDockWidget(QWidget *parent, plcManager *plc)
     : QDockWidget("Discover", parent), lbplc(plc)
@@ -138,7 +139,7 @@ void DiscoverDockWidget::discoverReceived(const QMap<QString, discover::lbinfo> 
     table->setSortingEnabled(false); // Отключаем сортировку на время вставки для скорости
     int row = 0;
     for (auto it = ldmap.begin(); it != ldmap.end(); ++it) {
-        qDebug().noquote() << it.value().toString();
+        debugPLC() << it.value();
         table->insertRow(row);
         table->setItem(row, 0, new QTableWidgetItem(it.value().name));
         table->setItem(row, 1, new QTableWidgetItem(it.value().type));
