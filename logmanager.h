@@ -25,12 +25,18 @@ public:
         wrapYes
     };
     Q_ENUM(Wrapped);
+    enum TimeType{
+        TimeReal,
+        TimeUptime
+    };
+    Q_ENUM(TimeType);
 signals:
     void newLogEntry(const QDateTime &timestamp,
                      LogCatcher::Source source,
                      LogCatcher::Level level,
                      const QString &message,
-                     LogCatcher::Wrapped wrap = LogCatcher::wrapNo);
+                     LogCatcher::Wrapped wrap = LogCatcher::wrapNo,
+                     LogCatcher::TimeType timeType = LogCatcher::TimeReal);
 };
 
 class LogManager : public QObject
@@ -41,7 +47,9 @@ public:
     using Source = LogCatcher::Source;
     using Level = LogCatcher::Level;
     using Wrapped = LogCatcher::Wrapped;
+    using TimeType = LogCatcher::TimeType;
 
+    LogManager(bool parse, Source source);
     LogManager(Source source, Level level = Level::Info, Wrapped wrap = Wrapped::wrapNo);
     LogManager(const QDateTime &timestamp, Source source, Level level = Level::Info, Wrapped wrap = Wrapped::wrapNo);
     ~LogManager();
@@ -62,7 +70,10 @@ private:
     Wrapped m_wrap;
     QDateTime m_timestamp;
     QString m_buffer;
+    TimeType m_timetype;
+    bool m_parse = false;
     Level loglevel = LogCatcher::Debug;
+
 };
 
 inline LogManager logApp(LogCatcher::Level level = LogCatcher::Info) {
@@ -86,6 +97,10 @@ inline LogManager debugPLC() {
 
 inline LogManager debugApp() {
     return LogManager(LogCatcher::App, LogCatcher::Debug);
+}
+
+inline LogManager rawPLC(){
+    return LogManager(true, LogCatcher::PLC);
 }
 
 #endif // LOGMANAGER_H

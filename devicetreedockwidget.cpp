@@ -2,6 +2,7 @@
 #include <QVBoxLayout>
 #include <QMenu>
 #include <QMessageBox>
+#include "logmanager.h"
 
 DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent, plcManager *plc)
     : QDockWidget("Tree View", parent), lbplc(plc)
@@ -132,7 +133,7 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
         QAction *restartAll = menu.addAction("Перезагрузить все");
         connect(restartAll, &QAction::triggered, this,
                 [this, ctx](){
-                    qDebug()<<"Перезагрузить все";
+                    debugApp()<<"Перезагрузить все команда отправлена";
                     lbplc->startRestartAll(ctx);
                 });
 

@@ -28,7 +28,8 @@ private:
                         LogCatcher::Source source,
                         LogCatcher::Level level,
                         const QString &message,
-                        LogCatcher::Wrapped wrap);
+                        LogCatcher::Wrapped wrap,
+                        LogCatcher::TimeType timeType);
     QPlainTextEdit *logViewer = nullptr;
     QPushButton *stopButton;
     void updateButtonPosition();

@@ -69,9 +69,46 @@ bool LogDockWidget::eventFilter(QObject *obj, QEvent *event)
     return QDockWidget::eventFilter(obj, event);
 }
 
-void LogDockWidget::appendLogEntry(const QDateTime &timestamp, LogCatcher::Source source, LogCatcher::Level level, const QString &message, LogCatcher::Wrapped wrap)
+void LogDockWidget::appendLogEntry(const QDateTime &timestamp,
+                                   LogCatcher::Source source,
+                                   LogCatcher::Level level,
+                                   const QString &message,
+                                   LogCatcher::Wrapped wrap,
+                                   LogCatcher::TimeType timeType)
 {
-    QString timeStr = timestamp.toString("HH:mm:ss.zzz");
+    QString timeStr;
+    switch (timeType) {
+    case LogCatcher::TimeUptime:{
+        qint64 totalMs = timestamp.toMSecsSinceEpoch();
+
+        qint64 msecs = totalMs % 1000;
+        qint64 totalSeconds = totalMs / 1000;
+
+        qint64 seconds = totalSeconds % 60;
+        qint64 totalMinutes = totalSeconds / 60;
+
+        qint64 minutes = totalMinutes % 60;
+        qint64 totalHours = totalMinutes / 60;
+
+        qint64 hours = totalHours % 24;
+        qint64 days = totalHours / 24;
+
+        timeStr = QString("%1:%2:%3.%4")
+                      .arg(hours, 2, 10, QChar('0'))
+                      .arg(minutes, 2, 10, QChar('0'))
+                      .arg(seconds, 2, 10, QChar('0'))
+                      .arg(msecs, 3, 10, QChar('0'));
+
+        if (days > 0) {
+            timeStr = QString("%1:%2").arg(days).arg(timeStr);
+        }
+        break;
+    }
+    default:
+        timeStr = timestamp.toString("HH:mm:ss.zzz");
+        break;
+    }
+
     QString sourceStr;
     QString sourceColor = "gray";
     switch (source) {

@@ -53,7 +53,6 @@ void plcManager::requestConfig(const QString &ipv6, const QString &name)
                     QString yamlContent = lbyaml::getlbconf(Qjo);
                     debugApp()<<"# BEGIN YAML";
                     logPLC(LogCatcher::Debug, LogCatcher::wrapYes)<<yamlContent;
-                    qDebug().noquote()<<yamlContent;
                     // lbyaml::printlbconf(Qjo);
                     debugApp()<<"# END YAML";
                     // Получаем YAML-текст один раз, чтобы использовать его для сравнения
@@ -202,7 +201,7 @@ void plcManager::startRestartAll(const CommandContext &ctx)
 void plcManager::startLog(const CommandContext &ctx, const QString &flag)
 {
     debugApp()<<QString("plcManager::startLog for %1 slot %2")
-                      .arg(ctx.ipv6).arg(ctx.slot);
+                      .arg(ctx.ipv6).arg(ctx.slot)<<activeLogClient.get();
     if (activeLogClient)
         return;
     activeLogClient = new LBclient (this, {"log", flag});
@@ -211,8 +210,10 @@ void plcManager::startLog(const CommandContext &ctx, const QString &flag)
     activeLogClient->setTCPaddr(ctx.ipv6, port);
     connect(activeLogClient, &LBclient::ExecuteCompletedStr, this, [this]
             (const QString& lbstr, const QString& message, const QModbusDevice::Error error){
-                if (error==QModbusDevice::NoError)
-                    logPLC()<<lbstr;
+                if (error==QModbusDevice::NoError){
+                    rawPLC()<<lbstr;
+                    qDebug()<<lbstr;
+                }
                 else
                     emit errorOccurred(lbstr);
             });
@@ -230,8 +231,9 @@ void plcManager::startLog(const CommandContext &ctx, const QString &flag)
 
 void plcManager::stopLog()
 {
+    debugApp()<<"into stopLog"<<activeLogClient.get();
     if (!activeLogClient) return;
-    activeLogClient->disconnect();
+    activeLogClient->deleteLater();
     emit logFinished();
 }
 
