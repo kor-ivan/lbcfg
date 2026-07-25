@@ -48,7 +48,7 @@ LogManager::~LogManager()
                 }
 
                 m_buffer = match.captured(3).trimmed();
-                qDebug()<<levelLetter<<timeContent;
+                m_buffer.remove('\r');
                 if (m_buffer.contains('{') || m_buffer.contains('\n')) {
                     m_wrap = LogCatcher::wrapYes;
                 }
