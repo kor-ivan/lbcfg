@@ -212,7 +212,6 @@ void plcManager::startLog(const CommandContext &ctx, const QString &flag)
             (const QString& lbstr, const QString& message, const QModbusDevice::Error error){
                 if (error==QModbusDevice::NoError){
                     rawPLC()<<lbstr;
-                    qDebug().noquote()<<lbstr;
                 }
                 else
                     emit errorOccurred(lbstr);

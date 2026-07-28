@@ -45,6 +45,7 @@ LogDockWidget::LogDockWidget(QWidget *parent)
     connect(stopButton, &QPushButton::clicked, this, &LogDockWidget::stopButtonPressed);
 
     logViewer->installEventFilter(this);
+    logViewer->verticalScrollBar()->installEventFilter(this);
 
     connect(LogManager::catcher(), &LogCatcher::newLogEntry,
             this, &LogDockWidget::appendLogEntry);
@@ -66,6 +67,11 @@ bool LogDockWidget::eventFilter(QObject *obj, QEvent *event)
     if (obj == logViewer && event->type() == QEvent::Resize) {
         updateButtonPosition();
     }
+    if (obj == logViewer->verticalScrollBar()) {
+        if (event->type() == QEvent::Show || event->type() == QEvent::Hide) {
+            updateButtonPosition();
+        }
+    }
     return QDockWidget::eventFilter(obj, event);
 }
 
@@ -77,6 +83,7 @@ void LogDockWidget::appendLogEntry(const QDateTime &timestamp,
                                    LogCatcher::TimeType timeType)
 {
     QString timeStr;
+    QString timeColor = "gray";
     switch (timeType) {
     case LogCatcher::TimeUptime:{
         qint64 totalMs = timestamp.toMSecsSinceEpoch();
@@ -102,6 +109,7 @@ void LogDockWidget::appendLogEntry(const QDateTime &timestamp,
         if (days > 0) {
             timeStr = QString("%1:%2").arg(days).arg(timeStr);
         }
+        timeColor = "#483D8B";
         break;
     }
     default:
@@ -149,7 +157,7 @@ void LogDockWidget::appendLogEntry(const QDateTime &timestamp,
     //         QString("<pre style='margin: 0; font-family: monospace;'>%1</pre>")
     //                              .arg(message.toHtmlEscaped()):message.toHtmlEscaped();
 
-    QString htmlLine = QString("<font color='gray'>%1</font> "
+    QString htmlLine = QString("<font color='%7'>%1</font> "
                                "<b><font color='%2'>%3</font> <font color='%4'>%5:</font></b> %6")
                            .arg(timeStr)
                            .arg(sourceColor)
@@ -159,13 +167,15 @@ void LogDockWidget::appendLogEntry(const QDateTime &timestamp,
                            // .arg(message.toHtmlEscaped());
                            .arg((wrap == LogCatcher::wrapYes)?
                                     QString("<br><span style='white-space: pre-wrap;'>%1</span>")
-                                        .arg(message.toHtmlEscaped()):message.toHtmlEscaped());
+                                        .arg(message.toHtmlEscaped()):message.toHtmlEscaped())
+                           .arg(timeColor);
     logViewer->appendHtml(htmlLine);
     logViewer->moveCursor(QTextCursor::End);
 }
 
 void LogDockWidget::updateButtonPosition()
 {
+    qDebug()<<QTime::currentTime()<<"updateButtonPosition";
     if (!stopButton->isVisible()) return;
 
     int padding = 10; // Отступ от краев
