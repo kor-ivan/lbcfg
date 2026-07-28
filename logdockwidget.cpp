@@ -79,6 +79,7 @@ void LogDockWidget::appendLogEntry(const QDateTime &timestamp,
                                    LogCatcher::Source source,
                                    LogCatcher::Level level,
                                    const QString &message,
+                                   const plcManager::CommandContext &ctx,
                                    LogCatcher::Wrapped wrap,
                                    LogCatcher::TimeType timeType)
 {
@@ -158,7 +159,7 @@ void LogDockWidget::appendLogEntry(const QDateTime &timestamp,
     //                              .arg(message.toHtmlEscaped()):message.toHtmlEscaped();
 
     QString htmlLine = QString("<font color='%7'>%1</font> "
-                               "<b><font color='%2'>%3</font> <font color='%4'>%5:</font></b> %6")
+                               "<b><font color='%2'>%3 %8</font> <font color='%4'>%5:</font></b> %6")
                            .arg(timeStr)
                            .arg(sourceColor)
                            .arg(sourceStr)
@@ -168,14 +169,14 @@ void LogDockWidget::appendLogEntry(const QDateTime &timestamp,
                            .arg((wrap == LogCatcher::wrapYes)?
                                     QString("<br><span style='white-space: pre-wrap;'>%1</span>")
                                         .arg(message.toHtmlEscaped()):message.toHtmlEscaped())
-                           .arg(timeColor);
+                           .arg(timeColor)
+                           .arg(ctx.isSlot()?QString("%1 slot %2").arg(ctx.name).arg(ctx.slot):ctx.name);
     logViewer->appendHtml(htmlLine);
     logViewer->moveCursor(QTextCursor::End);
 }
 
 void LogDockWidget::updateButtonPosition()
 {
-    qDebug()<<QTime::currentTime()<<"updateButtonPosition";
     if (!stopButton->isVisible()) return;
 
     int padding = 10; // Отступ от краев

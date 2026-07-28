@@ -1,19 +1,23 @@
 #include "logmanager.h"
 #include <QRegularExpression>
 
-LogManager::LogManager(bool parse, Source source)
-    :m_parse(parse), m_source(source), m_level(LogCatcher::Debug)
+LogManager::LogManager(const plcManager::CommandContext &ctx, bool parse, Source source)
+    : m_ctx(ctx), m_parse(parse), m_source(source), m_level(LogCatcher::Debug)
 {}
 
 LogManager::LogManager(Source source, Level level, Wrapped wrap)
-    : m_source(source), m_level(level),
+: m_source(source), m_level(level), m_wrap(wrap)
+{}
+
+LogManager::LogManager(const plcManager::CommandContext &ctx, Source source, Level level, Wrapped wrap)
+    : m_ctx(ctx), m_source(source), m_level(level),
     m_wrap(wrap), m_timestamp(QDateTime::currentDateTime())
 {}
 
-LogManager::LogManager(const QDateTime &timestamp, Source source, Level level, Wrapped wrap)
-    : m_source(source), m_level(level), m_wrap(wrap),
-    m_timestamp(timestamp.isValid() ? timestamp : QDateTime::currentDateTime())
-{}
+// LogManager::LogManager(const QDateTime &timestamp, Source source, Level level, Wrapped wrap)
+//     : m_source(source), m_level(level), m_wrap(wrap),
+//     m_timestamp(timestamp.isValid() ? timestamp : QDateTime::currentDateTime())
+// {}
 
 LogManager::~LogManager()
 {
@@ -68,7 +72,7 @@ LogManager::~LogManager()
                 }
             }
         }
-        emit catcher()->newLogEntry(m_timestamp, m_source, m_level, m_buffer, m_wrap, m_timetype);
+        emit catcher()->newLogEntry(m_timestamp, m_source, m_level, m_buffer, m_ctx, m_wrap, m_timetype);
     }
 }
 LogCatcher *LogManager::catcher()

@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QDateTime>
+#include "plcmanager.h"
 
 class LogCatcher : public QObject{
     Q_OBJECT
@@ -35,6 +36,7 @@ signals:
                      LogCatcher::Source source,
                      LogCatcher::Level level,
                      const QString &message,
+                     const plcManager::CommandContext &ctx,
                      LogCatcher::Wrapped wrap = LogCatcher::wrapNo,
                      LogCatcher::TimeType timeType = LogCatcher::TimeReal);
 };
@@ -49,9 +51,10 @@ public:
     using Wrapped = LogCatcher::Wrapped;
     using TimeType = LogCatcher::TimeType;
 
-    LogManager(bool parse, Source source);
+    LogManager(const plcManager::CommandContext &ctx, bool parse, Source source);
     LogManager(Source source, Level level = Level::Info, Wrapped wrap = Wrapped::wrapNo);
-    LogManager(const QDateTime &timestamp, Source source, Level level = Level::Info, Wrapped wrap = Wrapped::wrapNo);
+    LogManager(const plcManager::CommandContext &ctx, Source source, Level level = Level::Info, Wrapped wrap = Wrapped::wrapNo);
+    // LogManager(const QDateTime &timestamp, Source source, Level level = Level::Info, Wrapped wrap = Wrapped::wrapNo);
     ~LogManager();
 
     template <typename T>
@@ -73,34 +76,38 @@ private:
     TimeType m_timetype;
     bool m_parse = false;
     Level loglevel = LogCatcher::Debug;
-
+    plcManager::CommandContext m_ctx;
 };
 
 inline LogManager logApp(LogCatcher::Level level = LogCatcher::Info) {
     return LogManager(LogManager::Source::App, level);
 }
 
-inline LogManager logPLC(LogCatcher::Level level = LogCatcher::Info,
+inline LogManager logPLC(const QString &name = QString(), LogCatcher::Level level = LogCatcher::Info,
                          LogCatcher::Wrapped wrap = LogCatcher::wrapNo) {
-    return LogManager(LogCatcher::PLC, level, wrap);
+    plcManager::CommandContext ctx;
+    ctx.name = name;
+    return LogManager(ctx, LogCatcher::PLC, level, wrap);
 }
 
-inline LogManager logPLC(const QDateTime &timestamp,
-                         LogCatcher::Level level = LogCatcher::Info,
-                         LogCatcher::Wrapped wrap = LogCatcher::wrapNo) {
-    return LogManager(timestamp, LogCatcher::PLC, level, wrap);
-}
+// inline LogManager logPLC(const QDateTime &timestamp,
+//                          LogCatcher::Level level = LogCatcher::Info,
+//                          LogCatcher::Wrapped wrap = LogCatcher::wrapNo) {
+//     return LogManager(timestamp, LogCatcher::PLC, level, wrap);
+// }
 
-inline LogManager debugPLC() {
-    return LogManager(LogCatcher::PLC, LogCatcher::Debug);
+inline LogManager debugPLC(const QString &name = QString()) {
+    plcManager::CommandContext ctx;
+    ctx.name = name;
+    return LogManager(ctx, LogCatcher::PLC, LogCatcher::Debug);
 }
 
 inline LogManager debugApp() {
     return LogManager(LogCatcher::App, LogCatcher::Debug);
 }
 
-inline LogManager rawPLC(){
-    return LogManager(true, LogCatcher::PLC);
+inline LogManager rawPLC(const plcManager::CommandContext &ctx){
+    return LogManager(ctx, true, LogCatcher::PLC);
 }
 
 #endif // LOGMANAGER_H

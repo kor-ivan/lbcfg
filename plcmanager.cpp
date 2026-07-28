@@ -16,7 +16,7 @@ void plcManager::scanDevice(const QString &ipv6, const QString &name)
     lbc->setTCPaddr(ipv6, port);
     connect(lbc, &LBclient::lbDisconnect, this,
             [lbc](const QString& lbhost, const QString& message, const QModbusDevice::Error error){
-                debugPLC()<<message<<"disconnect";
+                debugPLC(lbhost)<<message<<"disconnect";
                 lbc->deleteLater();
             }
             );
@@ -52,7 +52,7 @@ void plcManager::requestConfig(const QString &ipv6, const QString &name)
                 if(error==QModbusDevice::NoError){
                     QString yamlContent = lbyaml::getlbconf(Qjo);
                     debugApp()<<"# BEGIN YAML";
-                    logPLC(LogCatcher::Debug, LogCatcher::wrapYes)<<yamlContent;
+                    logPLC(name, LogCatcher::Debug, LogCatcher::wrapYes)<<yamlContent;
                     // lbyaml::printlbconf(Qjo);
                     debugApp()<<"# END YAML";
                     // Получаем YAML-текст один раз, чтобы использовать его для сравнения
@@ -208,10 +208,10 @@ void plcManager::startLog(const CommandContext &ctx, const QString &flag)
     if (ctx.slot!=-1)
         activeLogClient->setSlot(ctx.slot);
     activeLogClient->setTCPaddr(ctx.ipv6, port);
-    connect(activeLogClient, &LBclient::ExecuteCompletedStr, this, [this]
+    connect(activeLogClient, &LBclient::ExecuteCompletedStr, this, [this, ctx]
             (const QString& lbstr, const QString& message, const QModbusDevice::Error error){
                 if (error==QModbusDevice::NoError){
-                    rawPLC()<<lbstr;
+                    rawPLC(ctx)<<lbstr;
                 }
                 else
                     emit errorOccurred(lbstr);
