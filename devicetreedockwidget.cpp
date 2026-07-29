@@ -3,9 +3,10 @@
 #include <QMenu>
 #include <QMessageBox>
 #include "logmanager.h"
+#include "commandmanager.h"
 
-DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent, plcManager *plc)
-    : QDockWidget("Tree View", parent), lbplc(plc)
+DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent)
+    : QDockWidget("Tree View", parent), lbplc(plcManager::instanse())
 {
     QWidget *content = new QWidget(this);
     setWidget(content);
@@ -187,22 +188,24 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
         emit requestFlash(ctx);
     });
 
-    QMenu *logMenu = menu.addMenu("Запросить лог");
+    CommandManager::instance()->getLogMenu(ctx, &menu);
 
-    QAction *logAll = logMenu->addAction("Запросить весь лог");
-    connect(logAll, &QAction::triggered, this, [this, ctx](){
-        lbplc->startLog(ctx, "a");
-    });
+    // QMenu *logMenu = menu.addMenu("Запросить лог");
 
-    QAction *logLast100 = logMenu->addAction("Запросить 100 сообщений");
-    connect(logLast100, &QAction::triggered, this, [this, ctx](){
-        lbplc->startLog(ctx, "a100");
-    });
+    // QAction *logAll = logMenu->addAction("Запросить весь лог");
+    // connect(logAll, &QAction::triggered, this, [this, ctx](){
+    //     lbplc->startLog(ctx, "a");
+    // });
 
-    QAction *logLast100f = logMenu->addAction("Запросить 100 и следовать");
-    connect(logLast100f, &QAction::triggered, this, [this, ctx](){
-        lbplc->startLog(ctx, "a100f");
-    });
+    // QAction *logLast100 = logMenu->addAction("Запросить 100 сообщений");
+    // connect(logLast100, &QAction::triggered, this, [this, ctx](){
+    //     lbplc->startLog(ctx, "a100");
+    // });
+
+    // QAction *logLast100f = logMenu->addAction("Запросить 100 и следовать");
+    // connect(logLast100f, &QAction::triggered, this, [this, ctx](){
+    //     lbplc->startLog(ctx, "a100f");
+    // });
 
     menu.exec(treeView->viewport()->mapToGlobal(pos));
 

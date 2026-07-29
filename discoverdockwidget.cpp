@@ -5,9 +5,10 @@
 #include <QMenu>
 #include <QClipboard>
 #include "logmanager.h"
+#include "commandmanager.h"
 
-DiscoverDockWidget::DiscoverDockWidget(QWidget *parent, plcManager *plc)
-    : QDockWidget("Discover", parent), lbplc(plc)
+DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
+    : QDockWidget("Discover", parent), lbplc(plcManager::instanse())
 {
     QWidget *content = new QWidget(this);
     setWidget(content);
@@ -55,8 +56,8 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent, plcManager *plc)
     connect(
         btnDiscover,
         &QPushButton::clicked,
-        this,
-        &DiscoverDockWidget::startDiscover);
+        lbplc,
+        &plcManager::startDiscover);
 
     connect(lbplc, &plcManager::discoverCompleted,
             this, &DiscoverDockWidget::discoverReceived);
@@ -66,11 +67,13 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent, plcManager *plc)
         &QTableWidget::cellDoubleClicked,
         this,
         &DiscoverDockWidget::onTableDoubleClicked);
+
+    connect(lbplc, &plcManager::discoverStarting,
+            this, &DiscoverDockWidget::cleanRow);
 }
 
-void DiscoverDockWidget::startDiscover()
+void DiscoverDockWidget::cleanRow()
 {
-    lbplc->startDiscover();
     table->setRowCount(0); // Очищаем старые строки
 }
 
@@ -92,9 +95,10 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
 {
     QTableWidgetItem *item = table->itemAt(pos);
     if (!item) return;
+    plcManager::CommandContext ctx;
 
-    QString ipv6 = table->item(item->row(), 6)->text();
-    QString name = table->item(item->row(), 0)->text();
+    ctx.ipv6 = table->item(item->row(), 6)->text();
+    ctx.name = table->item(item->row(), 0)->text();
 
     QMenu menu(this);
     QAction *AddDivice = menu.addAction("Добавить");
@@ -109,13 +113,15 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
     QAction *MacCopy = menu.addAction("Копировать MAC");
     QAction *ipv6Copy = menu.addAction("Копировать IPv6");
 
+    CommandManager::instance()->getLogMenu(ctx, &menu);
+
     QAction *selectedItem = menu.exec(table->viewport()->mapToGlobal(pos));
     QClipboard *clipboard = QGuiApplication::clipboard();
 
     if (selectedItem == AddDivice){
-        emit deviceSelected(ipv6,name);
+        emit deviceSelected(ctx.ipv6, ctx.name);
     }else if (selectedItem == copy) {
-        clipboard->setText(ldmap.value(ipv6).toString());
+        clipboard->setText(ldmap.value(ctx.ipv6).toString());
     }else if (selectedItem == Allcopy) {
         QStringList qstr;
         for (auto i : ldmap) {
@@ -123,14 +129,14 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
         }
         clipboard->setText(qstr.join("\n"));
     }else if (selectedItem == getConf) {
-        emit deviceSelected(ipv6,name);
-        emit requestConfig(ipv6, name);
+        emit deviceSelected(ctx.ipv6, ctx.name);
+        emit requestConfig(ctx.ipv6, ctx.name);
     }else if (selectedItem == newConf){
-        emit newConfig(ipv6, name);
+        emit newConfig(ctx.ipv6, ctx.name);
     }else if (selectedItem == MacCopy){
-        clipboard->setText(ldmap.value(ipv6).mac);
+        clipboard->setText(ldmap.value(ctx.ipv6).mac);
     }else if (selectedItem == ipv6Copy){
-        clipboard->setText(ipv6);
+        clipboard->setText(ctx.ipv6);
     }
 }
 

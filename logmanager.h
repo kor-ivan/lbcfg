@@ -90,11 +90,6 @@ inline LogManager logPLC(const QString &name = QString(), LogCatcher::Level leve
     return LogManager(ctx, LogCatcher::PLC, level, wrap);
 }
 
-// inline LogManager logPLC(const QDateTime &timestamp,
-//                          LogCatcher::Level level = LogCatcher::Info,
-//                          LogCatcher::Wrapped wrap = LogCatcher::wrapNo) {
-//     return LogManager(timestamp, LogCatcher::PLC, level, wrap);
-// }
 
 inline LogManager debugPLC(const QString &name = QString()) {
     plcManager::CommandContext ctx;

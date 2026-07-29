@@ -11,11 +11,12 @@
 #include <QScrollBar>
 #include <QMessageBox>
 #include <QFileDialog>
+#include "logmanager.h"
 
 
-ConfigDockWidget::ConfigDockWidget(const QString &name, QWidget *parent, plcManager *plc)
+ConfigDockWidget::ConfigDockWidget(const QString &name, QWidget *parent)
     : QDockWidget(QString("Конфигурация: %1").arg(name),parent),
-    lbplc(plc)
+    lbplc(plcManager::instanse())
 {
     plcName = name;
     QWidget *content = new QWidget(this);
@@ -58,6 +59,12 @@ ConfigDockWidget::ConfigDockWidget(const QString &name, QWidget *parent, plcMana
 
     connect(plcSelector, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &ConfigDockWidget::scrollToSelectedPlc);
+
+    QAction *confAction = new QAction("Сконфигурировать", this);
+    connect(confAction, &QAction::triggered, this, [this](){
+        onConfigureClicked();
+    });
+    CommandManager::instance()->setConfAction(confAction);
 }
 
 void ConfigDockWidget::setConfig(const QString &yaml)
@@ -158,14 +165,11 @@ void ConfigDockWidget::showCustomContextMenu(const QPoint &pos)
     QAction *saveAsAction = CommandManager::instance()->getSaveAsAction();
     if (saveAsAction)
         standardMenu->addAction(saveAsAction);
-    // QAction *saveAction = standardMenu->addAction("Сохранить");
-    // connect(saveAction, &QAction::triggered, this, [this](){
-    //     saveFile();
-    // });
-    QAction *confAction = standardMenu->addAction("Сконфигурировать");
-    connect(confAction, &QAction::triggered, this, [this](){
-        onConfigureClicked();
-    });
+
+    QAction *confAction = CommandManager::instance()->getConfAction();
+    if (confAction)
+        standardMenu->addAction(confAction);
+
     standardMenu->exec(editor->mapToGlobal(pos));
     delete standardMenu;
 }
@@ -196,7 +200,7 @@ void ConfigDockWidget::onConfigureClicked()
     QString mac;
     if (model) {
         mac = model->item(index, 1)->text();
-        qDebug() << "Запуск конфигурации для:" << currentSelected << "с MAC-адресом:" << mac;
+        debugApp() << "Запуск конфигурации для:" << currentSelected << "с MAC-адресом:" << mac;
     }
 
     if (modified || currentFilePath.isEmpty()){
@@ -245,7 +249,7 @@ void ConfigDockWidget::scrollToSelectedPlc(int index)
         editor->ensureCursorVisible();
         editor->setFocus();
     } else {
-        qDebug() << "Не удалось найти текстовый блок для строки:" << targetLine;
+        debugApp() << "Не удалось найти текстовый блок для строки:" << targetLine;
     }
 }
 

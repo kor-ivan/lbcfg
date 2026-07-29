@@ -1,8 +1,10 @@
 #include "commandmanager.h"
 #include <QApplication>
 #include "logmanager.h"
+#include "qmenu.h"
 
-CommandManager::CommandManager()
+CommandManager::CommandManager() :
+    lbplc(plcManager::instanse())
 {
     connect(qApp, &QApplication::focusChanged, this, [this](QWidget *oldFocus, QWidget *newFocus){
         Q_UNUSED(oldFocus);
@@ -21,6 +23,16 @@ CommandManager::CommandManager()
     });
 }
 
+QAction *CommandManager::getConfAction() const
+{
+    return confAction.get();
+}
+
+void CommandManager::setConfAction(QAction *newConfAction)
+{
+    confAction = newConfAction;
+}
+
 QAction *CommandManager::getSaveAsAction() const
 {
     return saveAsAction;
@@ -29,6 +41,25 @@ QAction *CommandManager::getSaveAsAction() const
 void CommandManager::setSaveAsAction(QAction *newSaveAsAction)
 {
     saveAsAction = newSaveAsAction;
+}
+
+void CommandManager::getLogMenu(const plcManager::CommandContext &ctx, QMenu *parentMenu)
+{
+    QMenu *logMenu = parentMenu->addMenu("Запросить лог");
+    QAction *logAll = logMenu->addAction("Запросить весь лог");
+    connect(logAll, &QAction::triggered, this, [this, ctx](){
+        lbplc->startLog(ctx, "a");
+    });
+
+    QAction *logLast100 = logMenu->addAction("Запросить 100 сообщений");
+    connect(logLast100, &QAction::triggered, this, [this, ctx](){
+        lbplc->startLog(ctx, "a100");
+    });
+
+    QAction *logLast100f = logMenu->addAction("Запросить 100 и следовать");
+    connect(logLast100f, &QAction::triggered, this, [this, ctx](){
+        lbplc->startLog(ctx, "a100f");
+    });
 }
 
 QAction *CommandManager::getSaveAction() const

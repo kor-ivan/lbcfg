@@ -10,7 +10,7 @@ class DeviceTreeDockWidget : public QDockWidget
 {
     Q_OBJECT
 public:
-    explicit DeviceTreeDockWidget(QWidget *parent = nullptr, plcManager *plc = nullptr);
+    explicit DeviceTreeDockWidget(QWidget *parent = nullptr);
     void updateDevice(const QString& ipv6, const QString& name,
                       const QMap<qsizetype,lbprocess::scaninfo>& scan);
     bool containsName(const QString& name);

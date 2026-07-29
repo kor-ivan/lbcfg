@@ -2,12 +2,11 @@
 #include "logmanager.h"
 
 
-plcManager::plcManager(QObject *parent)
-    : QObject{parent}
+plcManager::plcManager()
 {}
 
-plcManager::~plcManager()
-{}
+// plcManager::~plcManager()
+// {}
 
 void plcManager::scanDevice(const QString &ipv6, const QString &name)
 {
@@ -74,6 +73,7 @@ void plcManager::startDiscover()
     debugApp()<<"startDiscover "<<discoverRunning;
     if (discoverRunning)
         return;
+    emit discoverStarting();
     discover *wgtdiscover = new discover(this);
     connect(wgtdiscover, &discover::discoverCompleted, this,
             [this, wgtdiscover] (const QMap<QString, discover::lbinfo>& DiscoverMap, const discover::discoverError error, const QString errorStr){

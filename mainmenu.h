@@ -26,6 +26,7 @@ private:
     void initFileMenu(QMenuBar *menuBar);
     void initEditMenu(QMenuBar *menuBar);
     void initViewMenu(QMenuBar *menuBar);
+    void initPlcMenu(QMenuBar *menuBar);
     void initHelpMenu(QMenuBar *menuBar);
 
     QAction *saveAction = nullptr;
@@ -33,8 +34,10 @@ private:
 
     QMenu *editMenu = nullptr;
     QMenu *viewMenu = nullptr;
+    QMenu *plcMenu = nullptr;
     void onEditMenuAboutToShow();
     void onViewMenuAboutToShow();
+    void onPlcMenuAboutToShow();
     QList<QAction*> activeTextActions() const;
 
 };

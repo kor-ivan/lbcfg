@@ -27,6 +27,11 @@ public:
     QAction *getSaveAsAction() const;
     void setSaveAsAction(QAction *newSaveAsAction);
 
+    void getLogMenu(const plcManager::CommandContext &ctx, QMenu *parentMenu);
+
+    QAction *getConfAction() const;
+    void setConfAction(QAction *newConfAction);
+
 signals:
     void activeConfDockWidgetChanged(ConfigDockWidget *newWidget);
 
@@ -35,11 +40,12 @@ private:
     ~CommandManager() = default;
     CommandManager(const CommandManager&) = delete;
     CommandManager& operator=(const CommandManager&) = delete;
-
+    plcManager *lbplc = nullptr;
     QPointer<ConfigDockWidget> activeConfDockWidget = nullptr;
 
     QAction *saveAction = nullptr;
     QAction *saveAsAction = nullptr;
+    QPointer<QAction> confAction = nullptr;
 
 };
 

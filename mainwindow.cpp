@@ -21,7 +21,7 @@ MainWindow::MainWindow(QWidget *parent)
     setCentralWidget(dummy);
     dummy->hide(); // Скрываем, чтобы доки сомкнулись в центре
 
-    lbplc = new plcManager(this);
+    lbplc = plcManager::instanse();
     createTreeDockWidget();
     createDiscoverDockWidget();
     setDockNestingEnabled(true);
@@ -148,7 +148,7 @@ ConfigDockWidget *MainWindow::CreateConfDockWidget(const QString &key, const QSt
     if (configDocks.contains(key)) {
         dock = configDocks[key];
     } else {
-        dock = new ConfigDockWidget(name, this, lbplc);
+        dock = new ConfigDockWidget(name, this);
         dock->setAttribute(Qt::WA_DeleteOnClose);
 
         configDocks.insert(key, dock);
@@ -176,7 +176,7 @@ DeviceTreeDockWidget *MainWindow::createTreeDockWidget()
 {
     if (treeDock)
         return treeDock.get();
-    treeDock = new DeviceTreeDockWidget(this, lbplc);
+    treeDock = new DeviceTreeDockWidget(this);
     treeDock->setAttribute(Qt::WA_DeleteOnClose); // Чтобы док уничтожался при нажатии на крестик
     treeDock->setWindowTitle("Device Tree");
     treeDock->setAllowedAreas(Qt::AllDockWidgetAreas);
@@ -224,7 +224,7 @@ DiscoverDockWidget *MainWindow::createDiscoverDockWidget()
 {
     if (discoverDock)
         return discoverDock.get();
-    discoverDock = new DiscoverDockWidget(this, lbplc);
+    discoverDock = new DiscoverDockWidget(this);
     discoverDock->setAttribute(Qt::WA_DeleteOnClose);
     discoverDock->setWindowTitle("Discover");
     discoverDock->setAllowedAreas(Qt::AllDockWidgetAreas);

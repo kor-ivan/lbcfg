@@ -13,7 +13,7 @@ class DiscoverDockWidget : public QDockWidget
 {
     Q_OBJECT
 public:
-    explicit DiscoverDockWidget(QWidget *parent = nullptr, plcManager *plc = nullptr);
+    explicit DiscoverDockWidget(QWidget *parent = nullptr);
 
 signals:
     void deviceSelected(const QString& ipv6, const QString& name);
@@ -21,13 +21,11 @@ signals:
     void newConfig(const QString& ipv6, const QString& name);
 
 private slots:
-    void startDiscover();
+    void cleanRow();
     void onTableDoubleClicked(int row, int column);
     void showContextMenu(const QPoint& pos);
 
 private:
-    // void fillTable();
-
     plcManager *lbplc = nullptr;
     void discoverReceived(const QMap<QString, discover::lbinfo>& DiscoverMap);
     QPushButton* btnDiscover = nullptr;

@@ -11,6 +11,7 @@ MainMenu::MainMenu(MainWindow *mainWindow)
     initFileMenu(p_menuBar);
     initEditMenu(p_menuBar);
     initViewMenu(p_menuBar);
+    initPlcMenu(p_menuBar);
     initHelpMenu(p_menuBar);
 
     connect(CommandManager::instance(), &CommandManager::activeConfDockWidgetChanged,
@@ -76,6 +77,12 @@ void MainMenu::initViewMenu(QMenuBar *menuBar)
 {
     viewMenu = menuBar->addMenu("&Вид");
     connect(viewMenu, &QMenu::aboutToShow, this, &MainMenu::onViewMenuAboutToShow);
+}
+
+void MainMenu::initPlcMenu(QMenuBar *menuBar)
+{
+    plcMenu = menuBar->addMenu("&ПЛК");
+    connect(plcMenu, &QMenu::aboutToShow, this, &MainMenu::onPlcMenuAboutToShow);
 }
 
 void MainMenu::initHelpMenu(QMenuBar *menuBar)
@@ -194,6 +201,33 @@ void MainMenu::onViewMenuAboutToShow()
                 dock->setFocus();
             });
         }
+    }
+}
+
+void MainMenu::onPlcMenuAboutToShow()
+{
+    plcMenu->clear();
+    QAction *discoverAction = plcMenu->addAction("Сканироавть");
+    connect(discoverAction, &QAction::triggered, [this](){
+        if (!p_mainWindow->getDiscoverDock().get()){
+            auto dock = p_mainWindow->createDiscoverDockWidget();
+            dock->show();
+            dock->raise();
+            dock->setFocus();
+        }
+        plcManager::instanse()->startDiscover();
+    });
+
+    QAction *confAction = CommandManager::instance()->getConfAction();
+    if (confAction){
+
+        confAction->setText(QString("Сконфигурировать %1")
+                                .arg(CommandManager::instance()->getActiveConfDockWidget()->getPlcName()));
+        plcMenu->addAction(confAction);
+    }
+    else{
+        confAction = plcMenu->addAction("Сконфигурировать");
+        confAction->setEnabled(false);
     }
 }
 

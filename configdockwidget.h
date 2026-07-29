@@ -14,8 +14,7 @@ class ConfigDockWidget : public QDockWidget
     Q_OBJECT
 public:
     explicit ConfigDockWidget(const QString& name,
-                              QWidget *parent = nullptr,
-                              plcManager *plc = nullptr);
+                              QWidget *parent = nullptr);
     void setConfig(const QString& yaml);
     QString config() const;
     bool isModified() const;
@@ -28,6 +27,7 @@ public:
     QString getPlcName() const;
 
     QTextEdit *getEditor() const;
+    void onConfigureClicked();
 
 signals:
     // void getSaveFile();
@@ -36,7 +36,7 @@ signals:
 private slots:
     void onTextChanged();
     void showCustomContextMenu(const QPoint &pos);
-    void onConfigureClicked();
+
     void scrollToSelectedPlc(int index);
 
 

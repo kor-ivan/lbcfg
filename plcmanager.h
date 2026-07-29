@@ -11,8 +11,13 @@ class plcManager : public QObject
 {
     Q_OBJECT
 public:
-    explicit plcManager(QObject *parent = nullptr);
-    virtual ~plcManager();
+    // explicit plcManager(QObject *parent = nullptr);
+    // virtual ~plcManager();
+    static plcManager* instanse()
+    {
+        static plcManager inst;
+        return &inst;
+    }
     struct CommandContext {
         QString name;
         QString ipv6;
@@ -69,6 +74,7 @@ signals:
     void configReceived(const QString &ipv6, const QString &name, const QString &yamlContent);
     void errorOccurred(const QString &message);
     void eventOccurred(const QString &message);
+    void discoverStarting();
     void discoverCompleted(const QMap<QString, discover::lbinfo>& DiscoverMap);
     void firmwareStarted(const CommandContext &ctx, const QString &message);
     void firmwareProgressChanged(int prc);
@@ -82,6 +88,10 @@ signals:
 
 
 private:
+    plcManager();
+    ~plcManager() = default;
+    plcManager(const plcManager&) = delete;
+    plcManager& operator=(const plcManager&) = delete;
     static constexpr int port = 502;
     bool discoverRunning = false;
     LBclient *activeOtaClient = nullptr;
