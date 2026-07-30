@@ -72,6 +72,8 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
             this, &DiscoverDockWidget::cleanRow);
 }
 
+
+
 void DiscoverDockWidget::cleanRow()
 {
     table->setRowCount(0); // Очищаем старые строки
@@ -182,4 +184,9 @@ void DiscoverDockWidget::discoverReceived(const QMap<QString, discover::lbinfo> 
         row++;
     }
     table->setSortingEnabled(true); // Возвращаем возможность сортировки
+}
+
+QMap<QString, discover::lbinfo> DiscoverDockWidget::getLdmap() const
+{
+    return ldmap;
 }

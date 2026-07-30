@@ -1,7 +1,9 @@
 #include "logdockwidget.h"
+#include "qmenu.h"
 #include <QMetaEnum>
 #include <QVBoxLayout>
 #include <QScrollBar>
+#include <QFileDialog>
 
 LogDockWidget::LogDockWidget(QWidget *parent)
     : QDockWidget{"LogViewer", parent}
@@ -15,6 +17,10 @@ LogDockWidget::LogDockWidget(QWidget *parent)
     logViewer->setMinimumHeight(50); // Минумум, чтобы совсем не пропал
     logViewer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     this->setMinimumSize(QSize(0, 50)); // Сбрасываем ограничения самого дока
+
+    logViewer->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(logViewer, &QPlainTextEdit::customContextMenuRequested,
+            this, &LogDockWidget::showContextMenu);
 
     QVBoxLayout *layout = new QVBoxLayout(centralWidget);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -171,8 +177,15 @@ void LogDockWidget::appendLogEntry(const QDateTime &timestamp,
                                         .arg(message.toHtmlEscaped()):message.toHtmlEscaped())
                            .arg(timeColor)
                            .arg(ctx.isSlot()?QString("%1 slot %2").arg(ctx.name).arg(ctx.slot):ctx.name);
-    logViewer->appendHtml(htmlLine);
-    logViewer->moveCursor(QTextCursor::End);
+    if (isAutoScrollEnabled) {
+        logViewer->appendHtml(htmlLine);
+    } else {
+        int savedScrollPos = logViewer->verticalScrollBar()->value();
+        bool wasBlocked = logViewer->verticalScrollBar()->blockSignals(true);
+        logViewer->appendHtml(htmlLine);
+        logViewer->verticalScrollBar()->setValue(savedScrollPos);
+        logViewer->verticalScrollBar()->blockSignals(wasBlocked);
+    }
 }
 
 void LogDockWidget::updateButtonPosition()
@@ -192,4 +205,60 @@ void LogDockWidget::updateButtonPosition()
     int y = padding;
 
     stopButton->move(x, y);
+}
+
+void LogDockWidget::showContextMenu(const QPoint &pos)
+{
+    QMenu *menu = logViewer->createStandardContextMenu(pos);
+    menu->addSeparator();
+
+    menu->addAction("Очистить лог", this, &LogDockWidget::clearLog);
+    // clearAction->setIcon(QIcon::fromTheme("edit-clear"));
+
+    menu->addAction(tr("Сохранить в файл ..."), this, &LogDockWidget::saveLogToFile);
+    // saveAction->setIcon(QIcon::fromTheme("document-save"));
+
+    menu->addSeparator();
+
+    QAction *scrollAction = menu->addAction("Автоматическая прокрутка");
+    scrollAction->setCheckable(true);
+    scrollAction->setChecked(isAutoScrollEnabled);
+    connect(scrollAction, &QAction::toggled, this, &LogDockWidget::toggleAutoScroll);
+
+    menu->exec(logViewer->mapToGlobal(pos));
+    delete menu;
+}
+
+void LogDockWidget::clearLog()
+{
+    logViewer->clear();
+}
+
+void LogDockWidget::saveLogToFile()
+{
+    QString fileName = QFileDialog::getSaveFileName(this,
+        tr("Сохранить лог"), "", tr("Log Files (*.log);;Text Files (*.txt);;All Files (*)"));
+
+    if (fileName.isEmpty()) {
+        return;
+    }
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        return;
+    }
+
+    QTextStream out(&file);
+    // Извлекаем чистый текст без HTML-тегов для удобного чтения лога в блокноте
+    out << logViewer->toPlainText();
+    file.close();
+}
+
+void LogDockWidget::toggleAutoScroll(bool checked)
+{
+    isAutoScrollEnabled = checked;
+    if (isAutoScrollEnabled) {
+        logViewer->moveCursor(QTextCursor::End);
+        logViewer->verticalScrollBar()->setValue(logViewer->verticalScrollBar()->maximum());
+    }
 }

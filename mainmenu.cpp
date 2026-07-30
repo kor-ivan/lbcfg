@@ -229,6 +229,20 @@ void MainMenu::onPlcMenuAboutToShow()
         confAction = plcMenu->addAction("Сконфигурировать");
         confAction->setEnabled(false);
     }
+
+    QMenu *logMenu = plcMenu->addMenu("Запросить лог у...");
+    if (p_mainWindow->getDiscoverDock().get())
+    {
+        logMenu->setEnabled(true);
+        QMap<QString, discover::lbinfo> ldmap = p_mainWindow->getDiscoverDock()->getLdmap();
+        plcManager::CommandContext ctx;
+        for (auto it = ldmap.begin(); it != ldmap.end(); ++it){
+            ctx.ipv6 = it.key();
+            CommandManager::instance()->getLogMenu(ctx, logMenu, it.value().name);
+        }
+    }else{
+        logMenu->setEnabled(false);
+    }
 }
 
 QList<QAction *> MainMenu::activeTextActions() const

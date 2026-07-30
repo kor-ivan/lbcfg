@@ -43,9 +43,9 @@ void CommandManager::setSaveAsAction(QAction *newSaveAsAction)
     saveAsAction = newSaveAsAction;
 }
 
-void CommandManager::getLogMenu(const plcManager::CommandContext &ctx, QMenu *parentMenu)
+void CommandManager::getLogMenu(const plcManager::CommandContext &ctx, QMenu *parentMenu, const QString &text)
 {
-    QMenu *logMenu = parentMenu->addMenu("Запросить лог");
+    QMenu *logMenu = parentMenu->addMenu(text);
     QAction *logAll = logMenu->addAction("Запросить весь лог");
     connect(logAll, &QAction::triggered, this, [this, ctx](){
         lbplc->startLog(ctx, "a");

@@ -15,6 +15,8 @@ class DiscoverDockWidget : public QDockWidget
 public:
     explicit DiscoverDockWidget(QWidget *parent = nullptr);
 
+    QMap<QString, discover::lbinfo> getLdmap() const;
+
 signals:
     void deviceSelected(const QString& ipv6, const QString& name);
     void requestConfig(const QString& ipv6, const QString& name);

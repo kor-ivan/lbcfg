@@ -34,6 +34,11 @@ private:
     QPlainTextEdit *logViewer = nullptr;
     QPushButton *stopButton;
     void updateButtonPosition();
+    void showContextMenu(const QPoint &pos);
+    void clearLog();
+    void saveLogToFile();
+    void toggleAutoScroll(bool checked);
+    bool isAutoScrollEnabled = true;
 };
 
 #endif // LOGDOCKWIDGET_H

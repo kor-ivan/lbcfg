@@ -27,7 +27,8 @@ public:
     QAction *getSaveAsAction() const;
     void setSaveAsAction(QAction *newSaveAsAction);
 
-    void getLogMenu(const plcManager::CommandContext &ctx, QMenu *parentMenu);
+    void getLogMenu(const plcManager::CommandContext &ctx, QMenu *parentMenu,
+                    const QString &text = "Запросить лог");
 
     QAction *getConfAction() const;
     void setConfAction(QAction *newConfAction);
