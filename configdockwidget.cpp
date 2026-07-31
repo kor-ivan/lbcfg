@@ -1,5 +1,4 @@
 #include "configdockwidget.h"
-#include "qmenu.h"
 #include "commandmanager.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -21,15 +20,20 @@ ConfigDockWidget::ConfigDockWidget(const QString &name, QWidget *parent)
     plcName = name;
     QWidget *content = new QWidget(this);
     setWidget(content);
-    QVBoxLayout* layout = new QVBoxLayout(content);
-    layout->setSpacing(0);  // Расстояние МЕЖДУ topLayout и QTextEdit (минимальное)
 
+    // Основной вертикальный макет виджета
+    QVBoxLayout* mainLayout = new QVBoxLayout(content);
+    mainLayout->setSpacing(5);
+    mainLayout->setContentsMargins(4, 4, 4, 4);
+
+    // QVBoxLayout* layout = new QVBoxLayout(content);
+    // layout->setSpacing(0);  // Расстояние МЕЖДУ topLayout и QTextEdit (минимальное)
+
+    // 1. Оставляем верхнюю панель управления
     QHBoxLayout* topLayout = new QHBoxLayout();
-
     configButton = new QPushButton("Сконфигурировать", this);
     configButton->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     topLayout->addWidget(configButton,1);
-
 
     plcSelector = new QComboBox(this);
     plcSelector->setPlaceholderText("Выберите ПЛК..."); // Подсказка, если список пуст
@@ -45,15 +49,84 @@ ConfigDockWidget::ConfigDockWidget(const QString &name, QWidget *parent)
     plcSelector->setView(tableView); // Устанавливаем таблицу как выпадающий виджет
     topLayout->addWidget(plcSelector,3);
     topLayout->addStretch(3);
-    layout->addLayout(topLayout);
+    mainLayout->addLayout(topLayout);
     plcSelector->installEventFilter(this);
 
-    editor = new QTextEdit(this);
-    editor->setFontFamily("Courier New");
-    layout->addWidget(editor);
-    connect(editor, &QTextEdit::textChanged, this, &ConfigDockWidget::onTextChanged);
-    editor->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(editor, &QTextEdit::customContextMenuRequested, this, &ConfigDockWidget::showCustomContextMenu);
+    // 2. Создаем горизонтальный макет для бокового меню и контента
+    QHBoxLayout* contentLayout = new QHBoxLayout();
+    contentLayout->setSpacing(2);
+    contentLayout->setContentsMargins(0, 0, 0, 0);
+
+    // 3. Инициализируем боковую панель навигации (QListWidget)
+    sidebarMenu = new QListWidget(this);
+    sidebarMenu->setFixedWidth(110); // Фиксированная компактная ширина для текста
+    sidebarMenu->setSpacing(4);
+
+    sidebarMenu->setStyleSheet(
+        "QListWidget {"
+        "   border: none;"
+        "   background-color: #f5f5f5;" // Легкий серый фон панели
+        "   outline: 0;"
+        "}"
+        "QListWidget::item {"
+        "   padding: 8px 6px;"
+        "   border-radius: 4px;"
+        "   color: #333333;"
+        "}"
+        "QListWidget::item:selected {"
+        "   background-color: #0078d7;" // Синий акцент активной вкладки
+        "   color: white;"
+        "}"
+        "QListWidget::item:hover:!selected {"
+        "   background-color: #e5e5e5;"
+        "}"
+        );
+
+    sidebarMenu->addItem(new QListWidgetItem("Text View"));
+    sidebarMenu->addItem(new QListWidgetItem("Var View"));
+    sidebarMenu->addItem(new QListWidgetItem("IO View"));
+
+    // 4. Инициализируем стек-контейнер для страниц
+    stackedContainer = new QStackedWidget(this);
+
+    // Страница 0: Текстовый редактор YAML
+    yamlPage = new yamlTextView(this);
+    // QVBoxLayout *yamlLayout = new QVBoxLayout(yamlPage);
+    // yamlLayout->setContentsMargins(0, 0, 0, 0);
+    // editor = new QTextEdit(this);
+    // editor->setFontFamily("Courier New");
+    // yamlLayout->addWidget(editor);
+    stackedContainer->addWidget(yamlPage); // Индекс 0 в стеке
+
+    // Страница 1: Просмотр переменных (VarView)
+    varPage = new QWidget(this);
+    QVBoxLayout *varLayout = new QVBoxLayout(varPage);
+    varLayout->setContentsMargins(0, 0, 0, 0);
+    varTableView = new QTableView(this);
+    // Здесь будет настройка таблицы переменных (сетка, заголовки и т.д.)
+    varLayout->addWidget(varTableView);
+    stackedContainer->addWidget(varPage); // Индекс 1 в стеке
+
+    // Страница 2: Настройка модулей ПЛК (DeviceView - задел на будущее)
+    devicePage = new QWidget(this);
+    QVBoxLayout *deviceLayout = new QVBoxLayout(devicePage);
+    deviceLayout->setContentsMargins(0, 0, 0, 0);
+    deviceTableView = new QTableView(this);
+    deviceLayout->addWidget(deviceTableView);
+    stackedContainer->addWidget(devicePage); // Индекс 2 в стеке
+
+    // 5. Собираем макет контента
+    contentLayout->addWidget(sidebarMenu);
+    contentLayout->addWidget(stackedContainer, 1); // Растягиваем контентную область
+    mainLayout->addLayout(contentLayout);
+
+    // 6. Подключение сигналов и слотов переключения страниц
+    connect(sidebarMenu, &QListWidget::currentRowChanged,
+            this, &ConfigDockWidget::onSidebarRowChanged);
+
+    connect(yamlPage, &yamlTextView::TextChanged, this, &ConfigDockWidget::onTextChanged);
+    // editor->setContextMenuPolicy(Qt::CustomContextMenu);
+    // connect(editor, &QTextEdit::customContextMenuRequested, this, &ConfigDockWidget::showCustomContextMenu);
 
     connect(configButton, &QPushButton::clicked, this, &ConfigDockWidget::onConfigureClicked);
 
@@ -65,14 +138,18 @@ ConfigDockWidget::ConfigDockWidget(const QString &name, QWidget *parent)
         onConfigureClicked();
     });
     CommandManager::instance()->setConfAction(confAction);
+
+    // Устанавливаем дефолтную страницу (YAML) при запуске
+    sidebarMenu->setCurrentRow(0);
 }
 
 void ConfigDockWidget::setConfig(const QString &yaml)
 {
     originalYaml = yaml;
-    editor->blockSignals(true);
-    editor->setPlainText(yaml);
-    editor->blockSignals(false);
+    yamlPage->setText(originalYaml);
+    // editor->blockSignals(true);
+    // editor->setPlainText(yaml);
+    // editor->blockSignals(false);
     modified = false;
     plcSelector->blockSignals(true);
     plcSelector->clear();
@@ -86,7 +163,7 @@ void ConfigDockWidget::setConfig(const QString &yaml)
 
 QString ConfigDockWidget::config() const
 {
-    return editor->toPlainText();
+    return yamlPage->getEditor()->toPlainText();
 }
 
 bool ConfigDockWidget::isModified() const
@@ -134,9 +211,9 @@ bool ConfigDockWidget::writeFile(const QString &filePath)
         return false;
     }
     QTextStream out(&file);
-    out << editor->toPlainText();
+    out << yamlPage->getEditor()->toPlainText();
     currentFilePath = filePath;
-    originalYaml = editor->toPlainText(); // Сбрасываем флаг модификации
+    originalYaml = yamlPage->getEditor()->toPlainText(); // Сбрасываем флаг модификации
     modified = false;
     plcName = QFileInfo(filePath).fileName();
     updateTitle();
@@ -145,7 +222,7 @@ bool ConfigDockWidget::writeFile(const QString &filePath)
 
 void ConfigDockWidget::onTextChanged()
 {
-    if (editor->toPlainText() != originalYaml){
+    if (yamlPage->getEditor()->toPlainText() != originalYaml){
         modified = true;
         setWindowTitle(QString("* Конфигурация: %1").arg(plcName));
     }else{
@@ -154,25 +231,25 @@ void ConfigDockWidget::onTextChanged()
     }
 }
 
-void ConfigDockWidget::showCustomContextMenu(const QPoint &pos)
-{
-    // Создаем стандартное меню для QTextEdit, чтобы не терять логику (Undo, Copy, Paste)
-    QMenu *standardMenu = editor->createStandardContextMenu(pos);
-    standardMenu->addSeparator();
-    QAction *saveAction = CommandManager::instance()->getSaveAction();
-    if (saveAction)
-        standardMenu->addAction(saveAction);
-    QAction *saveAsAction = CommandManager::instance()->getSaveAsAction();
-    if (saveAsAction)
-        standardMenu->addAction(saveAsAction);
+// void ConfigDockWidget::showCustomContextMenu(const QPoint &pos)
+// {
+//     // Создаем стандартное меню для QTextEdit, чтобы не терять логику (Undo, Copy, Paste)
+//     QMenu *standardMenu = editor->createStandardContextMenu(pos);
+//     standardMenu->addSeparator();
+//     QAction *saveAction = CommandManager::instance()->getSaveAction();
+//     if (saveAction)
+//         standardMenu->addAction(saveAction);
+//     QAction *saveAsAction = CommandManager::instance()->getSaveAsAction();
+//     if (saveAsAction)
+//         standardMenu->addAction(saveAsAction);
 
-    QAction *confAction = CommandManager::instance()->getConfAction();
-    if (confAction)
-        standardMenu->addAction(confAction);
+//     QAction *confAction = CommandManager::instance()->getConfAction();
+//     if (confAction)
+//         standardMenu->addAction(confAction);
 
-    standardMenu->exec(editor->mapToGlobal(pos));
-    delete standardMenu;
-}
+//     standardMenu->exec(editor->mapToGlobal(pos));
+//     delete standardMenu;
+// }
 
 void ConfigDockWidget::onConfigureClicked()
 {
@@ -181,7 +258,7 @@ void ConfigDockWidget::onConfigureClicked()
     plcSelector->clear();
 
     // Передаем актуальный текст из редактора в наш метод
-    plcSelector->setModel(createPlcModel(editor->toPlainText()));
+    plcSelector->setModel(createPlcModel(yamlPage->getEditor()->toPlainText()));
     plcSelector->setModelColumn(0);
 
     // Восстанавливаем позицию
@@ -234,20 +311,20 @@ void ConfigDockWidget::scrollToSelectedPlc(int index)
     if (!lineData.isValid()) return;
     int targetLine = lineData.toInt();
 
-    QTextDocument *doc = editor->document();
+    QTextDocument *doc = yamlPage->getEditor()->document();
     QTextBlock block = doc->findBlockByLineNumber(targetLine);
     if (block.isValid()) {
         // 1. Создаем первый курсор для самого конца документа и временно отправляем экран туда
         QTextCursor bottomCursor(doc);
         bottomCursor.movePosition(QTextCursor::End);
-        editor->setTextCursor(bottomCursor);
+        yamlPage->getEditor()->setTextCursor(bottomCursor);
         // 2. Создаем целевой курсор на нужной строке
         QTextCursor targetCursor(block);
         // 3. Устанавливаем его. Так как экран был в самом низу, Qt прокрутит
         // документ ровно настолько, чтобы целевая строка только-только показалась сверху!
-        editor->setTextCursor(targetCursor);
-        editor->ensureCursorVisible();
-        editor->setFocus();
+        yamlPage->getEditor()->setTextCursor(targetCursor);
+        yamlPage->getEditor()->ensureCursorVisible();
+        yamlPage->getEditor()->setFocus();
     } else {
         debugApp() << "Не удалось найти текстовый блок для строки:" << targetLine;
     }
@@ -264,7 +341,7 @@ bool ConfigDockWidget::eventFilter(QObject *watched, QEvent *event)
             plcSelector->clear();
 
             // Передаем актуальный текст из редактора в наш метод
-            plcSelector->setModel(createPlcModel(editor->toPlainText()));
+            plcSelector->setModel(createPlcModel(yamlPage->getEditor()->toPlainText()));
             plcSelector->setModelColumn(0);
 
             // Восстанавливаем позицию
@@ -280,7 +357,7 @@ bool ConfigDockWidget::eventFilter(QObject *watched, QEvent *event)
 
 QTextEdit *ConfigDockWidget::getEditor() const
 {
-    return editor;
+    return yamlPage->getEditor();
 }
 
 
@@ -317,6 +394,34 @@ QStandardItemModel *ConfigDockWidget::createPlcModel(const QString &yamlText)
         row++;
     }
     return model;
+}
+
+void ConfigDockWidget::onSidebarRowChanged(int index)
+{
+    if (index < 0 || !stackedContainer) return;
+
+    // Переключаем видимый виджет в контейнере
+    stackedContainer->setCurrentIndex(index);
+
+    // Логика синхронизации данных между представлениями
+    if (index == 1) {
+        // Пользователь перешел во вкладку "Переменные" (VarView)
+        // Задача: Взять свежий текст из editor, распарсить его и заполнить varTableView
+        QString currentYaml = yamlPage->getEditor()->toPlainText();
+
+        // Пример вызова вашего парсера (сделайте по аналогии с createPlcModel):
+        // QStandardItemModel* varModel = parseYamlToVarModel(currentYaml);
+        // varTableView->setModel(varModel);
+    }
+    else if (index == 2) {
+        // Пользователь перешел во вкладку "Модули I/O" (DeviceView)
+        // Аналогично парсим YAML под нужды конфигуратора модулей
+    }
+    else if (index == 0) {
+        // Пользователь вернулся в текстовый режим
+        // Если в таблицах было разрешено редактирование, здесь нужно будет
+        // собрать данные из моделей, сформировать YAML-строку и записать её в editor
+    }
 }
 
 QString ConfigDockWidget::getCurrentFilePath() const

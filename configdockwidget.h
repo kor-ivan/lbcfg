@@ -6,7 +6,11 @@
 #include <QComboBox>
 #include <QPushButton>
 #include <QStandardItemModel>
+#include <QListWidget>
+#include <QStackedWidget>
+#include <QTableView>
 #include "plcmanager.h"
+#include "yamltextview.h"
 
 
 class ConfigDockWidget : public QDockWidget
@@ -15,10 +19,10 @@ class ConfigDockWidget : public QDockWidget
 public:
     explicit ConfigDockWidget(const QString& name,
                               QWidget *parent = nullptr);
-    void setConfig(const QString& yaml);
+
     QString config() const;
     bool isModified() const;
-
+    void setConfig(const QString &yaml);
     bool openFile(const QString &filePath);
     bool saveFile();
     bool saveFileAs();
@@ -35,7 +39,7 @@ signals:
 
 private slots:
     void onTextChanged();
-    void showCustomContextMenu(const QPoint &pos);
+
 
     void scrollToSelectedPlc(int index);
 
@@ -45,7 +49,20 @@ protected:
 
 private:
     plcManager *lbplc = nullptr;
-    QTextEdit* editor = nullptr;
+
+    // Добавить в private секцию в configdockwidget.h
+    QListWidget *sidebarMenu = nullptr;
+    QStackedWidget *stackedContainer = nullptr;
+    // Страницы-контейнеры
+    yamlTextView *yamlPage = nullptr;
+    QWidget *varPage = nullptr;
+    QWidget *devicePage = nullptr;
+
+    // QTextEdit* editor = nullptr;
+    // Новые таблицы для представлений
+    QTableView *varTableView = nullptr;
+    QTableView *deviceTableView = nullptr;
+
     QComboBox *plcSelector = nullptr;
     QPushButton *configButton = nullptr;
     QString originalYaml;
@@ -56,6 +73,9 @@ private:
     QString currentFilePath;
     void updateTitle();
     QStandardItemModel* createPlcModel(const QString &yamlText);
+
+    // Слот для обработки переключения страниц
+    void onSidebarRowChanged(int index);
 };
 
 #endif // CONFIGDOCKWIDGET_H
