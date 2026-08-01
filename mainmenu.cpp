@@ -251,19 +251,5 @@ QList<QAction *> MainMenu::activeTextActions() const
     ConfigDockWidget *active = CommandManager::instance()->getActiveConfDockWidget();
     if (!active) return QList<QAction*>();
 
-    // Ищем в нем текстовый редактор
-    QTextEdit *editor = active->getEditor();
-    if (!editor) return QList<QAction*>();
-
-    // Генерируем стандартное контекстное меню редактора, чтобы «украсть» из него настроенные экшены
-    QMenu *tempMenu = editor->createStandardContextMenu();
-    QList<QAction*> actions = tempMenu->actions();
-
-    // Привязываем экшены к editor, чтобы они не удалились вместе с tempMenu
-    for (QAction *act : actions) {
-        if (act) act->setParent(editor);
-    }
-
-    tempMenu->deleteLater(); // Удаляем временную оболочку меню
-    return actions;
+    return active->activeTextActions();
 }

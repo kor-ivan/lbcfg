@@ -1,6 +1,8 @@
 #include "yamltextview.h"
 #include <QMenu>
 #include <QVBoxLayout>
+#include <QTextBlock>
+#include "logmanager.h"
 #include "commandmanager.h"
 
 yamlTextView::yamlTextView(QWidget *parent)
@@ -47,8 +49,47 @@ void yamlTextView::showCustomContextMenu(const QPoint &pos)
     delete standardMenu;
 }
 
-QTextEdit *yamlTextView::getEditor() const
+void yamlTextView::scrollToLine(int lineNumber)
 {
-    return editor;
+    if (!editor) return;
+
+    QTextDocument *doc = editor->document();
+    QTextBlock block = doc->findBlockByLineNumber(lineNumber);
+
+    if (block.isValid()) {
+        // 1. Создаем первый курсор для самого конца документа и временно отправляем экран туда
+        QTextCursor bottomCursor(doc);
+        bottomCursor.movePosition(QTextCursor::End);
+        editor->setTextCursor(bottomCursor);
+        // 2. Создаем целевой курсор на нужной строке
+        QTextCursor targetCursor(block);
+        // 3. Устанавливаем его. Так как экран был в самом низу, Qt прокрутит
+        // документ ровно настолько, чтобы целевая строка только-только показалась сверху!
+        editor->setTextCursor(targetCursor);
+        editor->ensureCursorVisible();
+        editor->setFocus();
+    }else {
+        debugApp() << "Не удалось найти текстовый блок для строки:" << lineNumber;
+    }
+}
+
+QList<QAction *> yamlTextView::textActions() const
+{
+    if (!editor) return QList<QAction*>();
+
+    QMenu *tempMenu = editor->createStandardContextMenu();
+    QList<QAction*> actions = tempMenu->actions();
+
+    for (QAction *act : actions) {
+        if (act) act->setParent(const_cast<yamlTextView*>(this));
+    }
+
+    tempMenu->deleteLater();
+    return actions;
+}
+
+QString yamlTextView::text() const
+{
+    return editor ? editor->toPlainText() : QString();
 }
 

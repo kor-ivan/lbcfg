@@ -6,7 +6,8 @@
 #include <QFileInfo>
 #include <QTableView>
 #include <QHeaderView>
-#include <QTextBlock>
+#include <QEvent>
+#include <QMouseEvent>
 #include <QScrollBar>
 #include <QMessageBox>
 #include <QFileDialog>
@@ -161,10 +162,10 @@ void ConfigDockWidget::setConfig(const QString &yaml)
     plcSelector->blockSignals(false);
 }
 
-QString ConfigDockWidget::config() const
-{
-    return yamlPage->getEditor()->toPlainText();
-}
+// QString ConfigDockWidget::config() const
+// {
+//     return yamlPage->getEditor()->toPlainText();
+// }
 
 bool ConfigDockWidget::isModified() const
 {
@@ -211,9 +212,9 @@ bool ConfigDockWidget::writeFile(const QString &filePath)
         return false;
     }
     QTextStream out(&file);
-    out << yamlPage->getEditor()->toPlainText();
+    out << yamlPage->text();
     currentFilePath = filePath;
-    originalYaml = yamlPage->getEditor()->toPlainText(); // Сбрасываем флаг модификации
+    originalYaml = yamlPage->text(); // Сбрасываем флаг модификации
     modified = false;
     plcName = QFileInfo(filePath).fileName();
     updateTitle();
@@ -222,7 +223,7 @@ bool ConfigDockWidget::writeFile(const QString &filePath)
 
 void ConfigDockWidget::onTextChanged()
 {
-    if (yamlPage->getEditor()->toPlainText() != originalYaml){
+    if (yamlPage->text() != originalYaml){
         modified = true;
         setWindowTitle(QString("* Конфигурация: %1").arg(plcName));
     }else{
@@ -258,7 +259,7 @@ void ConfigDockWidget::onConfigureClicked()
     plcSelector->clear();
 
     // Передаем актуальный текст из редактора в наш метод
-    plcSelector->setModel(createPlcModel(yamlPage->getEditor()->toPlainText()));
+    plcSelector->setModel(createPlcModel(yamlPage->text()));
     plcSelector->setModelColumn(0);
 
     // Восстанавливаем позицию
@@ -301,6 +302,14 @@ void ConfigDockWidget::onConfigureClicked()
         lbplc->startConf(currentSelected, currentFilePath);
 }
 
+QList<QAction *> ConfigDockWidget::activeTextActions() const
+{
+    if (yamlPage) {
+        return yamlPage->textActions();
+    }
+    return QList<QAction*>();
+}
+
 void ConfigDockWidget::scrollToSelectedPlc(int index)
 {
     if (index < 0) return;
@@ -310,24 +319,7 @@ void ConfigDockWidget::scrollToSelectedPlc(int index)
     QVariant lineData = model->item(index, 0)->data(Qt::UserRole);
     if (!lineData.isValid()) return;
     int targetLine = lineData.toInt();
-
-    QTextDocument *doc = yamlPage->getEditor()->document();
-    QTextBlock block = doc->findBlockByLineNumber(targetLine);
-    if (block.isValid()) {
-        // 1. Создаем первый курсор для самого конца документа и временно отправляем экран туда
-        QTextCursor bottomCursor(doc);
-        bottomCursor.movePosition(QTextCursor::End);
-        yamlPage->getEditor()->setTextCursor(bottomCursor);
-        // 2. Создаем целевой курсор на нужной строке
-        QTextCursor targetCursor(block);
-        // 3. Устанавливаем его. Так как экран был в самом низу, Qt прокрутит
-        // документ ровно настолько, чтобы целевая строка только-только показалась сверху!
-        yamlPage->getEditor()->setTextCursor(targetCursor);
-        yamlPage->getEditor()->ensureCursorVisible();
-        yamlPage->getEditor()->setFocus();
-    } else {
-        debugApp() << "Не удалось найти текстовый блок для строки:" << targetLine;
-    }
+    yamlPage->scrollToLine(targetLine);
 }
 
 bool ConfigDockWidget::eventFilter(QObject *watched, QEvent *event)
@@ -341,7 +333,7 @@ bool ConfigDockWidget::eventFilter(QObject *watched, QEvent *event)
             plcSelector->clear();
 
             // Передаем актуальный текст из редактора в наш метод
-            plcSelector->setModel(createPlcModel(yamlPage->getEditor()->toPlainText()));
+            plcSelector->setModel(createPlcModel(yamlPage->text()));
             plcSelector->setModelColumn(0);
 
             // Восстанавливаем позицию
@@ -353,11 +345,6 @@ bool ConfigDockWidget::eventFilter(QObject *watched, QEvent *event)
     }
 
     return QDockWidget::eventFilter(watched, event);
-}
-
-QTextEdit *ConfigDockWidget::getEditor() const
-{
-    return yamlPage->getEditor();
 }
 
 
@@ -407,7 +394,7 @@ void ConfigDockWidget::onSidebarRowChanged(int index)
     if (index == 1) {
         // Пользователь перешел во вкладку "Переменные" (VarView)
         // Задача: Взять свежий текст из editor, распарсить его и заполнить varTableView
-        QString currentYaml = yamlPage->getEditor()->toPlainText();
+        QString currentYaml = yamlPage->text();
 
         // Пример вызова вашего парсера (сделайте по аналогии с createPlcModel):
         // QStandardItemModel* varModel = parseYamlToVarModel(currentYaml);

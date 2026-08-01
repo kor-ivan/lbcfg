@@ -20,7 +20,7 @@ public:
     explicit ConfigDockWidget(const QString& name,
                               QWidget *parent = nullptr);
 
-    QString config() const;
+    // QString config() const;
     bool isModified() const;
     void setConfig(const QString &yaml);
     bool openFile(const QString &filePath);
@@ -30,8 +30,8 @@ public:
     QString getCurrentFilePath() const;
     QString getPlcName() const;
 
-    QTextEdit *getEditor() const;
     void onConfigureClicked();
+    QList<QAction*> activeTextActions() const;
 
 signals:
     // void getSaveFile();

@@ -11,8 +11,9 @@ public:
     explicit yamlTextView(QWidget *parent = nullptr);
     void setText(const QString& yaml);
 
-    QTextEdit *getEditor() const;
-
+    void scrollToLine(int lineNumber);
+    QList<QAction*> textActions() const;
+    QString text() const;
 signals:
     void TextChanged();
 
