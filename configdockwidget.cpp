@@ -100,12 +100,12 @@ ConfigDockWidget::ConfigDockWidget(const QString &name, QWidget *parent)
     stackedContainer->addWidget(yamlPage); // Индекс 0 в стеке
 
     // Страница 1: Просмотр переменных (VarView)
-    varPage = new QWidget(this);
-    QVBoxLayout *varLayout = new QVBoxLayout(varPage);
-    varLayout->setContentsMargins(0, 0, 0, 0);
-    varTableView = new QTableView(this);
-    // Здесь будет настройка таблицы переменных (сетка, заголовки и т.д.)
-    varLayout->addWidget(varTableView);
+    varPage = new varView(this);
+    // QVBoxLayout *varLayout = new QVBoxLayout(varPage);
+    // varLayout->setContentsMargins(0, 0, 0, 0);
+    // varTableView = new QTableView(this);
+    // // Здесь будет настройка таблицы переменных (сетка, заголовки и т.д.)
+    // varLayout->addWidget(varTableView);
     stackedContainer->addWidget(varPage); // Индекс 1 в стеке
 
     // Страница 2: Настройка модулей ПЛК (DeviceView - задел на будущее)
@@ -394,11 +394,13 @@ void ConfigDockWidget::onSidebarRowChanged(int index)
     if (index == 1) {
         // Пользователь перешел во вкладку "Переменные" (VarView)
         // Задача: Взять свежий текст из editor, распарсить его и заполнить varTableView
-        QString currentYaml = yamlPage->text();
+        // QString currentYaml = yamlPage->text();
 
         // Пример вызова вашего парсера (сделайте по аналогии с createPlcModel):
         // QStandardItemModel* varModel = parseYamlToVarModel(currentYaml);
         // varTableView->setModel(varModel);
+        if (varPage)
+            varPage->updateData(yamlPage->text());
     }
     else if (index == 2) {
         // Пользователь перешел во вкладку "Модули I/O" (DeviceView)
