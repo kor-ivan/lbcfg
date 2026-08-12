@@ -33,6 +33,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         logdockwidget.h logdockwidget.cpp
         yamltextview.h yamltextview.cpp
         varview.h varview.cpp
+        deviceview.h deviceview.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET lbcfg APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

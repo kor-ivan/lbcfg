@@ -49,7 +49,7 @@ void plcManager::requestConfig(const QString &ipv6, const QString &name)
     connect(lbc, &LBclient::ExecuteCompletedJson, this,
             [lbc, this, name, ipv6](const QString& lbhost, const QJsonObject& Qjo, const QString& message, const QModbusDevice::Error error){
                 if(error==QModbusDevice::NoError){
-                    QString yamlContent = lbyaml::getlbconf(Qjo);
+                    QString yamlContent = lbyaml::getlbconf(Qjo, lbyaml::retainY);
                     debugApp()<<"# BEGIN YAML";
                     logPLC(name, LogCatcher::Debug, LogCatcher::wrapYes)<<yamlContent;
                     // lbyaml::printlbconf(Qjo);

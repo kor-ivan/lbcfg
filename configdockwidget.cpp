@@ -92,28 +92,14 @@ ConfigDockWidget::ConfigDockWidget(const QString &name, QWidget *parent)
 
     // Страница 0: Текстовый редактор YAML
     yamlPage = new yamlTextView(this);
-    // QVBoxLayout *yamlLayout = new QVBoxLayout(yamlPage);
-    // yamlLayout->setContentsMargins(0, 0, 0, 0);
-    // editor = new QTextEdit(this);
-    // editor->setFontFamily("Courier New");
-    // yamlLayout->addWidget(editor);
     stackedContainer->addWidget(yamlPage); // Индекс 0 в стеке
 
     // Страница 1: Просмотр переменных (VarView)
     varPage = new varView(this);
-    // QVBoxLayout *varLayout = new QVBoxLayout(varPage);
-    // varLayout->setContentsMargins(0, 0, 0, 0);
-    // varTableView = new QTableView(this);
-    // // Здесь будет настройка таблицы переменных (сетка, заголовки и т.д.)
-    // varLayout->addWidget(varTableView);
     stackedContainer->addWidget(varPage); // Индекс 1 в стеке
 
     // Страница 2: Настройка модулей ПЛК (DeviceView - задел на будущее)
-    devicePage = new QWidget(this);
-    QVBoxLayout *deviceLayout = new QVBoxLayout(devicePage);
-    deviceLayout->setContentsMargins(0, 0, 0, 0);
-    deviceTableView = new QTableView(this);
-    deviceLayout->addWidget(deviceTableView);
+    devicePage = new deviceView(this);
     stackedContainer->addWidget(devicePage); // Индекс 2 в стеке
 
     // 5. Собираем макет контента
@@ -363,7 +349,7 @@ QStandardItemModel *ConfigDockWidget::createPlcModel(const QString &yamlText)
 {
     lbyaml *y = new lbyaml(yamlText, lbyaml::data);
     QMultiMap<QString, lbyaml::lbhost> mmap = y->getallhostline();
-    delete y;
+    y->deleteLater();
 
     QStandardItemModel* model = new QStandardItemModel(mmap.size(), 2, this);
     int row = 0;
@@ -400,7 +386,7 @@ void ConfigDockWidget::onSidebarRowChanged(int index)
         // QStandardItemModel* varModel = parseYamlToVarModel(currentYaml);
         // varTableView->setModel(varModel);
         if (varPage)
-            varPage->updateData(yamlPage->text());
+            varPage->updateData(yamlPage->text(), plcSelector->currentText());
     }
     else if (index == 2) {
         // Пользователь перешел во вкладку "Модули I/O" (DeviceView)

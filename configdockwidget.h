@@ -12,6 +12,7 @@
 #include "plcmanager.h"
 #include "yamltextview.h"
 #include "varview.h"
+#include "deviceview.h"
 
 
 class ConfigDockWidget : public QDockWidget
@@ -57,7 +58,7 @@ private:
     // Страницы-контейнеры
     yamlTextView *yamlPage = nullptr;
     varView *varPage = nullptr;
-    QWidget *devicePage = nullptr;
+    deviceView *devicePage = nullptr;
 
     // QTextEdit* editor = nullptr;
     // Новые таблицы для представлений
