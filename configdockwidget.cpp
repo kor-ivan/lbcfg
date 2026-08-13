@@ -14,6 +14,7 @@
 #include "logmanager.h"
 
 
+
 ConfigDockWidget::ConfigDockWidget(const QString &name, QWidget *parent)
     : QDockWidget(QString("Конфигурация: %1").arg(name),parent),
     lbplc(plcManager::instanse())
@@ -126,12 +127,21 @@ ConfigDockWidget::ConfigDockWidget(const QString &name, QWidget *parent)
     });
     CommandManager::instance()->setConfAction(confAction);
 
+    connect(varPage, &varView::onChanged, this, [this]{
+        modified = true;
+        updateTitle();
+    });
+
     // Устанавливаем дефолтную страницу (YAML) при запуске
     sidebarMenu->setCurrentRow(0);
 }
 
 void ConfigDockWidget::setConfig(const QString &yaml)
 {
+    if (yamlParser)
+        yamlParser->deleteLater();
+    yamlParser = new lbyaml(yaml, lbyaml::data, this);
+
     originalYaml = yaml;
     yamlPage->setText(originalYaml);
     // editor->blockSignals(true);
@@ -144,6 +154,9 @@ void ConfigDockWidget::setConfig(const QString &yaml)
     // Используем новый метод для генерации модели
     plcSelector->setModel(createPlcModel(yaml));
     plcSelector->setModelColumn(0);
+
+    plcName = plcSelector->currentText();
+    yamlParser->setlbhost(plcName);
     // plcSelector->setCurrentIndex(-1); // Показываем подсказку при открытии нового файла
     plcSelector->blockSignals(false);
 }
@@ -167,6 +180,10 @@ bool ConfigDockWidget::openFile(const QString &filePath)
     QTextStream in(&file);
     setConfig(in.readAll());
     currentFilePath = filePath;
+    if (yamlParser)
+        yamlParser->deleteLater();
+    yamlParser = new lbyaml(filePath, lbyaml::file, this);
+    yamlParser->setlbhost(plcName);
     updateTitle();
     return true;
 }
@@ -211,11 +228,12 @@ void ConfigDockWidget::onTextChanged()
 {
     if (yamlPage->text() != originalYaml){
         modified = true;
-        setWindowTitle(QString("* Конфигурация: %1").arg(plcName));
+        // setWindowTitle(QString("* Конфигурация: %1").arg(plcName));
     }else{
         modified = false;
-        setWindowTitle(QString("Конфигурация: %1").arg(plcName));
+        // setWindowTitle(QString("Конфигурация: %1").arg(plcName));
     }
+    updateTitle();
 }
 
 // void ConfigDockWidget::showCustomContextMenu(const QPoint &pos)
@@ -300,12 +318,25 @@ void ConfigDockWidget::scrollToSelectedPlc(int index)
 {
     if (index < 0) return;
     // Извлекаем сохраненную модель
-    QStandardItemModel* model = qobject_cast<QStandardItemModel*>(plcSelector->model());
-    if (!model) return;
-    QVariant lineData = model->item(index, 0)->data(Qt::UserRole);
-    if (!lineData.isValid()) return;
-    int targetLine = lineData.toInt();
-    yamlPage->scrollToLine(targetLine);
+    switch (sidebarMenu->currentRow()) {
+    case 0:{
+        QStandardItemModel* model = qobject_cast<QStandardItemModel*>(plcSelector->model());
+        if (!model) return;
+        QVariant lineData = model->item(index, 0)->data(Qt::UserRole);
+        if (!lineData.isValid()) return;
+        int targetLine = lineData.toInt();
+        yamlPage->scrollToLine(targetLine);
+        plcName = plcSelector->currentText();
+    }
+    break;
+    case 1:{
+        yamlParser->setlbhost(plcSelector->currentText());
+        varPage->updateData(yamlParser);
+    }
+    break;
+    default:
+        break;
+    }
 }
 
 bool ConfigDockWidget::eventFilter(QObject *watched, QEvent *event)
@@ -347,9 +378,11 @@ void ConfigDockWidget::updateTitle()
 
 QStandardItemModel *ConfigDockWidget::createPlcModel(const QString &yamlText)
 {
-    lbyaml *y = new lbyaml(yamlText, lbyaml::data);
-    QMultiMap<QString, lbyaml::lbhost> mmap = y->getallhostline();
-    y->deleteLater();
+    yamlParser->setConfig(yamlPage->text(), lbyaml::data);
+    QMultiMap<QString, lbyaml::lbhost> mmap = yamlParser->getallhostline();
+    // lbyaml *y = new lbyaml(yamlText, lbyaml::data);
+    // QMultiMap<QString, lbyaml::lbhost> mmap = y->getallhostline();
+    // y->deleteLater();
 
     QStandardItemModel* model = new QStandardItemModel(mmap.size(), 2, this);
     int row = 0;
@@ -378,24 +411,22 @@ void ConfigDockWidget::onSidebarRowChanged(int index)
 
     // Логика синхронизации данных между представлениями
     if (index == 1) {
-        // Пользователь перешел во вкладку "Переменные" (VarView)
-        // Задача: Взять свежий текст из editor, распарсить его и заполнить varTableView
-        // QString currentYaml = yamlPage->text();
-
-        // Пример вызова вашего парсера (сделайте по аналогии с createPlcModel):
-        // QStandardItemModel* varModel = parseYamlToVarModel(currentYaml);
-        // varTableView->setModel(varModel);
+        if (modified)
+            yamlParser->setConfig(yamlPage->text(), lbyaml::data);
         if (varPage)
-            varPage->updateData(yamlPage->text(), plcSelector->currentText());
+            varPage->updateData(yamlParser);
     }
     else if (index == 2) {
         // Пользователь перешел во вкладку "Модули I/O" (DeviceView)
         // Аналогично парсим YAML под нужды конфигуратора модулей
     }
     else if (index == 0) {
-        // Пользователь вернулся в текстовый режим
-        // Если в таблицах было разрешено редактирование, здесь нужно будет
-        // собрать данные из моделей, сформировать YAML-строку и записать её в editor
+        if (varPage->isModified()){
+            // lbconsole::printlbVarMap(varPage->getUpdatedData());
+            yamlParser->implementLbVarMap(varPage->getUpdatedData());
+            yamlPage->setText(yamlParser->getFormattedYaml(lbyaml::retainY));
+        }
+        scrollToSelectedPlc(plcSelector->currentIndex());
     }
 }
 

@@ -41,8 +41,6 @@ signals:
 
 private slots:
     void onTextChanged();
-
-
     void scrollToSelectedPlc(int index);
 
 
@@ -51,7 +49,7 @@ protected:
 
 private:
     plcManager *lbplc = nullptr;
-
+    lbyaml *yamlParser = nullptr;
     // Добавить в private секцию в configdockwidget.h
     QListWidget *sidebarMenu = nullptr;
     QStackedWidget *stackedContainer = nullptr;

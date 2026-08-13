@@ -4,8 +4,10 @@
 #include <QVBoxLayout>
 #include <QHeaderView>
 
+
 #include <QStyledItemDelegate>
 #include <QApplication>
+#include <QMouseEvent>
 class CenteredCheckBoxDelegate : public QStyledItemDelegate {
 public:
     using QStyledItemDelegate::QStyledItemDelegate;
@@ -24,6 +26,36 @@ public:
         }
 
         QStyledItemDelegate::paint(painter, opt, index);
+    }
+
+    bool editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& option, const QModelIndex& index) override {
+        QStyleOptionViewItem opt = option;
+        initStyleOption(&opt, index);
+
+        // Проверяем, что у элемента есть галочка, и по ней кликнули (или нажали пробел)
+        if (index.data(Qt::CheckStateRole).isValid() &&
+            (event->type() == QEvent::MouseButtonRelease || event->type() == QEvent::MouseButtonDblClick))
+        {
+            QStyle* style = opt.widget ? opt.widget->style() : qApp->style();
+            QRect checkRect = style->subElementRect(QStyle::SE_ItemViewItemCheckIndicator, &opt, opt.widget);
+
+            // Считаем геометрию смещенного в центр квадратика точно так же, как в методе paint()
+            int dx = opt.rect.left() + (opt.rect.width() - checkRect.width()) / 2 - checkRect.left();
+            int dy = opt.rect.top() + (opt.rect.height() - checkRect.height()) / 2 - checkRect.top();
+            checkRect.translate(dx, dy);
+
+            // Проверяем, попал ли курсор мыши внутрь нашей отцентрированной галочки
+            QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
+            if (mouseEvent->button() == Qt::LeftButton && checkRect.contains(mouseEvent->pos())) {
+                // Меняем состояние галочки на противоположное
+                Qt::CheckState currentState = static_cast<Qt::CheckState>(index.data(Qt::CheckStateRole).toInt());
+                Qt::CheckState newState = (currentState == Qt::Checked) ? Qt::Unchecked : Qt::Checked;
+                return model->setData(index, newState, Qt::CheckStateRole);
+            }
+        }
+
+        // Если это не клик по галочке, передаем событие стандартному обработчику
+        return QStyledItemDelegate::editorEvent(event, model, option, index);
     }
 };
 
@@ -44,6 +76,7 @@ varView::varView(QWidget *parent)
     CenteredCheckBoxDelegate* checkDelegate = new CenteredCheckBoxDelegate(this);
     varTableView->setItemDelegateForColumn(3, checkDelegate); // Центрируем Multisource
     varTableView->setItemDelegateForColumn(4, checkDelegate); // Центрируем Retain
+
     // Настройка шрифта (опционально, можно сделать моноширинным, как редактор)
     // varTableView->setFont(QFont("Courier New", 10));
 
@@ -63,30 +96,33 @@ varView::varView(QWidget *parent)
     varTableView->setModel(varModel);
     QStringList headers = {"Name", "Var", "Var_out", "Multi", "Retain", "Init"};
 
-
-
     varModel->setHorizontalHeaderLabels(headers);
     varLayout->addWidget(varTableView);
 }
 
-void varView::updateData(const QString &yamlText, const QString &name)
+void varView::updateData(lbyaml *parser)
 {
+    if (!parser) return;
     if (!varModel) return;
     varModel->removeRows(0, varModel->rowCount());
 
-    lbyaml *y = new lbyaml(yamlText, lbyaml::data);
-    y->setlbhost(name);
-    lbyaml::lbvarstat statstr = y->getVarStat();
-    logPLC(name, LogCatcher::Info, LogCatcher::wrapYes)<<
+    // qDebug().noquote()<<parser->getFormattedYaml();
+
+    lbyaml::lbvarstat statstr = parser->getVarStat();
+    logPLC(parser->getlbhost(), LogCatcher::Info, LogCatcher::wrapYes)<<
         "Number of variables :"<<statstr.quantity<<Qt::endl<<
         "Must Multisource :" << (statstr.mustMultisource.empty() ? "none" : statstr.mustMultisource.join(", "))<<Qt::endl<<
         "Handling Var :" << (statstr.handlingVar.empty() ? "none" : statstr.handlingVar.join(", "))<<Qt::endl<<
         "not added Forte :" << (statstr.noaddedForte.empty() ? "none" : statstr.noaddedForte.join(", "))<<Qt::endl<<
-        "Error :" << y->getErr();
-    QMap<QString, lbyaml::lbvar> lbVarMap = y->getLbVarMap();
-    y->deleteLater();
+        "Error :" << parser->getErr();
+    m_lbVarMap = parser->getLbVarMap();
+
+
+    disconnect(varModel, &QStandardItemModel::dataChanged,
+            this, &varView::onDataChanged);
+
     int j = 0;
-    for (auto i = lbVarMap.begin(); i != lbVarMap.end(); ++i){
+    for (auto i = m_lbVarMap.begin(); i != m_lbVarMap.end(); ++i){
         const auto &v = i.value();
         // 0. Колонка Name (Только для чтения)
         QStandardItem* nameItem = new QStandardItem(i.key());
@@ -123,6 +159,31 @@ void varView::updateData(const QString &yamlText, const QString &name)
     varTableView->setColumnWidth(2, 150);
     varTableView->setColumnWidth(3, 50); // Ширина для "Multisource"
     varTableView->setColumnWidth(4, 50); // Ширина для "Retain"
+
+    modified = false;
+    connect(varModel, &QStandardItemModel::dataChanged,
+            this, &varView::onDataChanged);
+}
+
+QMap<QString, lbyaml::lbvar> varView::getUpdatedData()
+{
+    for (int row = 0; row < varModel->rowCount(); ++row) {
+        QString varName = varModel->item(row, 0)->text();
+        if (!m_lbVarMap.contains(varName)) continue;
+
+        lbyaml::lbvar &v = m_lbVarMap[varName];
+
+        if (QStandardItem* multiItem = varModel->item(row, 3)) {
+            v.multisource = (multiItem->data(Qt::CheckStateRole).toInt() == Qt::Checked);
+        }
+        if (QStandardItem* retainItem = varModel->item(row, 4)) {
+            v.retain = (retainItem->data(Qt::CheckStateRole).toInt() == Qt::Checked);
+        }
+        if (QStandardItem* initItem = varModel->item(row, 5)) {
+            v.init = initItem->text();
+        }
+    }
+    return m_lbVarMap;
 }
 
 QString varView::decompose(const QList<QStringList> &data)
@@ -131,4 +192,15 @@ QString varView::decompose(const QList<QStringList> &data)
     foreach (auto k, data)
         str += QString("(%1)").arg(k.join(","));
     return str;
+}
+
+void varView::onDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight)
+{
+    modified = true;
+    emit onChanged();
+}
+
+bool varView::isModified() const
+{
+    return modified;
 }
