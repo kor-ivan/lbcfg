@@ -18,9 +18,14 @@ CommandManager::CommandManager() :
             parentCheck = parentCheck->parentWidget();
         }
         if (foundDock){
-            checkConfigDockWidget(foundDock);
+            checkDockWidget(foundDock);
         }
     });
+}
+
+WatchDockWidget *CommandManager::getActiveWatchDockWidget() const
+{
+    return activeWatchDockWidget.get();
 }
 
 QAction *CommandManager::getConfAction() const
@@ -72,13 +77,18 @@ void CommandManager::setSaveAction(QAction *newSaveAction)
     saveAction = newSaveAction;
 }
 
-void CommandManager::checkConfigDockWidget(QDockWidget *dock)
+void CommandManager::checkDockWidget(QDockWidget *dock)
 {
     ConfigDockWidget *configDock = qobject_cast<ConfigDockWidget*>(dock);
     if (configDock) {
         debugApp() << "Выбран ConfigDockWidget: " << configDock;
         activeConfDockWidget = configDock;
         emit activeConfDockWidgetChanged(configDock);
+    }
+    WatchDockWidget *watchDock = qobject_cast<WatchDockWidget*>(dock);
+    if (watchDock){
+        debugApp() << "Выбран WatchDockWidget: " << watchDock;
+        activeWatchDockWidget = watchDock;
     }
 }
 

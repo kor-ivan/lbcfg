@@ -207,6 +207,38 @@ void MainMenu::onViewMenuAboutToShow()
             });
         }
     }
+
+    auto openWatch = p_mainWindow->getWatchDocks();
+    QMenu *watchMenu = viewMenu->addMenu("Watch");
+
+    QAction *createWatch = watchMenu->addAction("Создать новый");
+    createWatch->setShortcut(QKeySequence("Ctrl+W"));
+    connect(createWatch, &QAction::triggered, this, [this](){
+        static QAtomicInt counter(0);
+        QString str = QString("new %1").arg(counter.fetchAndAddRelaxed(1) + 1);
+        WatchDockWidget* watch = p_mainWindow->createWatchDockWidget(str);
+        watch->show();
+        watch->raise();
+        watch->setFocus();
+    });
+
+    if (!openWatch.isEmpty()){
+
+        for (auto *watch : openWatch){
+            QAction *watchAct = watchMenu->addAction(watch->getPlcName());
+
+            if (CommandManager::instance()->getActiveWatchDockWidget() == watch){
+                watchAct->setCheckable(true);
+                watchAct->setChecked(true);
+            }
+
+            connect(watchAct, &QAction::triggered, this, [watch](){
+                watch->show();
+                watch->raise();
+                watch->setFocus();
+            });
+        }
+    }
 }
 
 void MainMenu::onPlcMenuAboutToShow()

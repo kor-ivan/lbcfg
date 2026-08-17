@@ -10,6 +10,7 @@
 #include "plcmanager.h"
 #include "mainmenu.h"
 #include "logdockwidget.h"
+#include "watchdockwidget.h"
 
 
 class MainWindow : public QMainWindow
@@ -28,7 +29,9 @@ public:
     DeviceTreeDockWidget *createTreeDockWidget();
     DiscoverDockWidget* createDiscoverDockWidget();
     LogDockWidget* createLogDockWidget();
+    WatchDockWidget* createWatchDockWidget(const QString &name, const QString &ipv6 = {});
     QList<ConfigDockWidget*> getConfigDocks() const;
+    QList<WatchDockWidget*> getWatchDocks() const;
 
 private:
     plcManager *lbplc = nullptr;
@@ -36,6 +39,7 @@ private:
     QPointer<DiscoverDockWidget> discoverDock = nullptr;
     QPointer<LogDockWidget> logDock = nullptr;
     QMap<QString, ConfigDockWidget*> configDocks;
+    QMap<QString, WatchDockWidget*> watchDocks;
 
     ConfigDockWidget* CreateConfDockWidget(const QString &key, const QString &name);
 

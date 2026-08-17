@@ -26,7 +26,7 @@ MainWindow::MainWindow(QWidget *parent)
     createDiscoverDockWidget();
     setDockNestingEnabled(true);
     connect(this, &QMainWindow::tabifiedDockWidgetActivated,
-            CommandManager::instance(), &CommandManager::checkConfigDockWidget);
+            CommandManager::instance(), &CommandManager::checkDockWidget);
     createLogDockWidget();
 
     // 1. Создаем главное меню
@@ -267,9 +267,35 @@ LogDockWidget *MainWindow::createLogDockWidget()
     return logDock.get();
 }
 
+WatchDockWidget *MainWindow::createWatchDockWidget(const QString &name, const QString &ipv6)
+{
+    WatchDockWidget* dock = nullptr;
+    if (watchDocks.contains(name))
+        dock = watchDocks[name];
+    else{
+        dock = new WatchDockWidget(name, this);
+        dock->setAttribute(Qt::WA_DeleteOnClose);
+        if (!ipv6.isEmpty())
+            dock->setIpv6(ipv6);
+        watchDocks.insert(name, dock);
+        tabifyDockWidgetTo(dock, Qt::LeftDockWidgetArea);
+
+        connect(dock, &QObject::destroyed, this, [this, name]() {
+            debugApp() << "destroy WatchDockWidget: "<<name;
+            watchDocks.remove(name);
+        });
+    }
+    return dock;
+}
+
 QList<ConfigDockWidget *> MainWindow::getConfigDocks() const
 {
     return configDocks.values();
+}
+
+QList<WatchDockWidget *> MainWindow::getWatchDocks() const
+{
+    return watchDocks.values();
 }
 
 QPointer<LogDockWidget> MainWindow::getLogDock() const

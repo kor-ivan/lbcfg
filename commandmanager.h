@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QPointer>
 #include "configdockwidget.h"
+#include "watchdockwidget.h"
 
 class CommandManager : public QObject
 {
@@ -19,7 +20,7 @@ public:
     ConfigDockWidget* getActiveConfDockWidget() const;
     bool isNullActiveConfDockWidget() const;
     void resetActiveConfDockWidget();
-    void checkConfigDockWidget(QDockWidget *dock);
+    void checkDockWidget(QDockWidget *dock);
 
     QAction *getSaveAction() const;
     void setSaveAction(QAction *newSaveAction);
@@ -33,6 +34,8 @@ public:
     QAction *getConfAction() const;
     void setConfAction(QAction *newConfAction);
 
+    WatchDockWidget* getActiveWatchDockWidget() const;
+
 signals:
     void activeConfDockWidgetChanged(ConfigDockWidget *newWidget);
 
@@ -43,6 +46,7 @@ private:
     CommandManager& operator=(const CommandManager&) = delete;
     plcManager *lbplc = nullptr;
     QPointer<ConfigDockWidget> activeConfDockWidget = nullptr;
+    QPointer<WatchDockWidget> activeWatchDockWidget = nullptr;
 
     QAction *saveAction = nullptr;
     QAction *saveAsAction = nullptr;

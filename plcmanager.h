@@ -68,6 +68,8 @@ public:
                 });
         lbc->Execute();
     }
+    void startWatch(const CommandContext &ctx, const QString &key, const QStringList &arg);
+
 
 signals:
     void scanCompleted(const QString &ipv6, const QString &name, const QMap<qsizetype, lbprocess::scaninfo> &scanData);
@@ -98,6 +100,7 @@ private:
     lbprocess * prcActiveOtaClient = nullptr;
     QPointer<LBclient> activeLogClient = nullptr;
     void prcOtaSender(const QString &lbhost, const QStringList &result, const QString &message, const QModbusDevice::Error error);
+
 };
 
 #endif // PLCMANAGER_H
