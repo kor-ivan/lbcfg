@@ -48,6 +48,13 @@ MainWindow::MainWindow(QWidget *parent)
             dock->setFocus();
         }
     });
+
+    connect(menu, &MainMenu::newConfigurationRequested, this, [this]{
+        ConfigDockWidget* dock = CreateConfDockWidget(QUuid::createUuid().toString(), "noname");
+        dock->show();
+        dock->raise();
+        dock->setFocus();
+    });
     // Создаем строку состояния (Status Bar)
     QStatusBar *statusBar = this->statusBar();
 

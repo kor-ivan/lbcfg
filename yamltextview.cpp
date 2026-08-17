@@ -93,3 +93,29 @@ QString yamlTextView::text() const
     return editor ? editor->toPlainText() : QString();
 }
 
+void yamlTextView::replacePlcBlock(int startLine, int endLine, const QString &newText)
+{
+    if (!editor) return;
+
+    QTextDocument *doc = editor->document();
+
+    int startIdx = startLine - 1;
+    int endIdx = (endLine > 0) ? (endLine - 1) : (doc->blockCount() - 1);
+
+    startIdx = qMax(0, qMin(startIdx, doc->blockCount() - 1));
+    endIdx = qMax(startIdx, qMin(endIdx, doc->blockCount() - 1));
+
+    QTextBlock startBlock = doc->findBlockByLineNumber(startIdx);
+    QTextBlock endBlock = doc->findBlockByLineNumber(endIdx);
+
+    if (startBlock.isValid() && endBlock.isValid()) {
+        QTextCursor cursor(doc);
+        editor->blockSignals(true);
+        cursor.setPosition(startBlock.position());
+        cursor.setPosition(endBlock.position() + endBlock.length() - 1, QTextCursor::KeepAnchor);
+        cursor.insertText(newText);
+        editor->blockSignals(false);
+        // emit TextChanged();
+    }
+}
+

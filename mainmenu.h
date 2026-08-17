@@ -18,6 +18,7 @@ public:
 
 signals:
     void openFileRequested();
+    void newConfigurationRequested();
 
 private:
     MainWindow *p_mainWindow = nullptr;

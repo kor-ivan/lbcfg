@@ -37,6 +37,11 @@ void MainMenu::updateMenuState(ConfigDockWidget *activeWidget)
 void MainMenu::initFileMenu(QMenuBar *menuBar)
 {
     QMenu *fileMenu = menuBar->addMenu("&Файл");
+
+    QAction *newAction = fileMenu->addAction("&Новая конфигурация");
+    newAction->setShortcut(QKeySequence::New);
+    connect(newAction, &QAction::triggered, this, &MainMenu::newConfigurationRequested);
+
     QAction *openAction = fileMenu->addAction("&Открыть...");
     openAction->setShortcut(QKeySequence::Open);
     connect(openAction, &QAction::triggered, this, &MainMenu::openFileRequested);

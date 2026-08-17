@@ -14,6 +14,8 @@ public:
     void scrollToLine(int lineNumber);
     QList<QAction*> textActions() const;
     QString text() const;
+    void replacePlcBlock(int startLine, int endLine, const QString &newText);
+
 signals:
     void TextChanged();
 

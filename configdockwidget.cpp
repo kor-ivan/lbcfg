@@ -326,11 +326,13 @@ void ConfigDockWidget::scrollToSelectedPlc(int index)
         if (!lineData.isValid()) return;
         int targetLine = lineData.toInt();
         yamlPage->scrollToLine(targetLine);
+        yamlParser->setlbhost(plcSelector->currentText());
         plcName = plcSelector->currentText();
     }
     break;
     case 1:{
         yamlParser->setlbhost(plcSelector->currentText());
+        plcName = plcSelector->currentText();
         varPage->updateData(yamlParser);
     }
     break;
@@ -422,9 +424,62 @@ void ConfigDockWidget::onSidebarRowChanged(int index)
     }
     else if (index == 0) {
         if (varPage->isModified()){
-            // lbconsole::printlbVarMap(varPage->getUpdatedData());
-            yamlParser->implementLbVarMap(varPage->getUpdatedData());
-            yamlPage->setText(yamlParser->getFormattedYaml(lbyaml::retainY));
+            QMap<int, QStringList> plcLineMap;
+            QMultiMap<QString, lbyaml::lbhost> mmap = yamlParser->getallhostline();
+
+            for (auto it = mmap.constBegin(); it != mmap.constEnd(); ++it) {
+                QStringList plcInfo;
+                plcInfo << it.key() << it.value().mac;
+                plcLineMap.insert(it.value().line, plcInfo);
+            }
+
+            QString currentMac;
+            QStandardItemModel* comboModel = qobject_cast<QStandardItemModel*>(plcSelector->model());
+            int comboIndex = plcSelector->currentIndex();
+            if (comboModel && comboIndex >= 0) {
+                currentMac = comboModel->item(comboIndex, 1)->text();
+            }
+
+            auto targetIt = plcLineMap.end();
+            for (auto it = plcLineMap.begin(); it != plcLineMap.end(); ++it) {
+                if (it.value().at(0) == plcName && it.value().at(1) == currentMac) {
+                    targetIt = it;
+                    break;
+                }
+            }
+            if (targetIt != plcLineMap.end()) {
+                int startLine = targetIt.key();
+                int endLine = 0;
+
+                auto nextIt = std::next(targetIt);
+                // auto nextIt = targetIt + 1;
+
+                if (nextIt != plcLineMap.end()) {
+                    endLine = nextIt.key() - 1;
+                }
+
+                yamlParser->implementLbVarMap(varPage->getUpdatedData());
+
+                QString plcYamlText = yamlParser->getFormattedYaml(lbyaml::retainY);
+
+                QString customHeader = QString(
+                    "# --------------------------------------------------\n"
+                    "# Generated automatically by Configurator UI\n"
+                    "# Powered by lbyaml & yaml-cpp libraries\n"
+                    "# --------------------------------------------------\n"
+                    );
+                QString customFooter = QString(
+                    "\n# --------------------------------------------------\n"
+                    );                                           QString replacementText = customHeader + plcYamlText + customFooter;
+
+                yamlPage->replacePlcBlock(startLine, endLine, replacementText);
+                yamlParser->setConfig(yamlPage->text(), lbyaml::data);
+            } else {
+                QMessageBox::warning(this, "Внимание",
+                                     QString("Не удалось сопоставить ПЛК %1 (MAC: %2) со строками в файле.")
+                                         .arg(plcName, currentMac));
+            }
+
         }
         scrollToSelectedPlc(plcSelector->currentIndex());
     }
