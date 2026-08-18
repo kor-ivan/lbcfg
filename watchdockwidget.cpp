@@ -3,7 +3,7 @@
 #include <QVBoxLayout>
 #include <QLineEdit>
 #include "logmanager.h"
-
+#include "plcmanager.h"
 
 WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
     : QDockWidget{QString("Watch: %1").arg(name), parent}, plcname(name)
@@ -29,12 +29,19 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
     ipBtn->setToolTip("Указать IP адрес");
     ipBtn->setText("IP");
 
+    QPushButton *connBtn = new QPushButton(this);
+    connBtn->setFixedHeight(elementHeight);
+    connBtn->setFixedWidth(60); // Делаем чуть шире, чтобы текст "Connect" помещался
+    connBtn->setToolTip("Подключиться к PLC для отладки");
+    connBtn->setText("Connect");
+
     QHBoxLayout *buttonLayout = new QHBoxLayout();
     buttonLayout->setContentsMargins(0, 0, 0, 0);
     buttonLayout->setSpacing(2);
     buttonLayout->addWidget(addBtn);
     buttonLayout->addWidget(remBtn);
     buttonLayout->addStretch();
+    buttonLayout->addWidget(connBtn);
     buttonLayout->addWidget(ipBtn);
 
     layout->addLayout(buttonLayout);
@@ -78,6 +85,11 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
             watchModel->removeRow(currentIndex.row());
         }
     });
+
+    connect(connBtn, &QPushButton::clicked, this, [this, connBtn](){
+        toggleConnection(connBtn);
+    });
+
 }
 
 QString WatchDockWidget::getPlcName() const
@@ -117,5 +129,43 @@ void WatchDockWidget::showIpEditDialog(QPushButton *anchorButton)
     ipEdit->show();
     ipEdit->setFocus();
     ipEdit->selectAll();
+}
+
+void WatchDockWidget::toggleConnection(QPushButton *connBtn)
+{
+    plcManager::CommandContext ctx;
+    ctx.ipv6 = ipv6;
+    ctx.name = plcname;
+
+    QStringList param;
+    for (int row = 0; row < watchModel->rowCount(); ++row) {
+        QStandardItem *item = watchModel->item(row, 0); // Получаем ячейку первого столбца
+        if (item && !item->text().isEmpty()) {
+            param.append(item->text());
+        }
+    }
+
+    session = plcManager::instanse()->startWatch(ctx, param);
+
+    connect(session, &WatchSession::watchExeComleted, this, [this]
+            (const QStringList &data){
+                debugApp()<<"data recive:"<<data;
+
+                for (int i = 0; i < data.size(); ++i) {
+                    // Проверяем, что строка все еще существует в модели (на случай рефакторинга таблицы на лету)
+                    if (i < watchModel->rowCount()) {
+                        QStandardItem *valueItem = watchModel->item(i, 1); // Проверяем ячейку во втором столбце
+
+                        if (!valueItem) {
+                            // Если ячейки еще нет — создаем её
+                            valueItem = new QStandardItem();
+                            watchModel->setItem(i, 1, valueItem);
+                        }
+
+                        // Записываем новое значение
+                        valueItem->setText(data.at(i));
+                    }
+                }
+            });
 }
 

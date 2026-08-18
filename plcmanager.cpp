@@ -1,5 +1,6 @@
 #include "plcmanager.h"
 #include "logmanager.h"
+#include "watchsession.h"
 
 
 plcManager::plcManager()
@@ -234,6 +235,31 @@ void plcManager::stopLog()
     if (!activeLogClient) return;
     activeLogClient->deleteLater();
     emit logFinished();
+}
+
+WatchSession *plcManager::startWatch(const CommandContext &ctx, const QStringList &arg)
+{
+    if (activeWatchSessions.contains(ctx.name)) {
+        debugApp() << "WatchSession for key" << ctx.name << "already exists. Returning existing session.";
+        return activeWatchSessions.value(ctx.name);
+    }
+
+    debugApp() << "Creating new WatchSession for key:" << ctx.name;
+    WatchSession *session = new WatchSession(ctx, arg, this);
+    activeWatchSessions.insert(ctx.name, session);
+    emit activeWatchChanged(activeWatchSessions.keys());
+    connect(session, &WatchSession::watchErrorOccurred, this, &plcManager::errorOccurred);
+    connect(session, &QObject::destroyed, this, [this, ctx]() {
+        activeWatchSessions.remove(ctx.name);
+        emit activeWatchChanged(activeWatchSessions.keys());
+        debugApp() << "WatchSession removed from manager for key:" << ctx.name;
+    });
+    return session;
+}
+
+QStringList plcManager::activeWatchKeys() const
+{
+    return activeWatchSessions.keys();
 }
 
 void plcManager::prcOtaSender(const QString &lbhost, const QStringList &result, const QString &message, const QModbusDevice::Error error)

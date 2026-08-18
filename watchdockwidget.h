@@ -5,6 +5,7 @@
 #include <QTableView>
 #include <QStandardItemModel>
 #include <QPushButton>
+#include "watchsession.h"
 
 class WatchDockWidget : public QDockWidget
 {
@@ -23,6 +24,8 @@ private:
     QStandardItemModel *watchModel = nullptr;
 
     void showIpEditDialog(QPushButton* anchorButton);
+    void toggleConnection(QPushButton *connBtn);
+    WatchSession *session = nullptr;
 };
 
 #endif // WATCHDOCKWIDGET_H

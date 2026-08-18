@@ -7,6 +7,8 @@
 #include "discover.h"
 #include "lbclient.h"
 
+class WatchSession;
+
 class plcManager : public QObject
 {
     Q_OBJECT
@@ -68,8 +70,9 @@ public:
                 });
         lbc->Execute();
     }
-    void startWatch(const CommandContext &ctx, const QString &key, const QStringList &arg);
 
+    WatchSession* startWatch(const CommandContext &ctx, const QStringList &arg);
+    QStringList activeWatchKeys() const;
 
 signals:
     void scanCompleted(const QString &ipv6, const QString &name, const QMap<qsizetype, lbprocess::scaninfo> &scanData);
@@ -87,6 +90,7 @@ signals:
     void confCompleted(const QString &ipv6, const QString &name);
     void showMessage(const QString &title, const QString &message);
     void restartAllCompleted(const CommandContext &ctx);
+    void activeWatchChanged(const QStringList &keys);
 
 
 private:
@@ -101,6 +105,7 @@ private:
     QPointer<LBclient> activeLogClient = nullptr;
     void prcOtaSender(const QString &lbhost, const QStringList &result, const QString &message, const QModbusDevice::Error error);
 
+    QMap<QString, WatchSession*> activeWatchSessions;
 };
 
 #endif // PLCMANAGER_H

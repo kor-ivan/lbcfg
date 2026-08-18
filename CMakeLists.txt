@@ -35,6 +35,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         varview.h varview.cpp
         deviceview.h deviceview.cpp
         watchdockwidget.h watchdockwidget.cpp
+        watchsession.h watchsession.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET lbcfg APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
