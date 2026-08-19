@@ -237,7 +237,7 @@ void plcManager::stopLog()
     emit logFinished();
 }
 
-WatchSession *plcManager::startWatch(const CommandContext &ctx, const QStringList &arg)
+WatchSession *plcManager::startWatch(const CommandContext &ctx, const QStringList &arg, QObject *p_watchDock)
 {
     if (activeWatchSessions.contains(ctx.name)) {
         debugApp() << "WatchSession for key" << ctx.name << "already exists. Returning existing session.";
@@ -245,7 +245,7 @@ WatchSession *plcManager::startWatch(const CommandContext &ctx, const QStringLis
     }
 
     debugApp() << "Creating new WatchSession for key:" << ctx.name;
-    WatchSession *session = new WatchSession(ctx, arg, this);
+    WatchSession *session = new WatchSession(ctx, arg, p_watchDock);
     activeWatchSessions.insert(ctx.name, session);
     emit activeWatchChanged(activeWatchSessions.keys());
     connect(session, &WatchSession::watchErrorOccurred, this, &plcManager::errorOccurred);

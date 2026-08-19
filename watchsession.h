@@ -12,17 +12,22 @@ class WatchSession : public QObject
 public:
     explicit WatchSession(const plcManager::CommandContext &ctx, const QStringList &arg, QObject *parent = nullptr);
     virtual ~WatchSession();
+    void start();
+    void stop();
 
+    bool isConnected() const;
 
 signals:
     void watchExeComleted(const QStringList &data);
     void watchErrorOccurred(const QString &message);
     void disconnected();
+    void connected();
 
 private:
     LBclient *lbc = nullptr;
     QString m_key;
     int t = 1000;
+    bool m_connected = false;
 
 };
 

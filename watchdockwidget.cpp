@@ -31,7 +31,7 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
 
     QPushButton *connBtn = new QPushButton(this);
     connBtn->setFixedHeight(elementHeight);
-    connBtn->setFixedWidth(60); // Делаем чуть шире, чтобы текст "Connect" помещался
+    connBtn->setFixedWidth(70);
     connBtn->setToolTip("Подключиться к PLC для отладки");
     connBtn->setText("Connect");
 
@@ -83,6 +83,7 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
         QModelIndex currentIndex = watch->currentIndex();
         if (currentIndex.isValid()) {
             watchModel->removeRow(currentIndex.row());
+            updateSessionVariables();
         }
     });
 
@@ -90,7 +91,14 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
         toggleConnection(connBtn);
     });
 
+    connect(watchModel, &QStandardItemModel::dataChanged, this, [this](const QModelIndex &topLeft, const QModelIndex &bottomRight) {
+        // Проверяем, что изменилась именно первая колонка (var name)
+        if (topLeft.column() == 0) {
+            updateSessionVariables();
+        }
+    });
 }
+
 
 QString WatchDockWidget::getPlcName() const
 {
@@ -133,39 +141,65 @@ void WatchDockWidget::showIpEditDialog(QPushButton *anchorButton)
 
 void WatchDockWidget::toggleConnection(QPushButton *connBtn)
 {
+    if (session && session->isConnected())
+        session->stop();
+
     plcManager::CommandContext ctx;
     ctx.ipv6 = ipv6;
     ctx.name = plcname;
 
+    QStringList param = collectVariables();
+
+    WatchSession *old_session = session;
+
+    session = plcManager::instanse()->startWatch(ctx, param, this);
+    if (session != old_session){
+        connect(session, &WatchSession::watchExeComleted, this, &WatchDockWidget::receiveData);
+        connect(session, &WatchSession::connected, this, [connBtn](){
+            connBtn->setToolTip("Отключиться от PLC для отладки");
+            connBtn->setText("Disconnect");
+        });
+        connect(session, &WatchSession::disconnected, this, [connBtn, this](){
+            connBtn->setToolTip("Подключиться к PLC для отладки");
+            connBtn->setText("Connect");
+            session->deleteLater();
+        });
+        session->start();
+    }
+}
+
+void WatchDockWidget::receiveData(const QStringList &data)
+{
+    debugApp()<<"data receive:"<<data;
+    for (int i = 0; i < data.size(); ++i) {
+        if (i < watchModel->rowCount()) {
+            QStandardItem *valueItem = watchModel->item(i, 1);
+            if (valueItem) {
+                valueItem->setText(data.at(i));
+            }
+        }
+    }
+}
+
+QStringList WatchDockWidget::collectVariables() const
+{
     QStringList param;
     for (int row = 0; row < watchModel->rowCount(); ++row) {
-        QStandardItem *item = watchModel->item(row, 0); // Получаем ячейку первого столбца
+        QStandardItem *item = watchModel->item(row, 0);
         if (item && !item->text().isEmpty()) {
             param.append(item->text());
         }
     }
-
-    session = plcManager::instanse()->startWatch(ctx, param);
-
-    connect(session, &WatchSession::watchExeComleted, this, [this]
-            (const QStringList &data){
-                debugApp()<<"data recive:"<<data;
-
-                for (int i = 0; i < data.size(); ++i) {
-                    // Проверяем, что строка все еще существует в модели (на случай рефакторинга таблицы на лету)
-                    if (i < watchModel->rowCount()) {
-                        QStandardItem *valueItem = watchModel->item(i, 1); // Проверяем ячейку во втором столбце
-
-                        if (!valueItem) {
-                            // Если ячейки еще нет — создаем её
-                            valueItem = new QStandardItem();
-                            watchModel->setItem(i, 1, valueItem);
-                        }
-
-                        // Записываем новое значение
-                        valueItem->setText(data.at(i));
-                    }
-                }
-            });
+    return param;
 }
 
+void WatchDockWidget::updateSessionVariables()
+{
+    if (session && session->isConnected()) {
+        QStringList param = collectVariables();
+
+
+
+        debugApp() << "WatchDockWidget: Список переменных опроса динамически обновлен:" << param;
+    }
+}

@@ -26,6 +26,11 @@ private:
     void showIpEditDialog(QPushButton* anchorButton);
     void toggleConnection(QPushButton *connBtn);
     WatchSession *session = nullptr;
+    void receiveData(const QStringList &data);
+
+    QStringList collectVariables() const;
+    void updateSessionVariables();
+
 };
 
 #endif // WATCHDOCKWIDGET_H

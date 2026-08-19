@@ -71,7 +71,7 @@ public:
         lbc->Execute();
     }
 
-    WatchSession* startWatch(const CommandContext &ctx, const QStringList &arg);
+    WatchSession* startWatch(const CommandContext &ctx, const QStringList &arg, QObject *p_watchDock = nullptr);
     QStringList activeWatchKeys() const;
 
 signals:
