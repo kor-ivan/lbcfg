@@ -5,6 +5,7 @@
 #include <QTableView>
 #include <QStandardItemModel>
 #include <QPushButton>
+#include <QDoubleSpinBox>
 #include "watchsession.h"
 
 class WatchDockWidget : public QDockWidget
@@ -25,11 +26,19 @@ private:
 
     void showIpEditDialog(QPushButton* anchorButton);
     void toggleConnection(QPushButton *connBtn);
-    WatchSession *session = nullptr;
+    QPointer<WatchSession> session;
     void receiveData(const QStringList &data);
 
     QStringList collectVariables() const;
     void updateSessionVariables();
+
+    QDoubleSpinBox *intervalSpin = nullptr;
+    void showContextMenu(const QPoint& pos);
+
+    QSet<QString> forcedVar;
+
+    void updateTableColors();
+
 
 };
 

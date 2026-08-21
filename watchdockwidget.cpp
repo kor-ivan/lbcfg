@@ -2,6 +2,7 @@
 #include <QHeaderView>
 #include <QVBoxLayout>
 #include <QLineEdit>
+#include <QMenu>
 #include "logmanager.h"
 #include "plcmanager.h"
 
@@ -29,6 +30,16 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
     ipBtn->setToolTip("Указать IP адрес");
     ipBtn->setText("IP");
 
+    intervalSpin = new QDoubleSpinBox(this);
+    intervalSpin->setFixedHeight(elementHeight);
+    intervalSpin->setRange(0.1, 10.0);        // Мин и макс значения
+    intervalSpin->setValue(1.0);               // Значение по умолчанию (1 секунда)
+    intervalSpin->setSingleStep(0.1);          // Начальный шаг
+    intervalSpin->setDecimals(1);              // Один знак после запятой (для 0.1)
+    intervalSpin->setSuffix(" s");             // Красивый суффикс "s" (секунды)
+    intervalSpin->setToolTip("Интервал опроса");
+    intervalSpin->setEnabled(false);
+
     QPushButton *connBtn = new QPushButton(this);
     connBtn->setFixedHeight(elementHeight);
     connBtn->setFixedWidth(70);
@@ -42,6 +53,7 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
     buttonLayout->addWidget(remBtn);
     buttonLayout->addStretch();
     buttonLayout->addWidget(connBtn);
+    buttonLayout->addWidget(intervalSpin);
     buttonLayout->addWidget(ipBtn);
 
     layout->addLayout(buttonLayout);
@@ -51,6 +63,9 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
     watch->setSelectionBehavior(QAbstractItemView::SelectRows);
     watch->setSelectionMode(QAbstractItemView::SingleSelection);
     watch->setAlternatingRowColors(true);
+    watch->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(watch, &QTableView::customContextMenuRequested,
+            this, &WatchDockWidget::showContextMenu);
 
     QHeaderView *header = watch->horizontalHeader();
     header->setSectionResizeMode(QHeaderView::Interactive);
@@ -63,7 +78,7 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
 
     watchModel = new QStandardItemModel(this);
     watch->setModel(watchModel);
-    watchModel->setHorizontalHeaderLabels({"var name","value"});
+    watchModel->setHorizontalHeaderLabels({"var name","value","set value", "force value"});
 
     layout->addWidget(watch);
     setWidget(container);
@@ -72,7 +87,10 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
         QList<QStandardItem*> rowItems;
         rowItems.append(new QStandardItem());
         rowItems.append(new QStandardItem());
+        rowItems.append(new QStandardItem());
+        rowItems.append(new QStandardItem());
         watchModel->appendRow(rowItems);
+        updateTableColors();
     });
 
     connect(ipBtn, &QPushButton::clicked, this, [this, ipBtn](){
@@ -95,6 +113,59 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
         // Проверяем, что изменилась именно первая колонка (var name)
         if (topLeft.column() == 0) {
             updateSessionVariables();
+            // Проверяем, что изменилась именно третья колонка (set value)
+        }else if (topLeft.column() == 2){
+            QStringList get = {"get"};
+            get.append(collectVariables());
+            int row = topLeft.row();
+            QStringList set = {"set", QString("%1=%2")
+                                          .arg(watchModel->item(row, 0)->text())
+                                          .arg(topLeft.data().toString().trimmed())};
+            if (session && session->isConnected())
+            {
+                session->setQuery({get, set});
+                debugApp() << "WatchDockWidget: Список переменных для записи:" << get << set;
+            }
+        }else if (topLeft.column() == 3){
+            QStringList get = {"get"};
+            get.append(collectVariables());
+            int row = topLeft.row();
+            QString varName = watchModel->item(row, 0)->text();
+            QStringList force = {"force", QString("%1=%2")
+                                              .arg(varName)
+                                              .arg(topLeft.data().toString().trimmed())};
+            if (session && session->isConnected()){
+                session->setQuery({get, force});
+                debugApp() << "WatchDockWidget: Список переменных для FORCE:" << get << force;
+                forcedVar.insert(varName);
+                updateTableColors();
+            }
+        }
+    });
+
+    static double lastValue = 1.0;
+    connect(intervalSpin, &QDoubleSpinBox::valueChanged, this, [this](double value){
+        intervalSpin->blockSignals(true);
+
+        bool movingDown = (value < lastValue);
+
+        if (value < 1.0 || (qFuzzyCompare(value, 1.0) && movingDown)) {
+            intervalSpin->setSingleStep(0.1);
+        } else {
+            intervalSpin->setSingleStep(1.0);
+            double fraction = value - qFloor(value);
+            if (fraction > 0.0 && fraction < 1.0) {
+                intervalSpin->setValue(qRound(value));
+                value = intervalSpin->value();
+            }
+        }
+        lastValue = value;
+
+        intervalSpin->blockSignals(false);
+        if (session) {
+            int msec = static_cast<int>(intervalSpin->value() * 1000);
+            session->setTimeOut(msec);
+            debugApp() << "Интервал опроса изменен на:" << msec << "мс";
         }
     });
 }
@@ -155,13 +226,17 @@ void WatchDockWidget::toggleConnection(QPushButton *connBtn)
     session = plcManager::instanse()->startWatch(ctx, param, this);
     if (session != old_session){
         connect(session, &WatchSession::watchExeComleted, this, &WatchDockWidget::receiveData);
-        connect(session, &WatchSession::connected, this, [connBtn](){
+        connect(session, &WatchSession::connected, this, [connBtn, this](){
             connBtn->setToolTip("Отключиться от PLC для отладки");
             connBtn->setText("Disconnect");
+            intervalSpin->setEnabled(true);
+            updateTableColors();
         });
         connect(session, &WatchSession::disconnected, this, [connBtn, this](){
             connBtn->setToolTip("Подключиться к PLC для отладки");
             connBtn->setText("Connect");
+            intervalSpin->setEnabled(false);
+            updateTableColors();
             session->deleteLater();
         });
         session->start();
@@ -197,9 +272,80 @@ void WatchDockWidget::updateSessionVariables()
 {
     if (session && session->isConnected()) {
         QStringList param = collectVariables();
-
-
-
+        session->setQuery(collectVariables());
         debugApp() << "WatchDockWidget: Список переменных опроса динамически обновлен:" << param;
+    }
+}
+
+void WatchDockWidget::showContextMenu(const QPoint &pos)
+{
+    QModelIndex index = watch->indexAt(pos);
+    if (!index.isValid()) {
+        return; // Кликнули по пустому месту таблицы, меню не показываем
+    }
+    int row = index.row();
+
+    QStandardItem *varItem = watchModel->item(row, 0);
+    if (!varItem || varItem->text().isEmpty()) {
+        return; // Строка пустая, меню не показываем
+    }
+    QString varName = varItem->text();
+
+
+    QMenu menu(this);
+
+    QAction *unforce = menu.addAction("Unforce");
+    unforce->setEnabled(session && session->isConnected());
+
+    connect(unforce, &QAction::triggered, this, [this,varName, row](){
+        if (session){
+            QStringList get = {"get"};
+            get.append(collectVariables());
+
+            QStringList unforce = {"unforce", varName};
+            session->setQuery({get, unforce});
+            debugApp() << "WatchDockWidget: Сброс FORCE для:" << varName;
+            forcedVar.remove(varName);
+            updateTableColors();
+
+            QStandardItem *fItem = watchModel->item(row, 3);
+            if (fItem) {
+                fItem->setText("");
+            }
+        }
+    });
+
+
+    menu.exec(watch->viewport()->mapToGlobal(pos));
+}
+
+void WatchDockWidget::updateTableColors()
+{
+    bool connected = (session && session->isConnected());
+
+    for (int row = 0; row < watchModel->rowCount(); ++row) {
+        // Получаем имя переменной из первой колонки
+        QStandardItem *varItem = watchModel->item(row, 0);
+        if (!varItem || varItem->text().isEmpty()) continue;
+
+        QString varName = varItem->text();
+
+        // По умолчанию — стандартный цвет (прозрачный/системный)
+        QBrush rowColor = QBrush();
+
+        if (connected) {
+            // Если имя переменной есть в вашем QSet forcedVar — красим в красный
+            if (forcedVar.contains(varName)) {
+                rowColor = QBrush(QColor(255, 200, 200)); // Мягкий красный
+            } else {
+                rowColor = QBrush(QColor(220, 245, 220)); // Мягкий зеленый (успешный опрос)
+            }
+        }
+
+        // Применяем цвет фона ко 2 колонке в текущей строке
+        QStandardItem *cellItem = watchModel->item(row, 1);
+        if (cellItem) {
+            cellItem->setData(rowColor, Qt::BackgroundRole);
+        }
     }
 }

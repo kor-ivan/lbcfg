@@ -16,6 +16,9 @@ public:
     void stop();
 
     bool isConnected() const;
+    void setQuery (const QStringList &arg);
+    void setQuery(const std::initializer_list<QStringList> &qstr_list);
+    void setTimeOut (const int time);
 
 signals:
     void watchExeComleted(const QStringList &data);
@@ -24,7 +27,7 @@ signals:
     void connected();
 
 private:
-    LBclient *lbc = nullptr;
+    QPointer<LBclient> lbc;
     QString m_key;
     int t = 1000;
     bool m_connected = false;

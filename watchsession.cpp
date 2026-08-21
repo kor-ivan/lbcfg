@@ -12,10 +12,28 @@ WatchSession::WatchSession(const plcManager::CommandContext &ctx, const QStringL
     lbc->setTCPaddr(ctx.ipv6, 502);
     lbc->setTimeOut(t);
 
-    connect(lbc, &LBclient::ExecuteCompleted, this, [this]
-            (const QString& lbhost, const QStringList& result, const QString& message, const QModbusDevice::Error error){
-        if (error == QModbusDevice::NoError)
+    connect(lbc, &LBclient::ExecuteCompletedJson, this, [this]
+            (const QString& lbhost, const QJsonObject& Qjo, const QString& message, const QModbusDevice::Error error){
+        if (error == QModbusDevice::NoError){
+            QStringList result;
+            QJsonObject m_qjo;
+            if (lbc->getMulpipleRequest()){
+                m_qjo = Qjo.value("get").toObject();
+                if (Qjo.keys().contains("set") || Qjo.keys().contains("force") || Qjo.keys().contains("unforce"))
+                    lbc->setQueryString(lbc->getQueryString().value(0));
+            }else
+                m_qjo = Qjo;
+            QStringList strl = lbc->getQueryString().value(0);
+            strl.removeFirst();
+            for (auto var : strl) {
+                QJsonValue v = m_qjo.value(var);
+                if (v.isDouble())
+                    result.append(QString::number(v.toDouble()));
+                else if (v.isString())
+                    result.append(v.toString());
+            }
             emit watchExeComleted(result);
+        }
         else
             emit watchErrorOccurred(QString("%1 -> %2").arg(m_key).arg(message));
     });
@@ -57,4 +75,21 @@ void WatchSession::stop()
 bool WatchSession::isConnected() const
 {
     return m_connected;
+}
+
+void WatchSession::setQuery(const QStringList &arg)
+{
+    QStringList m_arg = {"get"};
+    m_arg.append(arg);
+    lbc->setQueryString(m_arg);
+}
+
+void WatchSession::setQuery(const std::initializer_list<QStringList> &qstr_list)
+{
+    lbc->setQueryString(qstr_list);
+}
+
+void WatchSession::setTimeOut(const int time)
+{
+    lbc->setTimeOut(time);
 }
