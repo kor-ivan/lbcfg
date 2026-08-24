@@ -6,6 +6,8 @@
 #include "logmanager.h"
 #include "plcmanager.h"
 
+
+
 WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
     : QDockWidget{QString("Watch: %1").arg(name), parent}, plcname(name)
 {
@@ -67,6 +69,7 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
     connect(watch, &QTableView::customContextMenuRequested,
             this, &WatchDockWidget::showContextMenu);
 
+
     QHeaderView *header = watch->horizontalHeader();
     header->setSectionResizeMode(QHeaderView::Interactive);
     header->setStretchLastSection(true);
@@ -84,13 +87,7 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
     setWidget(container);
 
     connect(addBtn, &QPushButton::clicked, this, [this](){
-        QList<QStandardItem*> rowItems;
-        rowItems.append(new QStandardItem());
-        rowItems.append(new QStandardItem());
-        rowItems.append(new QStandardItem());
-        rowItems.append(new QStandardItem());
-        watchModel->appendRow(rowItems);
-        updateTableColors();
+        addVar();
     });
 
     connect(ipBtn, &QPushButton::clicked, this, [this, ipBtn](){
@@ -113,32 +110,44 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
         // Проверяем, что изменилась именно первая колонка (var name)
         if (topLeft.column() == 0) {
             updateSessionVariables();
+            if (session && session->isConnected())
+                updateTableColors();
             // Проверяем, что изменилась именно третья колонка (set value)
         }else if (topLeft.column() == 2){
+            int row = topLeft.row();
+            QString val = topLeft.data().toString().trimmed();
+            if (val.isEmpty()) return;
             QStringList get = {"get"};
             get.append(collectVariables());
-            int row = topLeft.row();
+
             QStringList set = {"set", QString("%1=%2")
                                           .arg(watchModel->item(row, 0)->text())
-                                          .arg(topLeft.data().toString().trimmed())};
+                                          .arg(val)};
             if (session && session->isConnected())
             {
                 session->setQuery({get, set});
                 debugApp() << "WatchDockWidget: Список переменных для записи:" << get << set;
+                watchModel->blockSignals(true);
+                watchModel->item(row, 2)->setText("");
+                watchModel->blockSignals(false);
             }
         }else if (topLeft.column() == 3){
             QStringList get = {"get"};
             get.append(collectVariables());
             int row = topLeft.row();
             QString varName = watchModel->item(row, 0)->text();
-            QStringList force = {"force", QString("%1=%2")
-                                              .arg(varName)
-                                              .arg(topLeft.data().toString().trimmed())};
-            if (session && session->isConnected()){
-                session->setQuery({get, force});
-                debugApp() << "WatchDockWidget: Список переменных для FORCE:" << get << force;
-                forcedVar.insert(varName);
-                updateTableColors();
+            QString val = topLeft.data().toString().trimmed();
+            if (val != "")
+            {
+                QStringList force = {"force", QString("%1=%2")
+                                                  .arg(varName)
+                                                  .arg(val)};
+                if (session && session->isConnected()){
+                    session->setQuery({get, force});
+                    debugApp() << "WatchDockWidget: Список переменных для FORCE:" << get << force;
+                    forcedVar.insert(varName);
+                    updateTableColors();
+                }
             }
         }
     });
@@ -147,19 +156,18 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
     connect(intervalSpin, &QDoubleSpinBox::valueChanged, this, [this](double value){
         intervalSpin->blockSignals(true);
 
-        bool movingDown = (value < lastValue);
-
-        if (value < 1.0 || (qFuzzyCompare(value, 1.0) && movingDown)) {
-            intervalSpin->setSingleStep(0.1);
-        } else {
-            intervalSpin->setSingleStep(1.0);
-            double fraction = value - qFloor(value);
-            if (fraction > 0.0 && fraction < 1.0) {
-                intervalSpin->setValue(qRound(value));
-                value = intervalSpin->value();
+        if (qFuzzyCompare(lastValue, 1.0)){
+            if (value > 1.0){
+                intervalSpin->setSingleStep(1.0);
+                intervalSpin->setValue(2.0);
+            }else{
+                intervalSpin->setSingleStep(0.1);
+                intervalSpin->setValue(0.9);
             }
         }
-        lastValue = value;
+
+
+        lastValue = intervalSpin->value();
 
         intervalSpin->blockSignals(false);
         if (session) {
@@ -322,7 +330,7 @@ void WatchDockWidget::showContextMenu(const QPoint &pos)
 void WatchDockWidget::updateTableColors()
 {
     bool connected = (session && session->isConnected());
-
+    debugApp()<< "QSet<QString> forcedVar is :" << forcedVar;
     for (int row = 0; row < watchModel->rowCount(); ++row) {
         // Получаем имя переменной из первой колонки
         QStandardItem *varItem = watchModel->item(row, 0);
@@ -348,4 +356,14 @@ void WatchDockWidget::updateTableColors()
             cellItem->setData(rowColor, Qt::BackgroundRole);
         }
     }
+}
+
+void WatchDockWidget::addVar(const QString &varName)
+{
+    QStandardItem *varNameItem   = new QStandardItem();
+    QStandardItem *valueItem     = new QStandardItem();
+    QStandardItem *setValueItem  = new QStandardItem();
+    QStandardItem *forceValueItem = new QStandardItem();
+    valueItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+    watchModel->appendRow({varNameItem, valueItem, setValueItem, forceValueItem});
 }

@@ -38,6 +38,7 @@ private:
     QSet<QString> forcedVar;
 
     void updateTableColors();
+    void addVar(const QString &varName = QString());
 
 
 };
