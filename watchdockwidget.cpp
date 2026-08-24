@@ -166,7 +166,6 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
             }
         }
 
-
         lastValue = intervalSpin->value();
 
         intervalSpin->blockSignals(false);

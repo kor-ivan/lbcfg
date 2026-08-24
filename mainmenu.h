@@ -36,10 +36,18 @@ private:
     QMenu *editMenu = nullptr;
     QMenu *viewMenu = nullptr;
     QMenu *plcMenu = nullptr;
+    QMenu *logMenu = nullptr;
     void onEditMenuAboutToShow();
     void onViewMenuAboutToShow();
     void onPlcMenuAboutToShow();
     QList<QAction*> activeTextActions() const;
+
+    QAction *treeAct = nullptr;
+    QAction *discAct = nullptr;
+    QAction *logAct = nullptr;
+    QAction *createWatch = nullptr;
+    QMenu *watchMenu = nullptr;
+    QMenu *confMenu = nullptr;
 
 };
 

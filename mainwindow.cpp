@@ -61,8 +61,39 @@ MainWindow::MainWindow(QWidget *parent)
     // Временное сообщение (исчезнет через 5000 миллисекунд / 5 секунд)
     statusBar->showMessage(tr("Программа готова к работе"), 5000);
 
+
+    QLabel *watchStatusLabel = new QLabel(this);
+    watchStatusLabel->setAlignment(Qt::AlignCenter);
+    watchStatusLabel->setStyleSheet("QLabel { padding: 2px 8px; border-radius: 3px; }");
+    watchStatusLabel->setFixedHeight(20);
+    statusBar->addPermanentWidget(watchStatusLabel);
+    connect(lbplc, &plcManager::activeWatchChanged, this, [watchStatusLabel](const QStringList &keys) {
+        int count = keys.size();
+        if (count > 0) {
+            watchStatusLabel->setText(QString("Connected: %1").arg(count));
+            watchStatusLabel->setToolTip(QString("%1").arg(keys.join("\n")));
+            watchStatusLabel->setStyleSheet(
+                "QLabel {"
+                "  background-color: #D4EDDA;"
+                "  color: #155724;"
+                "  border: 1px solid #C3E6CB;"
+                "  padding: 0px 6px;"          // Сузили вертикальный отступ до 0px
+                "  border-radius: 3px;"
+                "  font-weight: bold;"
+                "  font-size: 11px;"           // Слегка уменьшили шрифт, чтобы рамка не поджимала текст
+                "}"
+                );
+        }else{
+            watchStatusLabel->setText("No Connections");
+            watchStatusLabel->setToolTip("No active watch lists");
+            watchStatusLabel->setStyleSheet("QLabel { padding: 2px 8px; border-radius: 3px; color: #6c757d; }");
+        }
+    });
+    emit lbplc->activeWatchChanged(lbplc->activeWatchKeys());
+
     fwWidget = new FirmwareWidget(this);
     statusBar->addPermanentWidget(fwWidget);
+
 
     connect(lbplc, &plcManager::firmwareStarted, this, [this]
             (const plcManager::CommandContext &ctx, const QString &message){
@@ -160,8 +191,6 @@ ConfigDockWidget *MainWindow::CreateConfDockWidget(const QString &key, const QSt
 
         configDocks.insert(key, dock);
         tabifyDockWidgetTo(dock, Qt::RightDockWidgetArea);
-        // addDockWidget(Qt::RightDockWidgetArea, dock);
-        // tabifyDockWidget(discoverDock, dock);
         for (QTabBar *tabBar : this->findChildren<QTabBar *>()) {
             tabBar->installEventFilter(this);
         }
@@ -219,8 +248,16 @@ DeviceTreeDockWidget *MainWindow::createTreeDockWidget()
             lbplc, &plcManager::scanDevice);
     connect(treeDock, &DeviceTreeDockWidget::requestConfig,
             lbplc, &plcManager::requestConfig);
-    connect(lbplc, &plcManager::scanCompleted,
-            treeDock, &DeviceTreeDockWidget::updateDevice);
+
+    connect(lbplc, &plcManager::scanCompleted, this, [this]
+            (const QString &ipv6, const QString &name, const QMap<qsizetype, lbprocess::scaninfo> &scanData){
+        if (!treeDock)
+            createTreeDockWidget();
+        treeDock->updateDevice(ipv6, name, scanData);
+        treeDock->show();
+        treeDock->raise();
+        treeDock->setFocus();
+    });
 
     tabifyDockWidgetTo(treeDock, Qt::LeftDockWidgetArea);
 

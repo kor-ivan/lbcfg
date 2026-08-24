@@ -78,7 +78,6 @@ void DeviceTreeDockWidget::updateDevice(const QString &ipv6, const QString &name
         col1->appendRow(new QStandardItem("Version: " + info.version));
         col1->appendRow(new QStandardItem("Serial: " + info.data.value(0)));
     }
-
     // Раскрываем дерево
     treeView->expand(rootIndex);
 }

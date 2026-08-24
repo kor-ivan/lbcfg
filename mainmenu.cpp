@@ -81,6 +81,64 @@ void MainMenu::initEditMenu(QMenuBar *menuBar)
 void MainMenu::initViewMenu(QMenuBar *menuBar)
 {
     viewMenu = menuBar->addMenu("&Вид");
+
+    treeAct = viewMenu->addAction(tr("Дерево устройств"));
+    treeAct->setCheckable(true);
+    connect(treeAct, &QAction::triggered, this, [this]() {
+        if (p_mainWindow->getTreeDock() && p_mainWindow->getTreeDock()->isVisible()) {
+            p_mainWindow->getTreeDock()->close(); // Закрываем (и уничтожаем благодаря WA_DeleteOnClose)
+        } else {
+            auto* dock = p_mainWindow->createTreeDockWidget(); // Создаем заново или открываем
+            dock->show();
+            dock->raise();
+        }
+    });
+
+    discAct = viewMenu->addAction(tr("Поиск устройств"));
+    discAct->setCheckable(true);
+    connect(discAct, &QAction::triggered, this, [this]() {
+        if (p_mainWindow->getDiscoverDock() && p_mainWindow->getDiscoverDock()->isVisible()) {
+            p_mainWindow->getDiscoverDock()->close();
+        } else {
+            auto* dock = p_mainWindow->createDiscoverDockWidget();
+            dock->show();
+            dock->raise();
+        }
+    });
+
+    logAct = viewMenu->addAction("Логи");
+    logAct->setCheckable(true);
+    connect(logAct, &QAction::triggered, this, [this](){
+        if (p_mainWindow->getLogDock() && p_mainWindow->getLogDock()->isVisible())
+            p_mainWindow->getLogDock()->close();
+        else{
+            auto *dock = p_mainWindow->createLogDockWidget();
+            dock->show();
+            dock->raise();
+        }
+    });
+
+    viewMenu->addSeparator();
+
+    watchMenu = new QMenu("Watch", viewMenu);
+    viewMenu->addMenu(watchMenu);
+
+    createWatch = new QAction("Создать новый", this);
+    createWatch->setShortcut(QKeySequence("Ctrl+W"));
+    watchMenu->addAction(createWatch);
+    connect(createWatch, &QAction::triggered, this, [this](){
+        static QAtomicInt counter(0);
+        QString str = QString("new %1").arg(counter.fetchAndAddRelaxed(1) + 1);
+        WatchDockWidget* watch = p_mainWindow->createWatchDockWidget(str);
+        watch->show();
+        watch->raise();
+        watch->setFocus();
+    });
+
+    confMenu = new QMenu("Открытые конфигурации", viewMenu);
+    confMenu->setEnabled(false);
+    viewMenu->addMenu(confMenu);
+
     connect(viewMenu, &QMenu::aboutToShow, this, &MainMenu::onViewMenuAboutToShow);
 }
 
@@ -137,90 +195,19 @@ void MainMenu::onEditMenuAboutToShow()
 
 void MainMenu::onViewMenuAboutToShow()
 {
-    viewMenu->clear();
-    QAction *treeAct = viewMenu->addAction(tr("Дерево устройств"));
-    treeAct->setCheckable(true);
-    // Проверяем через геттер: если док создан и виден — ставим галочку
-    bool treeExistsAndVisible = (p_mainWindow->getTreeDock() && p_mainWindow->getTreeDock()->isVisible());
-    treeAct->setChecked(treeExistsAndVisible);
+    treeAct->setChecked(p_mainWindow->getTreeDock() && p_mainWindow->getTreeDock()->isVisible());
+    discAct->setChecked(p_mainWindow->getDiscoverDock() && p_mainWindow->getDiscoverDock()->isVisible());
+    logAct->setChecked(p_mainWindow->getLogDock() && p_mainWindow->getLogDock()->isVisible());
 
-    connect(treeAct, &QAction::triggered, this, [this, treeExistsAndVisible]() {
-        if (treeExistsAndVisible) {
-            p_mainWindow->getTreeDock()->close(); // Закрываем (и уничтожаем благодаря WA_DeleteOnClose)
-        } else {
-            auto* dock = p_mainWindow->createTreeDockWidget(); // Создаем заново или открываем
-            dock->show();
-            dock->raise();
-        }
-    });
-
-    QAction *discAct = viewMenu->addAction(tr("Поиск устройств"));
-    discAct->setCheckable(true);
-    bool discExistsAndVisible = (p_mainWindow->getDiscoverDock() && p_mainWindow->getDiscoverDock()->isVisible());
-    discAct->setChecked(discExistsAndVisible);
-
-    connect(discAct, &QAction::triggered, this, [this, discExistsAndVisible]() {
-        if (discExistsAndVisible) {
-            p_mainWindow->getDiscoverDock()->close();
-        } else {
-            auto* dock = p_mainWindow->createDiscoverDockWidget();
-            dock->show();
-            dock->raise();
-        }
-    });
-
-    QAction *logAct = viewMenu->addAction(tr("Логи"));
-    logAct->setCheckable(true);
-    bool logExistsAndVisible = (p_mainWindow->getLogDock() &&
-                                p_mainWindow->isVisible());
-    logAct->setChecked(logExistsAndVisible);
-    connect(logAct, &QAction::triggered, this, [this, logExistsAndVisible](){
-        if (logExistsAndVisible)
-            p_mainWindow->getLogDock()->close();
-        else{
-            auto *dock = p_mainWindow->createLogDockWidget();
-            dock->show();
-            dock->raise();
-        }
-    });
-
-    QList<ConfigDockWidget*> openConf = p_mainWindow->getConfigDocks();
-
-    if (!openConf.isEmpty()) {
-        viewMenu->addSeparator();
-        QMenu *confMenu = viewMenu->addMenu("Открытые конфигурации");
-
-        for (ConfigDockWidget *dock : openConf) {
-            QAction *docAct = confMenu->addAction(dock->getPlcName());
-
-            // Если этот файл сейчас редактируется (активен) — ставим галочку
-            if (CommandManager::instance()->getActiveConfDockWidget() == dock) {
-                docAct->setCheckable(true);
-                docAct->setChecked(true);
-            }
-
-            // По клику переключаемся на этот файл
-            connect(docAct, &QAction::triggered, this, [dock]() {
-                dock->show();
-                dock->raise();
-                dock->setFocus();
-            });
+    for (QAction *action : watchMenu->actions()) {
+        if (action != createWatch) {
+            watchMenu->removeAction(action);
+            action->deleteLater(); // Безопасное удаление из памяти Qt
         }
     }
 
+    confMenu->clear();
     auto openWatch = p_mainWindow->getWatchDocks();
-    QMenu *watchMenu = viewMenu->addMenu("Watch");
-
-    QAction *createWatch = watchMenu->addAction("Создать новый");
-    createWatch->setShortcut(QKeySequence("Ctrl+W"));
-    connect(createWatch, &QAction::triggered, this, [this](){
-        static QAtomicInt counter(0);
-        QString str = QString("new %1").arg(counter.fetchAndAddRelaxed(1) + 1);
-        WatchDockWidget* watch = p_mainWindow->createWatchDockWidget(str);
-        watch->show();
-        watch->raise();
-        watch->setFocus();
-    });
 
     if (!openWatch.isEmpty()){
 
@@ -239,11 +226,42 @@ void MainMenu::onViewMenuAboutToShow()
             });
         }
     }
+
+    QList<ConfigDockWidget*> openConf = p_mainWindow->getConfigDocks();
+
+    if (!openConf.isEmpty()) {
+        confMenu->setEnabled(true);
+
+        for (ConfigDockWidget *dock : openConf) {
+            QAction *docAct = confMenu->addAction(dock->getPlcName());
+
+            // Если этот файл сейчас редактируется (активен) — ставим галочку
+            if (CommandManager::instance()->getActiveConfDockWidget() == dock) {
+                docAct->setCheckable(true);
+                docAct->setChecked(true);
+            }
+
+            // По клику переключаемся на этот файл
+            connect(docAct, &QAction::triggered, this, [dock]() {
+                dock->show();
+                dock->raise();
+                dock->setFocus();
+            });
+        }
+    }else{
+        confMenu->setEnabled(false);
+    }
 }
 
 void MainMenu::onPlcMenuAboutToShow()
 {
     plcMenu->clear();
+
+    if (logMenu)
+        logMenu->deleteLater();
+    logMenu = new QMenu("Запросить лог у...", plcMenu);
+
+
     QAction *discoverAction = plcMenu->addAction("Сканироавть");
     connect(discoverAction, &QAction::triggered, [this](){
         if (!p_mainWindow->getDiscoverDock().get()){
@@ -256,10 +274,11 @@ void MainMenu::onPlcMenuAboutToShow()
     });
 
     QAction *confAction = CommandManager::instance()->getConfAction();
-    if (confAction){
+    ConfigDockWidget *active = CommandManager::instance()->getActiveConfDockWidget();
+    if (confAction && active){
 
         confAction->setText(QString("Сконфигурировать %1")
-                                .arg(CommandManager::instance()->getActiveConfDockWidget()->getPlcName()));
+                                .arg(active->getPlcName()));
         plcMenu->addAction(confAction);
     }
     else{
@@ -267,16 +286,20 @@ void MainMenu::onPlcMenuAboutToShow()
         confAction->setEnabled(false);
     }
 
-    QMenu *logMenu = plcMenu->addMenu("Запросить лог у...");
+    plcMenu->addMenu(logMenu);
     if (p_mainWindow->getDiscoverDock().get())
     {
-        logMenu->setEnabled(true);
         QMap<QString, discover::lbinfo> ldmap = p_mainWindow->getDiscoverDock()->getLdmap();
-        plcManager::CommandContext ctx;
-        for (auto it = ldmap.begin(); it != ldmap.end(); ++it){
-            ctx.ipv6 = it.key();
-            CommandManager::instance()->getLogMenu(ctx, logMenu, it.value().name);
-        }
+        if (!ldmap.isEmpty())
+        {
+            logMenu->setEnabled(true);
+            plcManager::CommandContext ctx;
+            for (auto it = ldmap.begin(); it != ldmap.end(); ++it){
+                ctx.ipv6 = it.key();
+                CommandManager::instance()->getLogMenu(ctx, logMenu, it.value().name);
+            }
+        }else
+            logMenu->setEnabled(false);
     }else{
         logMenu->setEnabled(false);
     }
