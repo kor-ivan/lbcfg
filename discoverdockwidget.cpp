@@ -15,6 +15,7 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
     QVBoxLayout *vbox = new QVBoxLayout(content);
     btnDiscover = new QPushButton("Send Discover");
     QHBoxLayout *hbox = new QHBoxLayout();
+
     vbox->setSpacing(0);
     hbox->addWidget(btnDiscover);
     hbox->addStretch();
@@ -76,6 +77,7 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
 
 void DiscoverDockWidget::cleanRow()
 {
+    table->clearContents();
     table->setRowCount(0); // Очищаем старые строки
 }
 

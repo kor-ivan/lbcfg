@@ -12,12 +12,13 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include "logmanager.h"
+#include "mainwindow.h"
 
 
-
-ConfigDockWidget::ConfigDockWidget(const QString &name, QWidget *parent)
-    : QDockWidget(QString("Конфигурация: %1").arg(name),parent),
-    lbplc(plcManager::instanse())
+ConfigDockWidget::ConfigDockWidget(const QString &name, MainWindow *parent)
+    : QDockWidget(QString("Конфигурация: %1").arg(name), parent),
+    lbplc(plcManager::instanse()),
+    p_mainWindow(parent)
 {
     plcName = name;
     QWidget *content = new QWidget(this);
@@ -132,6 +133,9 @@ ConfigDockWidget::ConfigDockWidget(const QString &name, QWidget *parent)
         updateTitle();
     });
 
+    connect(varPage, &varView::addVariableToWatch,
+            this, &ConfigDockWidget::onAddVariableToWatch);
+
     // Устанавливаем дефолтную страницу (YAML) при запуске
     sidebarMenu->setCurrentRow(0);
 }
@@ -236,25 +240,6 @@ void ConfigDockWidget::onTextChanged()
     updateTitle();
 }
 
-// void ConfigDockWidget::showCustomContextMenu(const QPoint &pos)
-// {
-//     // Создаем стандартное меню для QTextEdit, чтобы не терять логику (Undo, Copy, Paste)
-//     QMenu *standardMenu = editor->createStandardContextMenu(pos);
-//     standardMenu->addSeparator();
-//     QAction *saveAction = CommandManager::instance()->getSaveAction();
-//     if (saveAction)
-//         standardMenu->addAction(saveAction);
-//     QAction *saveAsAction = CommandManager::instance()->getSaveAsAction();
-//     if (saveAsAction)
-//         standardMenu->addAction(saveAsAction);
-
-//     QAction *confAction = CommandManager::instance()->getConfAction();
-//     if (confAction)
-//         standardMenu->addAction(confAction);
-
-//     standardMenu->exec(editor->mapToGlobal(pos));
-//     delete standardMenu;
-// }
 
 void ConfigDockWidget::onConfigureClicked()
 {
@@ -483,6 +468,44 @@ void ConfigDockWidget::onSidebarRowChanged(int index)
         }
         scrollToSelectedPlc(plcSelector->currentIndex());
     }
+}
+
+void ConfigDockWidget::onAddVariableToWatch(const QString &varName)
+{
+    QString currentPlc = plcSelector->currentText();
+    if (currentPlc.isEmpty()) {
+        QMessageBox::warning(this,
+                             "Внимание",
+                             "Не выбрана конфигурация");
+        return;
+    }
+    int index = plcSelector->findText(currentPlc);
+    QStandardItemModel* model = qobject_cast<QStandardItemModel*>(plcSelector->model());
+    QString ipv6 = lbyaml::MacToIPv6(model->item(index, 1)->text());
+    auto watches = p_mainWindow->getWatchDocks();
+    WatchDockWidget* watch = nullptr;
+    if (!watches.isEmpty())
+    {
+        for (auto w : watches) {
+            if (w->getPlcName() == currentPlc){
+                watch = w;
+                break;
+            }
+        }
+    }
+    if (!watch){
+        debugApp() << "onAddVariableToWatch: New Watch" << ipv6 << plcName << varName;
+        watch = p_mainWindow->createWatchDockWidget(plcName, ipv6);
+        watch->addVar(varName);
+        watch->toggleConnection();
+    }else{
+        debugApp() << "onAddVariableToWatch:" << ipv6 << plcName << varName;
+        watch->addVar(varName);
+        if (!plcManager::instanse()->activeWatchKeys().contains(currentPlc))
+            watch->toggleConnection();
+    }
+    watch->show();
+    watch->raise();
 }
 
 QString ConfigDockWidget::getCurrentFilePath() const

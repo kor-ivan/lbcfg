@@ -3,6 +3,7 @@
 #include "logmanager.h"
 #include <QVBoxLayout>
 #include <QHeaderView>
+#include <QMenu>
 
 
 #include <QStyledItemDelegate>
@@ -76,6 +77,10 @@ varView::varView(QWidget *parent)
     CenteredCheckBoxDelegate* checkDelegate = new CenteredCheckBoxDelegate(this);
     varTableView->setItemDelegateForColumn(3, checkDelegate); // Центрируем Multisource
     varTableView->setItemDelegateForColumn(4, checkDelegate); // Центрируем Retain
+    varTableView->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(varTableView, &QTableView::customContextMenuRequested,
+            this, &varView::showContextMenu);
+
 
     // Настройка шрифта (опционально, можно сделать моноширинным, как редактор)
     // varTableView->setFont(QFont("Courier New", 10));
@@ -198,6 +203,23 @@ void varView::onDataChanged(const QModelIndex &topLeft, const QModelIndex &botto
 {
     modified = true;
     emit onChanged();
+}
+
+void varView::showContextMenu(const QPoint &pos)
+{
+    QModelIndex index = varTableView->indexAt(pos);
+    if (!index.isValid()) return;
+    QString varName = varModel->item(index.row(), 0)->text();
+    if (varName.isEmpty()) return;
+
+    QMenu menu(this);
+    QAction *addToWatchAction = menu.addAction("Добавить в Watch");
+
+    connect(addToWatchAction, &QAction::triggered, this, [this, varName]() {
+        emit addVariableToWatch(varName);
+    });
+
+    menu.exec(varTableView->viewport()->mapToGlobal(pos));
 }
 
 bool varView::isModified() const

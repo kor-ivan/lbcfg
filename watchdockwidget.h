@@ -17,6 +17,8 @@ public:
     QString getPlcName() const;
 
     void setIpv6(const QString &newIpv6);
+    void addVar(const QString &varName = QString());
+    void toggleConnection();
 
 private:
     QString plcname;
@@ -25,7 +27,7 @@ private:
     QStandardItemModel *watchModel = nullptr;
 
     void showIpEditDialog(QPushButton* anchorButton);
-    void toggleConnection(QPushButton *connBtn);
+
     QPointer<WatchSession> session;
     void receiveData(const QStringList &data);
 
@@ -38,7 +40,9 @@ private:
     QSet<QString> forcedVar;
 
     void updateTableColors();
-    void addVar(const QString &varName = QString());
+
+    QPushButton *connBtn = nullptr;
+
 
 
 };

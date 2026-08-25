@@ -42,7 +42,7 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
     intervalSpin->setToolTip("Интервал опроса");
     intervalSpin->setEnabled(false);
 
-    QPushButton *connBtn = new QPushButton(this);
+    connBtn = new QPushButton(this);
     connBtn->setFixedHeight(elementHeight);
     connBtn->setFixedWidth(70);
     connBtn->setToolTip("Подключиться к PLC для отладки");
@@ -102,8 +102,8 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
         }
     });
 
-    connect(connBtn, &QPushButton::clicked, this, [this, connBtn](){
-        toggleConnection(connBtn);
+    connect(connBtn, &QPushButton::clicked, this, [this](){
+        toggleConnection();
     });
 
     connect(watchModel, &QStandardItemModel::dataChanged, this, [this](const QModelIndex &topLeft, const QModelIndex &bottomRight) {
@@ -217,7 +217,7 @@ void WatchDockWidget::showIpEditDialog(QPushButton *anchorButton)
     ipEdit->selectAll();
 }
 
-void WatchDockWidget::toggleConnection(QPushButton *connBtn)
+void WatchDockWidget::toggleConnection()
 {
     if (session && session->isConnected())
         session->stop();
@@ -233,13 +233,13 @@ void WatchDockWidget::toggleConnection(QPushButton *connBtn)
     session = plcManager::instanse()->startWatch(ctx, param, this);
     if (session != old_session){
         connect(session, &WatchSession::watchExeComleted, this, &WatchDockWidget::receiveData);
-        connect(session, &WatchSession::connected, this, [connBtn, this](){
+        connect(session, &WatchSession::connected, this, [this](){
             connBtn->setToolTip("Отключиться от PLC для отладки");
             connBtn->setText("Disconnect");
             intervalSpin->setEnabled(true);
             updateTableColors();
         });
-        connect(session, &WatchSession::disconnected, this, [connBtn, this](){
+        connect(session, &WatchSession::disconnected, this, [this](){
             connBtn->setToolTip("Подключиться к PLC для отладки");
             connBtn->setText("Connect");
             intervalSpin->setEnabled(false);
@@ -252,7 +252,7 @@ void WatchDockWidget::toggleConnection(QPushButton *connBtn)
 
 void WatchDockWidget::receiveData(const QStringList &data)
 {
-    debugApp()<<"data receive:"<<data;
+    debugApp()<<"data receive from:"<< plcname << data;
     for (int i = 0; i < data.size(); ++i) {
         if (i < watchModel->rowCount()) {
             QStandardItem *valueItem = watchModel->item(i, 1);
@@ -365,4 +365,7 @@ void WatchDockWidget::addVar(const QString &varName)
     QStandardItem *forceValueItem = new QStandardItem();
     valueItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
     watchModel->appendRow({varNameItem, valueItem, setValueItem, forceValueItem});
+    if (varName.isEmpty())
+        return;
+    varNameItem->setText(varName);
 }

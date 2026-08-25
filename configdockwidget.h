@@ -14,13 +14,13 @@
 #include "varview.h"
 #include "deviceview.h"
 
-
+class MainWindow;
 class ConfigDockWidget : public QDockWidget
 {
     Q_OBJECT
 public:
     explicit ConfigDockWidget(const QString& name,
-                              QWidget *parent = nullptr);
+                              MainWindow *parent = nullptr);
 
     // QString config() const;
     bool isModified() const;
@@ -49,6 +49,7 @@ protected:
 
 private:
     plcManager *lbplc = nullptr;
+    MainWindow *p_mainWindow = nullptr;
     lbyaml *yamlParser = nullptr;
     // Добавить в private секцию в configdockwidget.h
     QListWidget *sidebarMenu = nullptr;
@@ -76,6 +77,7 @@ private:
 
     // Слот для обработки переключения страниц
     void onSidebarRowChanged(int index);
+    void onAddVariableToWatch(const QString &varName);
 };
 
 #endif // CONFIGDOCKWIDGET_H

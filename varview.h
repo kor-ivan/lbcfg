@@ -18,6 +18,7 @@ public:
 
 signals:
     void onChanged();
+    void addVariableToWatch(const QString &varName);
 
 private:
     QTableView *varTableView = nullptr;
@@ -26,6 +27,7 @@ private:
     QMap<QString, lbyaml::lbvar> m_lbVarMap;
     void onDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
     bool modified = false;
+    void showContextMenu(const QPoint &pos);
 
 };
 

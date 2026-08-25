@@ -97,7 +97,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(lbplc, &plcManager::firmwareStarted, this, [this]
             (const plcManager::CommandContext &ctx, const QString &message){
-                qDebug()<<"plcManager::firmwareStarted"<<ctx.ipv6<<ctx.name;
+                debugApp()<<"plcManager::firmwareStarted"<<ctx.ipv6<<ctx.name;
                 this->statusBar()->showMessage(message);
                 fwWidget->showStatus();
             });
