@@ -20,6 +20,9 @@ public:
     void addVar(const QString &varName = QString());
     void toggleConnection();
 
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
 private:
     QString plcname;
     QString ipv6;

@@ -80,6 +80,9 @@ varView::varView(QWidget *parent)
     varTableView->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(varTableView, &QTableView::customContextMenuRequested,
             this, &varView::showContextMenu);
+    // Разрешаем перетаскивание из таблицы
+    varTableView->setDragEnabled(true);
+    varTableView->setDragDropMode(QAbstractItemView::DragOnly);
 
 
     // Настройка шрифта (опционально, можно сделать моноширинным, как редактор)
@@ -131,7 +134,7 @@ void varView::updateData(lbyaml *parser)
         const auto &v = i.value();
         // 0. Колонка Name (Только для чтения)
         QStandardItem* nameItem = new QStandardItem(i.key());
-        nameItem->setFlags(nameItem->flags() & ~Qt::ItemIsEditable);
+        nameItem->setFlags((nameItem->flags() & ~Qt::ItemIsEditable) | Qt::ItemIsDragEnabled);
         varModel->setItem(j, 0, nameItem);
 
         // 1. Колонка Var (Только для чтения)

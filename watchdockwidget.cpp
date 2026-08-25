@@ -3,6 +3,9 @@
 #include <QVBoxLayout>
 #include <QLineEdit>
 #include <QMenu>
+#include <QDragEnterEvent>
+#include <QDropEvent>
+#include <QMimeData>
 #include "logmanager.h"
 #include "plcmanager.h"
 
@@ -68,6 +71,10 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
     watch->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(watch, &QTableView::customContextMenuRequested,
             this, &WatchDockWidget::showContextMenu);
+    // Разрешаем сброс данных на саму таблицу watch
+    watch->setAcceptDrops(true);
+    // Устанавливаем фильтр событий на таблицу, чтобы перехватывать Drag & Drop
+    watch->installEventFilter(this);
 
 
     QHeaderView *header = watch->horizontalHeader();
@@ -250,6 +257,53 @@ void WatchDockWidget::toggleConnection()
     }
 }
 
+bool WatchDockWidget::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == watch) {
+        if (event->type() == QEvent::DragEnter) {
+            qDebug()<< "event->type() == QEvent::DragEnter";
+            QDragEnterEvent *dragEvent = static_cast<QDragEnterEvent*>(event);
+            if (dragEvent->mimeData()->hasFormat("application/x-qabstractitemmodeldatalist") || dragEvent->mimeData()->hasText()) {
+                dragEvent->acceptProposedAction();
+                return true; // Перехватили, Qt дальше не передает
+            }
+        }
+        else if (event->type() == QEvent::Drop) {
+            qDebug()<< "event->type() == QEvent::Drop";
+            QDropEvent *dropEvent = static_cast<QDropEvent*>(event);
+            const QMimeData *mime = dropEvent->mimeData();
+            QString varName;
+
+            if (mime->hasText()) {
+                varName = mime->text().trimmed();
+            }
+            else if (mime->hasFormat("application/x-qabstractitemmodeldatalist")) {
+                qDebug()<< "mime->hasFormat(application/x-qabstractitemmodeldatalist)";
+                QByteArray encodedData = mime->data("application/x-qabstractitemmodeldatalist");
+                QDataStream stream(&encodedData, QIODevice::ReadOnly);
+                int row, col;
+                QMap<int, QVariant> roleDataMap;
+                while (!stream.atEnd()) {
+                    stream >> row >> col >> roleDataMap;
+                    if (roleDataMap.contains(Qt::DisplayRole)) {
+                        varName = roleDataMap.value(Qt::DisplayRole).toString().trimmed();
+                        qDebug()<<varName;
+                        break;
+                    }
+                }
+            }
+
+            if (!varName.isEmpty()) {
+                this->addVar(varName); // Добавляем ТОЛЬКО имя переменной
+            }
+            dropEvent->setDropAction(Qt::CopyAction);
+            dropEvent->accept();
+            return true;
+        }
+    }
+    return QDockWidget::eventFilter(watched, event);
+}
+
 void WatchDockWidget::receiveData(const QStringList &data)
 {
     debugApp()<<"data receive from:"<< plcname << data;
@@ -359,13 +413,13 @@ void WatchDockWidget::updateTableColors()
 
 void WatchDockWidget::addVar(const QString &varName)
 {
-    QStandardItem *varNameItem   = new QStandardItem();
+    QStandardItem *varNameItem   = new QStandardItem(varName);
     QStandardItem *valueItem     = new QStandardItem();
     QStandardItem *setValueItem  = new QStandardItem();
     QStandardItem *forceValueItem = new QStandardItem();
     valueItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
     watchModel->appendRow({varNameItem, valueItem, setValueItem, forceValueItem});
-    if (varName.isEmpty())
-        return;
-    varNameItem->setText(varName);
+    // if (varName.isEmpty())
+    //     return;
+    // varNameItem->setText(varName);
 }
