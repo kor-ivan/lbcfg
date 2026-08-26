@@ -4,6 +4,9 @@
 #include <QVBoxLayout>
 #include <QHeaderView>
 #include <QMenu>
+#include <QDrag>
+#include <QMimeData>
+#include <QPainter>
 
 
 #include <QStyledItemDelegate>
@@ -81,8 +84,9 @@ varView::varView(QWidget *parent)
     connect(varTableView, &QTableView::customContextMenuRequested,
             this, &varView::showContextMenu);
     // Разрешаем перетаскивание из таблицы
-    varTableView->setDragEnabled(true);
-    varTableView->setDragDropMode(QAbstractItemView::DragOnly);
+    // varTableView->setDragEnabled(true);
+    // varTableView->setDragDropMode(QAbstractItemView::DragOnly);
+    varTableView->viewport()->installEventFilter(this);
 
 
     // Настройка шрифта (опционально, можно сделать моноширинным, как редактор)
@@ -114,8 +118,6 @@ void varView::updateData(lbyaml *parser)
     if (!varModel) return;
     varModel->removeRows(0, varModel->rowCount());
 
-    // qDebug().noquote()<<parser->getFormattedYaml();
-
     lbyaml::lbvarstat statstr = parser->getVarStat();
     logPLC(parser->getlbhost(), LogCatcher::Info, LogCatcher::wrapYes)<<
         "Number of variables :"<<statstr.quantity<<Qt::endl<<
@@ -134,7 +136,7 @@ void varView::updateData(lbyaml *parser)
         const auto &v = i.value();
         // 0. Колонка Name (Только для чтения)
         QStandardItem* nameItem = new QStandardItem(i.key());
-        nameItem->setFlags((nameItem->flags() & ~Qt::ItemIsEditable) | Qt::ItemIsDragEnabled);
+        nameItem->setFlags(nameItem->flags() & ~Qt::ItemIsEditable);
         varModel->setItem(j, 0, nameItem);
 
         // 1. Колонка Var (Только для чтения)
@@ -228,4 +230,67 @@ void varView::showContextMenu(const QPoint &pos)
 bool varView::isModified() const
 {
     return modified;
+}
+
+bool varView::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == varTableView->viewport()) {
+        // 1. Запоминаем позицию, когда пользователь нажал левую кнопку мыши
+        if (event->type() == QEvent::MouseButtonPress) {
+            QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
+            if (mouseEvent->button() == Qt::LeftButton) {
+                // qDebug()<< "event->type() == QEvent::MouseButtonPress & mouseEvent->button() == Qt::LeftButton";
+                m_dragStartPos = mouseEvent->pos();
+            }
+        }
+        // 2. Отслеживаем движение мыши с зажатой кнопкой
+        else if (event->type() == QEvent::MouseMove) {
+            QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
+            if (mouseEvent->buttons() & Qt::LeftButton) {
+                // qDebug()<< "event->type() == QEvent::MouseMove & mouseEvent->buttons() & Qt::LeftButton";
+                // Проверяем, что мышь сместилась достаточно далеко, чтобы это не было случайным кликом
+                if ((mouseEvent->pos() - m_dragStartPos).manhattanLength() >= QApplication::startDragDistance()) {
+                    // qDebug()<< "(mouseEvent->pos() - m_dragStartPos).manhattanLength() >= QApplication::startDragDistance()";
+                    // Определяем, над какой ячейкой сейчас находится курсор
+                    QModelIndex index = varTableView->indexAt(m_dragStartPos);
+                    if (index.isValid()) {
+                        QString varName = varModel->item(index.row(), 0)->text();
+                        if (!varName.isEmpty()) {
+                            // Создаем объект Drag вручную
+                            QDrag *drag = new QDrag(this);
+                            QMimeData *mimeData = new QMimeData;
+                            // Записываем СТРОГО чистый текст
+                            mimeData->setText(varName);
+                            drag->setMimeData(mimeData);
+
+                            // 1. Получаем прямоугольник (координаты и размеры) ячейки в varTableView
+                            QRect cellRect = varTableView->visualRect(index);
+                            // 2. Создаем пустую картинку (Pixmap) точно по размеру ячейки
+                            QPixmap pixmap(cellRect.size());
+                            // 3. Заставляем viewport таблицы отрисовать (отрендерить) область этой ячейки в нашу картинку
+                            varTableView->viewport()->render(&pixmap, QPoint(0, 0), cellRect);
+                            // 4. Делаем картинку полупрозрачной
+                            QPixmap transparentPixmap(pixmap.size());
+                            transparentPixmap.fill(Qt::transparent);
+                            QPainter painter(&transparentPixmap);
+                            painter.setOpacity(0.7); // Уровень прозрачности (0.0 — невидимый, 1.0 — плотный)
+                            painter.drawPixmap(0, 0, pixmap);
+                            painter.end();
+                            // 5. Устанавливаем картинку в объект drag
+                            drag->setPixmap(transparentPixmap);
+                            // 6. Смещаем точку привязки картинки к курсору мыши,
+                            QPoint hotSpot = m_dragStartPos - cellRect.topLeft();
+                            drag->setHotSpot(hotSpot);
+
+                            // Запускаем перетаскивание (программа "замрет" на этой строке, пока drag не завершится)
+                            drag->exec(Qt::CopyAction);
+                            return true; // Событие обработано, предотвращаем стандартное выделение строк в таблице
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+    return QWidget::eventFilter(watched, event);
 }

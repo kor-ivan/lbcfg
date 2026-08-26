@@ -20,6 +20,9 @@ signals:
     void onChanged();
     void addVariableToWatch(const QString &varName);
 
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
 private:
     QTableView *varTableView = nullptr;
     QStandardItemModel *varModel = nullptr;
@@ -28,6 +31,8 @@ private:
     void onDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
     bool modified = false;
     void showContextMenu(const QPoint &pos);
+
+    QPoint m_dragStartPos;
 
 };
 
