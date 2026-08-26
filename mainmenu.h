@@ -37,6 +37,7 @@ private:
     QMenu *viewMenu = nullptr;
     QMenu *plcMenu = nullptr;
     QMenu *logMenu = nullptr;
+    QMenu *connectMenu = nullptr;
     void onEditMenuAboutToShow();
     void onViewMenuAboutToShow();
     void onPlcMenuAboutToShow();

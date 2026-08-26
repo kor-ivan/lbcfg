@@ -257,6 +257,11 @@ void WatchDockWidget::toggleConnection()
     }
 }
 
+bool WatchDockWidget::isConnected() const
+{
+    return session && session->isConnected();
+}
+
 bool WatchDockWidget::eventFilter(QObject *watched, QEvent *event)
 {
     if (watched == watch) {

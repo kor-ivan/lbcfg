@@ -260,6 +260,9 @@ void MainMenu::onPlcMenuAboutToShow()
     if (logMenu)
         logMenu->deleteLater();
     logMenu = new QMenu("Запросить лог у...", plcMenu);
+    if (connectMenu)
+        connectMenu->deleteLater();
+    connectMenu = new QMenu("Подключиться к...", plcMenu);
 
 
     QAction *discoverAction = plcMenu->addAction("Сканироавть");
@@ -302,6 +305,33 @@ void MainMenu::onPlcMenuAboutToShow()
             logMenu->setEnabled(false);
     }else{
         logMenu->setEnabled(false);
+    }
+
+    plcMenu->addMenu(connectMenu);
+    auto watchDocks = p_mainWindow->getWatchDocks();
+    if (!watchDocks.isEmpty()){
+        connectMenu->setEnabled(true);
+        QList<WatchDockWidget*> connectedWatch;
+        for (auto w : watchDocks) {
+            QAction *wA = connectMenu->addAction(w->getPlcName());
+            if (w->isConnected()){
+                wA->setCheckable(true);
+                wA->setChecked(true);
+                connectedWatch.append(w);
+            }
+            connect(wA, &QAction::triggered, this, [w](){
+                w->toggleConnection();
+            });
+        }
+        if (!connectedWatch.isEmpty()){
+            auto disconnectAll = connectMenu->addAction("Отключить все");
+            connect(disconnectAll, &QAction::triggered, this, [connectedWatch](){
+                for (auto w : connectedWatch)
+                    w->toggleConnection();
+            });
+        }
+    }else{
+        connectMenu->setEnabled(false);
     }
 }
 

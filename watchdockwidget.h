@@ -19,6 +19,7 @@ public:
     void setIpv6(const QString &newIpv6);
     void addVar(const QString &varName = QString());
     void toggleConnection();
+    bool isConnected() const;
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
