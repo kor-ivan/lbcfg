@@ -1,0 +1,48 @@
+{
+  "modules": {
+    "bcbase": {
+      "description": "Базовый модуль УСО (координатор)",
+      "structure": {
+        "module": { "type": "string", "description": "Тип базового модуля" },
+        "macaddr": { "type": "string", "description": "MAC-адрес конкретного базового модуля" },
+        "modbus_server": { "type": "section", "description": "Локальная настройка Modbus TCP/RTU сервера" },
+        "holding0..4096": { "type": "variable_link", "description": "Привязка Modbus Holding-регистров" },
+        "rs485": { "type": "section", "description": "Параметры интерфейса RS-485" }
+      }
+    },
+    "bcdi": {
+      "description": "Модуль дискретного ввода (16 входов, 24В)",
+      "structure": {
+        "module": { "type": "string", "description": "Тип модуля расширения" },
+        "in0..15": { "type": "variable_link", "description": "Дискретный канал (свойства: var, period, interval, filter)" }
+      }
+    },
+    "bcdo": {
+      "description": "Модуль дискретного вывода (16 выходов, PNP)",
+      "structure": {
+        "module": { "type": "string", "description": "Тип модуля расширения" },
+        "out0..15": { "type": "variable_link", "description": "Дискретный канал (свойства: var_out, init, holdtime)" }
+      }
+    },
+    "bcai": {
+      "description": "Модуль аналогового ввода (4 канала)",
+      "structure": {
+        "module": { "type": "string", "description": "Тип модуля расширения" },
+        "chan0..3": {
+          "type": "object",
+          "description": "Аналоговый измерительный канал",
+          "children": {
+            "mode": { "type": "enum", "values": ["Pt1000", "Pt100", "4-20mA", "0-10V", "K", "S", "T", "NTC"], "description": "Режим измерительного канала" },
+            "wires": { "type": "int", "description": "Количество проводов для термосопротивления (2, 3)" },
+            "resolution": { "type": "double", "description": "Разрешение или порог изменений" },
+            "interval": { "type": "string", "description": "Минимальный интервал публикации изменений" },
+            "period": { "type": "string", "description": "Период принудительной публикации" },
+            "scale": { "type": "double", "description": "Масштабирование результата" },
+            "natural": { "type": "string", "description": "Диапазон естественного представления после нормирования" },
+            "var": { "type": "variable_link", "description": "Имя переменной для публикации" }
+          }
+        }
+      }
+    }
+  }
+}
