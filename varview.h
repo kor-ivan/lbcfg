@@ -31,9 +31,7 @@ private:
     void onDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
     bool modified = false;
     void showContextMenu(const QPoint &pos);
-
     QPoint m_dragStartPos;
-
 };
 
 #endif // VARVIEW_H

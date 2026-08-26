@@ -263,8 +263,11 @@ bool varView::eventFilter(QObject *watched, QEvent *event)
                             mimeData->setText(varName);
                             drag->setMimeData(mimeData);
 
+                            // Переключаем индекс на колонку 0 (столбец Name) для правильного снимка ячейки
+                            QModelIndex nameIndex = index.siblingAtColumn(0);
+
                             // 1. Получаем прямоугольник (координаты и размеры) ячейки в varTableView
-                            QRect cellRect = varTableView->visualRect(index);
+                            QRect cellRect = varTableView->visualRect(nameIndex);
                             // 2. Создаем пустую картинку (Pixmap) точно по размеру ячейки
                             QPixmap pixmap(cellRect.size());
                             // 3. Заставляем viewport таблицы отрисовать (отрендерить) область этой ячейки в нашу картинку
@@ -279,9 +282,16 @@ bool varView::eventFilter(QObject *watched, QEvent *event)
                             // 5. Устанавливаем картинку в объект drag
                             drag->setPixmap(transparentPixmap);
                             // 6. Смещаем точку привязки картинки к курсору мыши,
-                            QPoint hotSpot = m_dragStartPos - cellRect.topLeft();
+                            // QPoint hotSpot = m_dragStartPos - cellRect.topLeft();
+                            QPoint hotSpot;
+                            if (cellRect.contains(m_dragStartPos)) {
+                                // Пользователь тащит прямо за имя — оставляем естественную привязку "строго под мышью"
+                                hotSpot = m_dragStartPos - cellRect.topLeft();
+                            } else {
+                                // Пользователь тащит за другой столбец — центрируем картинку Name ровно под курсором
+                                hotSpot = QPoint(transparentPixmap.width() / 2, transparentPixmap.height() / 2);
+                            }
                             drag->setHotSpot(hotSpot);
-
                             // Запускаем перетаскивание (программа "замрет" на этой строке, пока drag не завершится)
                             drag->exec(Qt::CopyAction);
                             return true; // Событие обработано, предотвращаем стандартное выделение строк в таблице
