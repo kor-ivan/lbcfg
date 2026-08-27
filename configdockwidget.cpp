@@ -406,6 +406,8 @@ void ConfigDockWidget::onSidebarRowChanged(int index)
     else if (index == 2) {
         // Пользователь перешел во вкладку "Модули I/O" (DeviceView)
         // Аналогично парсим YAML под нужды конфигуратора модулей
+        if (devicePage)
+            devicePage->updateData(yamlParser);
     }
     else if (index == 0) {
         if (varPage->isModified()){

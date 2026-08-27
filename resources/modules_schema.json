@@ -1,48 +1,131 @@
 {
-  "modules": {
-    "bcbase": {
-      "description": "Базовый модуль УСО (координатор)",
-      "structure": {
-        "module": { "type": "string", "description": "Тип базового модуля" },
-        "macaddr": { "type": "string", "description": "MAC-адрес конкретного базового модуля" },
-        "modbus_server": { "type": "section", "description": "Локальная настройка Modbus TCP/RTU сервера" },
-        "holding0..4096": { "type": "variable_link", "description": "Привязка Modbus Holding-регистров" },
-        "rs485": { "type": "section", "description": "Параметры интерфейса RS-485" }
-      }
-    },
-    "bcdi": {
-      "description": "Модуль дискретного ввода (16 входов, 24В)",
-      "structure": {
-        "module": { "type": "string", "description": "Тип модуля расширения" },
-        "in0..15": { "type": "variable_link", "description": "Дискретный канал (свойства: var, period, interval, filter)" }
-      }
-    },
-    "bcdo": {
-      "description": "Модуль дискретного вывода (16 выходов, PNP)",
-      "structure": {
-        "module": { "type": "string", "description": "Тип модуля расширения" },
-        "out0..15": { "type": "variable_link", "description": "Дискретный канал (свойства: var_out, init, holdtime)" }
-      }
-    },
-    "bcai": {
-      "description": "Модуль аналогового ввода (4 канала)",
-      "structure": {
-        "module": { "type": "string", "description": "Тип модуля расширения" },
-        "chan0..3": {
-          "type": "object",
-          "description": "Аналоговый измерительный канал",
-          "children": {
-            "mode": { "type": "enum", "values": ["Pt1000", "Pt100", "4-20mA", "0-10V", "K", "S", "T", "NTC"], "description": "Режим измерительного канала" },
-            "wires": { "type": "int", "description": "Количество проводов для термосопротивления (2, 3)" },
-            "resolution": { "type": "double", "description": "Разрешение или порог изменений" },
-            "interval": { "type": "string", "description": "Минимальный интервал публикации изменений" },
-            "period": { "type": "string", "description": "Период принудительной публикации" },
-            "scale": { "type": "double", "description": "Масштабирование результата" },
-            "natural": { "type": "string", "description": "Диапазон естественного представления после нормирования" },
-            "var": { "type": "variable_link", "description": "Имя переменной для публикации" }
-          }
+    "clock": {
+        "description": "Настройки синхронизации времени",
+        "structure": {
+            "TZ": {"type": "string", "description": "Часовой пояс"},
+            "sntp_server": {"type": "string", "description": "NTP сервер 1"},
+            "sntp_server2": {"type": "string", "description": "NTP сервер 2"},
+            "sntp_smooth": {"type": "enum", "values": ["y", "n"], "description": "Способ коррекции времени"}
         }
-      }
+    },
+    "var": {
+        "description": "Переменные проекта",
+        "any": {
+            "structure": {
+                "init": {"type": "int", "description": "Значение по умолчанию"},
+                "retain": {"type": "enum", "values": ["y", "n"], "description": "Хранить в энергонезависимой памяти"},
+                "multisource": {"type": "enum", "values": ["y", "n"], "description": "Multisource переменная"}
+            }
+        }
+    },
+    "forte": {
+        "description": "Управление рантаймом Forte",
+        "structure": {
+            "enable": {"type": "enum", "values": ["y", "n"], "description": "Активировать Forte"},
+            "var": {"type": "sequence", "description": "Переменные от Forte"},
+            "var_out": {"type": "sequence", "description": "Переменные к Forte"}
+        }
+    },
+    "ipaddr": {"type": "string", "description": "IP адрес/маска"},
+    "gateway": {"type": "string", "description": "Шлюз"},
+    "slot": {
+        "type": "link",
+        "description": "Слот для модулей ввода/вывода",
+        "modules": [
+            {
+                "name": "LB241CPU", "description": "Процессорный базовый модуль", "structure": {
+                    "module": {"type": "const", "value": "bcbase"},
+                    "macaddr": {"type": "string", "description": "MAC адрес"},
+                    "modbus_server": {
+                        "description": "ModBus сервер", "structure": {
+                            "tcp_port": {"type": "string", "description": "TCP порт"},
+                            "rtu_addr": {"type": "int", "description": "Адрес в режиме RTU (если не указывать, то отключает RS-485)"},
+                            "holding": {
+                                "type": "link", "description": "holding регистр", "structure": {
+                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]}
+                                }
+                            },
+                            "inreg": {
+                                "type": "link", "description": "inreg регистр", "structure": {
+                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]}
+                                }
+                            },
+                            "coil": {
+                                "type": "link", "description": "coil регистр", "structure": {
+                                    "var": {"type": "string"}, "var_out": {"type": "string"}
+                                }
+                            },
+                            "inbit": {
+                                "type": "link", "description": "inbit регистр", "structure": {
+                                    "var": {"type": "string"}, "var_out": {"type": "string"}
+                                }
+                            }
+                        }
+                    },
+                    "rs485": {
+                        "description": "Параметры RS-485 порта", "structure": {
+                            "speed": {"type": "enum", "values": [9600, 19200, 38400, 57600, 115200], "description": "Скорость"},
+                            "parity": {"type": "enum", "values": ["N", "Y"], "description": "Чётность"},
+                            "bits": {"type": "enum", "values": [8, 7], "description": "Количество бит"},
+                            "stop_bits": {"type": "enum", "values": [1, 2], "description": "Стоповые биты"}
+                        }
+                    },
+                    "wdt": {
+                        "description": "Параметры WatchDog таймера", "structure": {
+                            "bus": {"type": "time", "description": "Таймаут WDT в модулях ввода/вывода (по умолчанию 300 с)"},
+                            "self": {"type": "time", "description": "Таймаут WDT в базовых модулях (по умолчанию 360 с)"}
+                        }
+                    }
+                }
+            },
+            {
+                "name": "LB241DI16", "description": "Модуль дискретного ввода 24В", "structure": {
+                    "module": {"type": "const", "value": "bcdi"},
+                    "in": {
+                        "type": "link", "structure": { "var": {"type": "string"} }
+                    }
+                }
+            },
+            {
+                "name": "LB241DO16", "description": "Модуль дискретного вывода 24В", "structure": {
+                    "module": {"type": "const", "value": "bcdo"},
+                    "out": {
+                        "type": "link", "structure": { "var_out": {"type": "string"}, "holdtime": {"type": "time"} }
+                    },
+                    "init": {"type": "enum", "values": ["last", 1], "description": "Значение при старте модуля"}
+                }
+            },
+            {
+                "name": "LB241AI4", "description": "Модуль аналогового ввода 4 канала", "structure": {
+                    "module": {"type": "const", "value": "bcai"},
+                    "chan": {
+                        "type": "link", "structure": {
+                            "mode": {"type": "enum", "values": ["Pt1000", "Pt100", "4-20mA", "0-10V", "K", "S", "T", "NTC"], "description": "Режим измерительного канала"},
+                            "wires": { "type": "int", "description": "Количество проводов для термосопротивления (2, 3)" },
+                            "resolution": { "type": "double", "description": "Разрешение или порог изменений" },
+                            "interval": { "type": "string", "description": "Минимальный интервал публикации изменений" },
+                            "period": { "type": "string", "description": "Период принудительной публикации" },
+                            "scale": { "type": "double", "description": "Масштабирование результата" },
+                            "natural": { "type": "string", "description": "Диапазон естественного представления после нормирования" },
+                            "var": {"type": "string"}
+                        }
+                    }
+                }
+            },
+            {
+                "name": "LB241AO4", "description": "Модуль аналогового вывода 4 канала", "structure": {
+                    "module": {"type": "const", "value": "bcao"},
+                    "chan": {
+                        "type": "link", "structure": {
+                            "mode": {"type": "enum", "values": ["4-20mA", "0-10V"], "description": "Режим канала"},
+                            "natural": { "type": "string", "description": "Диапазон естественного представления после нормирования"},
+                            "var_out": {"type": "string"}
+                        }
+                    }
+                }
+            }
+        ]
     }
-  }
 }
