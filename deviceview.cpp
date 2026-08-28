@@ -446,29 +446,6 @@ QJsonObject deviceView::serializeNode(QStandardItem *parentNode)
             if (valStr.isEmpty()) {
                 continue;
             }
-
-            // Проверяем тип, который от нас ждет схема
-            // if (type == "int") {
-            //     bool isInt = false;
-            //     int intVal = valStr.toInt(&isInt);
-            //     if (isInt) {
-            //         resultObj.insert(key, intVal);
-            //         continue;
-            //     }
-            // }
-            // else if (type == "double") {
-            //     bool isDouble = false;
-            //     // Заменяем запятую на точку на случай локали
-            //     double dblVal = valStr.replace(",", ".").toDouble(&isDouble);
-            //     if (isDouble) {
-            //         resultObj.insert(key, dblVal);
-            //         continue;
-            //     }
-            // }
-
-
-            // ПО УМОЛЧАНИЮ (для enum, string и т.д.): сохраняем строго как СТРОКУ,
-            // чтобы не ломать конвертер lbyaml
             resultObj.insert(key, valStr);
         }
     }

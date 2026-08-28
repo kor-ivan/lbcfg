@@ -237,7 +237,7 @@
                             "interval": { "type": "string", "description": "Минимальный интервал публикации изменений" },
                             "period": { "type": "string", "description": "Период принудительной публикации" },
                             "scale": { "type": "double", "description": "Масштабирование результата" },
-                            "natural": { "type": "string", "description": "Диапазон естественного представления после нормирования" },
+                            "natural": { "type": "sequence", "description": "Диапазон естественного представления после нормирования" },
                             "var": {"type": "string"}
                         }
                     }
@@ -249,7 +249,7 @@
                     "chan": {
                         "type": "link", "structure": {
                             "mode": {"type": "enum", "values": ["4-20mA", "0-10V"], "description": "Режим канала"},
-                            "natural": { "type": "string", "description": "Диапазон естественного представления после нормирования"},
+                            "natural": { "type": "sequence", "description": "Диапазон естественного представления после нормирования"},
                             "var_out": {"type": "string"}
                         }
                     }
