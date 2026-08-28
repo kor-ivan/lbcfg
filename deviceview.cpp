@@ -281,6 +281,7 @@ void deviceView::parseSchemaNode(QStandardItem *parentNode, const QJsonObject &s
 
             QStandardItem *seqValueItem = new QStandardItem(""); // Сам узел-заголовок значения не имеет
             seqValueItem->setEditable(false);
+            seqValueItem->setData(meta, deviceView::SchemaMetaRole);
 
             QStandardItem *seqDescItem = new QStandardItem(desc);
             seqDescItem->setEditable(false);
@@ -406,7 +407,7 @@ QJsonObject deviceView::serializeNode(QStandardItem *parentNode)
 
         // 2. ЖЕСТКАЯ КОРРЕКТИРОВКА ДЛЯ МАССИВОВ FORTE (Превращаем их строго в QJsonArray)
         QStandardItem *parentItem = parentNode;
-        if ((key == "var" || key == "var_out" || type == "sequence") && parentItem && parentItem->text() == "forte") {
+        if (type == "sequence") {
             QJsonArray seqArray;
             for (int j = 0; j < nameItem->rowCount(); ++j) {
                 QStandardItem *arrayItem = nameItem->child(j, 0);
