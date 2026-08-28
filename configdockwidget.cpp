@@ -133,6 +133,11 @@ ConfigDockWidget::ConfigDockWidget(const QString &name, MainWindow *parent)
         updateTitle();
     });
 
+    connect(devicePage, &deviceView::onChanged, this, [this]{
+        modified = true;
+        updateTitle();
+    });
+
     connect(varPage, &varView::addVariableToWatch,
             this, &ConfigDockWidget::onAddVariableToWatch);
 
@@ -321,6 +326,12 @@ void ConfigDockWidget::scrollToSelectedPlc(int index)
         varPage->updateData(yamlParser);
     }
     break;
+    case 2:{
+        yamlParser->setlbhost(plcSelector->currentText());
+        plcName = plcSelector->currentText();
+        devicePage->updateData(yamlParser);
+    }
+    break;
     default:
         break;
     }
@@ -457,7 +468,9 @@ void ConfigDockWidget::onSidebarRowChanged(int index)
                     );
                 QString customFooter = QString(
                     "\n# --------------------------------------------------\n"
-                    );                                           QString replacementText = customHeader + plcYamlText + customFooter;
+                    );
+
+                QString replacementText = customHeader + plcYamlText + customFooter;
 
                 yamlPage->replacePlcBlock(startLine, endLine, replacementText);
                 yamlParser->setConfig(yamlPage->text(), lbyaml::data);
@@ -467,6 +480,14 @@ void ConfigDockWidget::onSidebarRowChanged(int index)
                                          .arg(plcName, currentMac));
             }
 
+        }else if (devicePage->isModified()){
+            // 1. Забираем измененную структуру в виде JSON
+            QJsonObject updatedJson = devicePage->getUpdateData();
+            qDebug()<<updatedJson;
+
+            QString updatedYamlText = yamlParser->getlbconf(updatedJson);
+
+            yamlPage->setText(updatedYamlText);
         }
         scrollToSelectedPlc(plcSelector->currentIndex());
     }

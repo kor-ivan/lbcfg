@@ -27,34 +27,6 @@ deviceView::deviceView(QWidget *parent)
     deviceLayout->addWidget(deviceTreeView);
 
     qDebug()<<"ModulesSchema loaded:"<<loadModulesSchema(":/config/resources/modules_schema.json");
-
-
-    // deviceTableView = new QTableView(this);
-    // deviceLayout->addWidget(deviceTableView);
-
-    // deviceTableView->setShowGrid(true); // Включаем сетку
-    // deviceTableView->setSelectionBehavior(QAbstractItemView::SelectRows); // Выделять строку целиком
-    // deviceTableView->setSelectionMode(QAbstractItemView::SingleSelection); // Выделять только одну строку за раз
-    // deviceTableView->setAlternatingRowColors(true); // Чередование цветов строк для читаемости
-
-    // // Настройка шрифта (опционально, можно сделать моноширинным, как редактор)
-    // // varTableView->setFont(QFont("Courier New", 10));
-
-    // // 3. Настраиваем поведение заголовков
-    // QHeaderView *horHeader = deviceTableView->horizontalHeader();
-    // horHeader->setSectionResizeMode(QHeaderView::Stretch); // Колонки растягиваются на всю доступную ширину
-    // horHeader->setVisible(true); // Показываем верхние заголовки
-
-    // QHeaderView *vertHeader = deviceTableView->verticalHeader();
-    // vertHeader->setDefaultSectionSize(22); // Компактная высота строк
-    // vertHeader->setVisible(false); // Прячем левую нумерацию строк (1, 2, 3...), если она не нужна
-
-
-    // deviceModel = new QStandardItemModel(this);
-    // deviceTableView->setModel(deviceModel);
-    // QStringList headers = {"Module", "Parametr", "Value", "Type", "Comment"};
-    // deviceModel->setHorizontalHeaderLabels(headers);
-    // deviceLayout->addWidget(deviceTableView);
 }
 
 bool deviceView::loadModulesSchema(const QString &jsonPath)
@@ -83,9 +55,25 @@ void deviceView::updateData(lbyaml *parser)
     QJsonObject yamlRoot = parser->getlbJsonObject();
     qDebug()<<yamlRoot;
 
+    disconnect(deviceModel, &QStandardItemModel::dataChanged,
+               this, &deviceView::onDataChanged);
+
     parseSchemaNode(deviceModel->invisibleRootItem(), m_schemaRoot, QJsonValue(yamlRoot));
     // deviceTreeView->expandAll();
+    deviceTreeView->setColumnWidth(0, 200);
 
+    modified = false;
+    connect(deviceModel, &QStandardItemModel::dataChanged,
+               this, &deviceView::onDataChanged);
+
+}
+
+QJsonObject deviceView::getUpdateData()
+{
+    if (!deviceModel) return QJsonObject();
+
+    // Запускаем сборку от невидимого корня модели
+    return serializeNode(deviceModel->invisibleRootItem());
 }
 
 void deviceView::parseSchemaNode(QStandardItem *parentNode, const QJsonObject &schemaNode, const QJsonValue &yamlData)
@@ -101,7 +89,7 @@ void deviceView::parseSchemaNode(QStandardItem *parentNode, const QJsonObject &s
         QString type = meta.value("type").toString();
 
         // Исключение: блоки "any" и полиморфные "link", так как они обрабатывают данные динамически
-        if (key != "any" && !meta.contains("any") && type != "link") {
+        if (key != "any" && !meta.contains("any") && type != "link" && type != "keynum") {
             if (!yamlObj.contains(key) || yamlObj.value(key).isUndefined() || yamlObj.value(key).isNull()) {
                 continue; // Такого параметра нет в YAML, не создаем для него строку
             }
@@ -148,61 +136,123 @@ void deviceView::parseSchemaNode(QStandardItem *parentNode, const QJsonObject &s
         }
         // 2. Обработка слотов "type": "link" с массивом "modules"
         if (type == "link" && meta.contains("modules")) {
-            // Ищем в YAML объекте все ключи, содержащие подстроку "slot" (slot1, slot-1 и т.д.)
+            // А) Собираем все ключи из YAML, содержащие подстроку "slot"
+            QStringList matchedSlots;
             for (auto yIt = yamlObj.begin(); yIt != yamlObj.end(); ++yIt) {
                 if (yIt.key().contains("slot")) {
-                    QJsonObject slotData = yIt.value().toObject();
-                    QString moduleType = slotData.value("module").toString(); // "bcbase", "bcdi", "bcdo"...
-
-                    QJsonObject subSchema = findModuleSchema(moduleType);
-                    QString moduleName = subSchema.value("name").toString();
-                    QString moduleDesc = subSchema.value("description").toString();
-
-                    QStandardItem *slotNameItem = new QStandardItem(QString("%1 (%2)").arg(yIt.key(), moduleName));
-                    slotNameItem->setEditable(false);
-
-                    QStandardItem *slotValueItem = new QStandardItem("");
-                    slotValueItem->setEditable(false);
-
-                    QStandardItem *slotDescItem = new QStandardItem(moduleDesc);
-                    slotDescItem->setEditable(false);
-
-                    parentNode->appendRow({slotNameItem, slotValueItem, slotDescItem});
-
-                    parseSchemaNode(slotNameItem, subSchema.value("structure").toObject(), QJsonValue(slotData));
+                    matchedSlots.append(yIt.key());
                 }
+            }
+
+            // Б) Сортируем слоты по возрастанию номеров (с учетом возможных "slot-1", "slot1", "slot12")
+            std::sort(matchedSlots.begin(), matchedSlots.end(), [key](const QString &a, const QString &b) {
+                int indexA = a.mid(key.length()).toInt();
+                int indexB = b.mid(key.length()).toInt();
+                return indexA < indexB;
+            });
+
+            // В) Итерируемся по уже ОТСОРТИРОВАННЫМ слотам и строим дерево
+            for (const QString &slotKey : matchedSlots) {
+                QJsonObject slotData = yamlObj.value(slotKey).toObject();
+                QString moduleType = slotData.value("module").toString();
+
+                QJsonObject subSchema = findModuleSchema(moduleType);
+                QString moduleName = subSchema.value("name").toString();
+                QString moduleDesc = subSchema.value("description").toString();
+
+                QStandardItem *slotNameItem = new QStandardItem(QString("%1 (%2)").arg(slotKey, moduleName));
+                slotNameItem->setEditable(false);
+
+                // СОХРАНЯЕМ ДАННЫЕ ДЛЯ ПОСЛЕДУЮЩЕЙ СБОРКИ, ЧТОБЫ НЕ УСЛОЖНЯТЬ ЖИЗНЬ:
+                slotNameItem->setData(slotKey, deviceView::SlotKeyRole);
+                slotNameItem->setData(moduleType, deviceView::ModuleTypeRole);
+
+                QStandardItem *slotValueItem = new QStandardItem("");
+                slotValueItem->setEditable(false);
+
+                QStandardItem *slotDescItem = new QStandardItem(moduleDesc);
+                slotDescItem->setEditable(false);
+
+                parentNode->appendRow({slotNameItem, slotValueItem, slotDescItem});
+
+                // Рекурсивно разворачиваем внутреннюю структуру параметров отсортированного модуля
+                parseSchemaNode(slotNameItem, subSchema.value("structure").toObject(), QJsonValue(slotData));
             }
             continue;
         }
-        // 3. Обработка внутренних вложенных линков-диапазонов (holding, in, out, chan)
-        if (type == "link" && meta.contains("structure")){
+
+
+        // 3. Обработка внутренних линков-диапазонов ("link" или "keynum")
+        if ((type == "link" || type == "keynum") && meta.contains("structure")) {
             QJsonObject subStruct = meta.value("structure").toObject();
-            // Ищем в YAML объекте ключи, которые начинаются с имени текущего линка (например, "holding0..15" или "in0")
-            for (auto yIt = yamlObj.begin(); yIt != yamlObj.end(); ++yIt){
-                if (yIt.key().startsWith(key)){
-                    QStandardItem *linkNameItem = new QStandardItem(yIt.key());
-                    linkNameItem->setEditable(false);
 
-                    QStandardItem *linkValueItem = new QStandardItem("");
-                    linkValueItem->setEditable(false);
+            // А) Собираем все ключи из YAML, которые начинаются с нужного префикса (например, "holding", "in")
+            QStringList matchedYamlKeys;
+            for (auto yIt = yamlObj.begin(); yIt != yamlObj.end(); ++yIt) {
+                if (yIt.key().startsWith(key)) {
+                    matchedYamlKeys.append(yIt.key());
+                }
+            }
 
-                    QStandardItem *linkDescItem = new QStandardItem(desc);
-                    linkDescItem->setEditable(false);
+            // Б) Сортируем собранные ключи по возрастанию чисел внутри них (Естественная сортировка)
+            std::sort(matchedYamlKeys.begin(), matchedYamlKeys.end(), [key](const QString &a, const QString &b) {
+                // Отрезаем префикс (получаем "10" или "0..1")
+                QString numStrA = a.mid(key.length());
+                QString numStrB = b.mid(key.length());
 
-                    parentNode->appendRow({linkNameItem, linkValueItem, linkDescItem});
+                // Избавляемся от содержимого диапазонов (если есть "..", отсекаем всё после них)
+                int dotIdxA = numStrA.indexOf("..");
+                if (dotIdxA != -1) numStrA = numStrA.left(dotIdxA);
 
-                    // Если значение является вложенным JSON-объектом (развернутая запись параметров)
-                    if (yIt.value().isObject()) {
-                        parseSchemaNode(linkNameItem, subStruct, yIt.value());
+                int dotIdxB = numStrB.indexOf("..");
+                if (dotIdxB != -1) numStrB = numStrB.left(dotIdxB);
+
+                // Теперь безопасно переводим в int и сравниваем
+                return numStrA.toInt() < numStrB.toInt();
+            });
+
+            // В) Итерируемся по уже ОТСОРТИРОВАННОМУ списку ключей и строим дерево
+            for (const QString &yamlKey : matchedYamlKeys) {
+                QJsonValue yamlValue = yamlObj.value(yamlKey);
+
+                QString paramName = yamlKey;
+                QString paramValue = "";
+
+                // Если тип keynum — выносим число в колонку Value
+                if (type == "keynum") {
+                    paramName = key;
+                    paramValue = yamlKey.mid(key.length());
+                }
+
+                QStandardItem *linkNameItem = new QStandardItem(paramName);
+                linkNameItem->setEditable(false);
+
+                QStandardItem *linkValueItem = new QStandardItem(paramValue);
+                linkValueItem->setEditable(type == "keynum");
+                // Сохраняем оригинальный ключ во вторую колонку (linkValueItem)
+                linkValueItem->setData(yamlKey, deviceView::OriginalKeyRole);
+
+                QStandardItem *linkDescItem = new QStandardItem(desc);
+                linkDescItem->setEditable(false);
+
+                parentNode->appendRow({linkNameItem, linkValueItem, linkDescItem});
+
+                // Рекурсивный спуск во внутренние параметры
+                if (yamlValue.isObject()) {
+                    parseSchemaNode(linkNameItem, subStruct, yamlValue);
+                } else {
+                    if (type == "keynum") {
+                        QJsonDocument inlineDoc = QJsonDocument::fromJson(yamlValue.toString().toUtf8());
+                        if (inlineDoc.isObject()) {
+                            parseSchemaNode(linkNameItem, subStruct, inlineDoc.object());
+                        }
                     } else {
-                        // Если запись компактная (inline синтаксис YAML, например holding6: {var_out: ai0})
-                        // Выведем строковое представление во вторую колонку
-                        linkValueItem->setText(yIt.value().toString());
+                        linkValueItem->setText(yamlValue.toString());
                         linkValueItem->setEditable(true);
                     }
                 }
             }
-            continue;
+            continue; // Переходим к следующему элементу схемы
         }
         // 4. Обычные структурные группы параметров (clock, modbus_server, rs485, wdt)
         if (meta.contains("structure") && type != "link") {
@@ -283,7 +333,7 @@ void deviceView::parseSchemaNode(QStandardItem *parentNode, const QJsonObject &s
         } else {
             paramValueItem->setEditable(true);
             // Прикрепляем метаданные текущего узла схемы (будет нужно делегату для отрисовки ComboBox)
-            paramValueItem->setData(meta, Qt::UserRole);
+            paramValueItem->setData(meta, deviceView::SchemaMetaRole);
         }
 
         QStandardItem *paramDescItem = new QStandardItem(desc);
@@ -299,9 +349,148 @@ QJsonObject deviceView::findModuleSchema(const QString &moduleValue)
     QJsonArray modulesArray = m_schemaRoot.value("slot").toObject().value("modules").toArray();
     for (const QJsonValue &val : modulesArray) {
         QJsonObject mod = val.toObject();
-        if (mod.value("structure").toObject().value("module").toObject().value("value").toString() == moduleValue) {
-            return mod;
+
+        // Добираемся до значения "value" внутри структуры модуля
+        QJsonValue valueNode = mod.value("structure").toObject()
+                                   .value("module").toObject()
+                                   .value("value");
+
+
+        // Сценарий 1: "value" — это массив псевдонимов, например ["bcbase", "LB241CPU"]
+        if (valueNode.isArray()) {
+            QJsonArray aliases = valueNode.toArray();
+            for (const QJsonValue &alias : aliases) {
+                if (alias.toString() == moduleValue) {
+                    return mod; // Нашли совпадение среди псевдонимов!
+                }
+            }
+        }
+        // Сценарий 2: "value" — это обычная одиночная строка, например "bcdi"
+        else if (valueNode.isString()) {
+            if (valueNode.toString() == moduleValue) {
+                return mod; // Нашли прямое совпадение
+            }
         }
     }
     return QJsonObject();
+}
+
+QJsonObject deviceView::serializeNode(QStandardItem *parentNode)
+{
+    QJsonObject resultObj;
+
+    for (int i = 0; i < parentNode->rowCount(); ++i) {
+        QStandardItem *nameItem  = parentNode->child(i, 0);
+        QStandardItem *valueItem = parentNode->child(i, 1);
+
+        if (!nameItem) continue;
+
+        QString key = nameItem->text();
+
+        // Читаем метаданные схемы
+        QJsonObject meta = valueItem ? valueItem->data(deviceView::SchemaMetaRole).value<QJsonObject>() : QJsonObject();
+        QString type = meta.value("type").toString();
+
+        // 1. ПОЛИМОРФНЫЕ СЛОТЫ (Быстрое восстановление "module" и "slot" из UserRole)
+        QString savedSlotKey   = nameItem->data(deviceView::SlotKeyRole).toString();
+        QString savedModuleType = nameItem->data(deviceView::ModuleTypeRole).toString();
+
+        if (!savedSlotKey.isEmpty()) {
+            QJsonObject slotContent = serializeNode(nameItem);
+            slotContent.insert("module", savedModuleType);
+            resultObj.insert(savedSlotKey, slotContent);
+            continue;
+        }
+
+        // 2. ЖЕСТКАЯ КОРРЕКТИРОВКА ДЛЯ МАССИВОВ FORTE (Превращаем их строго в QJsonArray)
+        QStandardItem *parentItem = parentNode;
+        if ((key == "var" || key == "var_out" || type == "sequence") && parentItem && parentItem->text() == "forte") {
+            QJsonArray seqArray;
+            for (int j = 0; j < nameItem->rowCount(); ++j) {
+                QStandardItem *arrayItem = nameItem->child(j, 0);
+                if (arrayItem && !arrayItem->text().isEmpty()) {
+                    seqArray.append(arrayItem->text());
+                }
+            }
+            resultObj.insert(key, seqArray);
+            continue;
+        }
+
+        // 3. ОБРАБОТКА ТИПА "keynum" (Превращаем "holding" + "0..1" обратно в "holding0..1")
+        if (valueItem && !valueItem->data(deviceView::OriginalKeyRole).toString().isEmpty()) {
+            if (nameItem->hasChildren()) {
+                QString actualIndex = valueItem->text();
+                QString combinedKey = key + actualIndex;
+
+                QJsonObject subContent = serializeNode(nameItem);
+                resultObj.insert(combinedKey, subContent);
+                continue;
+            }
+        }
+
+        // 4. СТРУКТУРНЫЕ УЗЛЫ / ПОДРАЗДЕЛЫ (clock, var, modbus_server, rs485)
+        if (nameItem->hasChildren()) {
+            QJsonObject subObj = serializeNode(nameItem);
+            resultObj.insert(key, subObj);
+            continue;
+        }
+
+        // 5. ОБЫЧНЫЕ ОДИНОЧНЫЕ ПАРАМЕТРЫ (leaf)
+        if (valueItem) {
+            QString valStr = valueItem->text();
+
+            // Если параметр пустой (например, очищенный natural), не пишем его в JSON вовсе,
+            // чтобы парсер lbyaml не генерировал пустые строки в YAML.
+            if (valStr.isEmpty()) {
+                continue;
+            }
+
+            // Защита для булевых значений (если lbyaml принимает true/false без кавычек)
+            if (valStr.toLower() == "true" || valStr.toLower() == "false") {
+                resultObj.insert(key, valStr.toLower() == "true");
+                continue;
+            }
+
+            // Проверяем тип, который от нас ждет схема
+            if (type == "int") {
+                bool isInt = false;
+                int intVal = valStr.toInt(&isInt);
+                if (isInt) {
+                    resultObj.insert(key, intVal);
+                    continue;
+                }
+            }
+            else if (type == "double") {
+                bool isDouble = false;
+                // Заменяем запятую на точку на случай локали
+                double dblVal = valStr.replace(",", ".").toDouble(&isDouble);
+                if (isDouble) {
+                    resultObj.insert(key, dblVal);
+                    continue;
+                }
+            }
+            else if (type == "bool" || valStr.toLower() == "true" || valStr.toLower() == "false") {
+                resultObj.insert(key, valStr.toLower() == "true");
+                continue;
+            }
+
+            // ПО УМОЛЧАНИЮ (для enum, string и т.д.): сохраняем строго как СТРОКУ,
+            // чтобы не ломать конвертер lbyaml
+            resultObj.insert(key, valStr);
+        }
+    }
+
+    return resultObj;
+}
+
+
+bool deviceView::isModified() const
+{
+    return modified;
+}
+
+void deviceView::onDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight)
+{
+    modified = true;
+    emit onChanged();
 }

@@ -34,32 +34,160 @@
         "modules": [
             {
                 "name": "LB241CPU", "description": "Процессорный базовый модуль", "structure": {
-                    "module": {"type": "const", "value": "bcbase"},
+                    "module": {"value": ["bcbase", "LB241CPU"]},
                     "macaddr": {"type": "string", "description": "MAC адрес"},
                     "modbus_server": {
                         "description": "ModBus сервер", "structure": {
                             "tcp_port": {"type": "string", "description": "TCP порт"},
                             "rtu_addr": {"type": "int", "description": "Адрес в режиме RTU (если не указывать, то отключает RS-485)"},
                             "holding": {
-                                "type": "link", "description": "holding регистр", "structure": {
+                                "type": "keynum", "description": "holding регистр", "structure": {
                                     "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
                                     "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]}
                                 }
                             },
                             "inreg": {
-                                "type": "link", "description": "inreg регистр", "structure": {
+                                "type": "keynum", "description": "inreg регистр", "structure": {
                                     "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
                                     "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]}
                                 }
                             },
                             "coil": {
-                                "type": "link", "description": "coil регистр", "structure": {
+                                "type": "keynum", "description": "coil регистр", "structure": {
                                     "var": {"type": "string"}, "var_out": {"type": "string"}
                                 }
                             },
                             "inbit": {
-                                "type": "link", "description": "inbit регистр", "structure": {
+                                "type": "keynum", "description": "inbit регистр", "structure": {
                                     "var": {"type": "string"}, "var_out": {"type": "string"}
+                                }
+                            }
+                        }
+                    },
+                    "modbus_client": {
+                        "description": "ModBus клиент", "type": "link", "structure": {
+                            "addr": {"type": "int", "description": "Адрес ModBus сервера"},
+                            "response_timeout": {"type": "time", "description": "Таймаут запроса к ModBus серверу"},
+                            "holding": {
+                                "type": "keynum", "description": "holding регистр", "structure": {
+                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]},
+                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
+                                    "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
+                                }
+                            },
+                            "inreg": {
+                                "type": "keynum", "description": "inreg регистр", "structure": {
+                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]},
+                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
+                                    "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
+                                }
+                            },
+                            "coil": {
+                                "type": "keynum", "description": "coil регистр", "structure": {
+                                    "var": {"type": "string"}, "var_out": {"type": "string"},
+                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
+                                    "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
+                                }
+                            },
+                            "inbit": {
+                                "type": "keynum", "description": "inbit регистр", "structure": {
+                                    "var": {"type": "string"}, "var_out": {"type": "string"},
+                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
+                                    "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
+                                }
+                            }
+                        }
+                    },
+                    "rs485": {
+                        "description": "Параметры RS-485 порта", "structure": {
+                            "speed": {"type": "enum", "values": [9600, 19200, 38400, 57600, 115200], "description": "Скорость"},
+                            "parity": {"type": "enum", "values": ["N", "Y"], "description": "Чётность"},
+                            "bits": {"type": "enum", "values": [8, 7], "description": "Количество бит"},
+                            "stop_bits": {"type": "enum", "values": [1, 2], "description": "Стоповые биты"}
+                        }
+                    },
+                    "wdt": {
+                        "description": "Параметры WatchDog таймера", "structure": {
+                            "bus": {"type": "time", "description": "Таймаут WDT в модулях ввода/вывода (по умолчанию 300 с)"},
+                            "self": {"type": "time", "description": "Таймаут WDT в базовых модулях (по умолчанию 360 с)"}
+                        }
+                    }
+                }
+            },
+            {
+                "name": "LB241BC", "description": "Базовый модуль УСО", "structure": {
+                    "module": {"value": "LB241BC"},
+                    "macaddr": {"type": "string", "description": "MAC адрес"},
+                    "modbus_server": {
+                        "description": "ModBus сервер", "structure": {
+                            "tcp_port": {"type": "string", "description": "TCP порт"},
+                            "rtu_addr": {"type": "int", "description": "Адрес в режиме RTU (если не указывать, то отключает RS-485)"},
+                            "holding": {
+                                "type": "keynum", "description": "holding регистр", "structure": {
+                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]}
+                                }
+                            },
+                            "inreg": {
+                                "type": "keynum", "description": "inreg регистр", "structure": {
+                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]}
+                                }
+                            },
+                            "coil": {
+                                "type": "keynum", "description": "coil регистр", "structure": {
+                                    "var": {"type": "string"}, "var_out": {"type": "string"}
+                                }
+                            },
+                            "inbit": {
+                                "type": "keynum", "description": "inbit регистр", "structure": {
+                                    "var": {"type": "string"}, "var_out": {"type": "string"}
+                                }
+                            }
+                        }
+                    },
+                    "modbus_client": {
+                        "description": "ModBus клиент", "type": "link", "structure": {
+                            "addr": {"type": "int", "description": "Адрес ModBus сервера"},
+                            "response_timeout": {"type": "time", "description": "Таймаут запроса к ModBus серверу"},
+                            "holding": {
+                                "type": "keynum", "description": "holding регистр", "structure": {
+                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]},
+                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
+                                    "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
+                                }
+                            },
+                            "inreg": {
+                                "type": "keynum", "description": "inreg регистр", "structure": {
+                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]},
+                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
+                                    "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
+                                }
+                            },
+                            "coil": {
+                                "type": "keynum", "description": "coil регистр", "structure": {
+                                    "var": {"type": "string"}, "var_out": {"type": "string"},
+                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
+                                    "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
+                                }
+                            },
+                            "inbit": {
+                                "type": "keynum", "description": "inbit регистр", "structure": {
+                                    "var": {"type": "string"}, "var_out": {"type": "string"},
+                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
+                                    "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
                                 }
                             }
                         }
@@ -82,7 +210,7 @@
             },
             {
                 "name": "LB241DI16", "description": "Модуль дискретного ввода 24В", "structure": {
-                    "module": {"type": "const", "value": "bcdi"},
+                    "module": {"value": "bcdi"},
                     "in": {
                         "type": "link", "structure": { "var": {"type": "string"} }
                     }
@@ -90,7 +218,7 @@
             },
             {
                 "name": "LB241DO16", "description": "Модуль дискретного вывода 24В", "structure": {
-                    "module": {"type": "const", "value": "bcdo"},
+                    "module": {"value": "bcdo"},
                     "out": {
                         "type": "link", "structure": { "var_out": {"type": "string"}, "holdtime": {"type": "time"} }
                     },
@@ -99,7 +227,7 @@
             },
             {
                 "name": "LB241AI4", "description": "Модуль аналогового ввода 4 канала", "structure": {
-                    "module": {"type": "const", "value": "bcai"},
+                    "module": {"value": "bcai"},
                     "chan": {
                         "type": "link", "structure": {
                             "mode": {"type": "enum", "values": ["Pt1000", "Pt100", "4-20mA", "0-10V", "K", "S", "T", "NTC"], "description": "Режим измерительного канала"},
