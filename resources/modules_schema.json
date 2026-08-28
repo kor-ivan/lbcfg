@@ -1,4 +1,5 @@
 {
+    "hostname": {"type": "string", "description": "Имя хоста / идентификатор ПЛК"},
     "clock": {
         "description": "Настройки синхронизации времени",
         "structure": {
