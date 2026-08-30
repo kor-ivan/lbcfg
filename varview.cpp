@@ -232,6 +232,12 @@ bool varView::isModified() const
     return modified;
 }
 
+void varView::resetModified()
+{
+    qDebug()<< "varView::resetModified modified = false";
+    modified = false;
+}
+
 bool varView::eventFilter(QObject *watched, QEvent *event)
 {
     if (watched == varTableView->viewport()) {

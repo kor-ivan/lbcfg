@@ -15,10 +15,12 @@ public:
     void updateData(lbyaml *parser);
     QMap<QString, lbyaml::lbvar> getUpdatedData();
     bool isModified() const;
+    void resetModified();
 
 signals:
     void onChanged();
     void addVariableToWatch(const QString &varName);
+
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;

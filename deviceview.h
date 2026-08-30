@@ -23,6 +23,7 @@ public:
     QJsonObject getUpdateData();
 
     bool isModified() const;
+    void resetModified();
 
 signals:
     void onChanged();

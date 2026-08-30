@@ -18,6 +18,7 @@ public:
 
 signals:
     void TextChanged();
+    void isReplaceComplete();
 
 private:
     void showCustomContextMenu(const QPoint &pos);

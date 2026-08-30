@@ -99,11 +99,29 @@ void yamlTextView::replacePlcBlock(int startLine, int endLine, const QString &ne
 
     QTextDocument *doc = editor->document();
 
-    int startIdx = startLine - 1;
+    int startIdx = startLine;
     int endIdx = (endLine > 0) ? (endLine - 1) : (doc->blockCount() - 1);
 
     startIdx = qMax(0, qMin(startIdx, doc->blockCount() - 1));
     endIdx = qMax(startIdx, qMin(endIdx, doc->blockCount() - 1));
+
+    QString headerMarker = "# Generated automatically by Configurator UI";
+
+    int checkStart = qMax(0, startIdx - 5);
+    for (int i = startIdx; i >= checkStart; --i) {
+        QTextBlock block = doc->findBlockByLineNumber(i);
+        if (block.isValid() && block.text().contains(headerMarker)) {
+            // Если нашли маркер, смотрим на строку выше него.
+            // Если там линия разграничения "# ---", сдвигаем индекс удаления на неё
+            if (i > 0 && doc->findBlockByLineNumber(i - 1).text().contains("# ---")) {
+                startIdx = i - 1;
+            } else {
+                startIdx = i;
+            }
+            break;
+        }
+    }
+
 
     QTextBlock startBlock = doc->findBlockByLineNumber(startIdx);
     QTextBlock endBlock = doc->findBlockByLineNumber(endIdx);
@@ -111,11 +129,23 @@ void yamlTextView::replacePlcBlock(int startLine, int endLine, const QString &ne
     if (startBlock.isValid() && endBlock.isValid()) {
         QTextCursor cursor(doc);
         editor->blockSignals(true);
+
+        QString customHeader = QString(
+                                   "# --------------------------------------------------\n"
+                                   "%1\n"
+                                   "# Powered by lbyaml & yaml-cpp libraries\n"
+                                   "# --------------------------------------------------\n"
+                                   ).arg(headerMarker);
+        QString customFooter = QString(
+            "\n# --------------------------------------------------\n"
+            );
+        QString formattedText = customHeader + newText + customFooter;
+
         cursor.setPosition(startBlock.position());
-        cursor.setPosition(endBlock.position() + endBlock.length() - 1, QTextCursor::KeepAnchor);
-        cursor.insertText(newText);
+        cursor.setPosition(endBlock.position() + endBlock.length(), QTextCursor::KeepAnchor);
+        cursor.insertText(formattedText);
         editor->blockSignals(false);
-        // emit TextChanged();
+        emit isReplaceComplete();
     }
 }
 

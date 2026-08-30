@@ -78,6 +78,9 @@ private:
     // Слот для обработки переключения страниц
     void onSidebarRowChanged(int index);
     void onAddVariableToWatch(const QString &varName);
+
+    bool replacePlcBlockInYaml(const QString& newPlcBlockText);
+    bool isModifiedPages();
 };
 
 #endif // CONFIGDOCKWIDGET_H

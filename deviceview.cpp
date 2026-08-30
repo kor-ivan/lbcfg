@@ -460,6 +460,12 @@ bool deviceView::isModified() const
     return modified;
 }
 
+void deviceView::resetModified()
+{
+    qDebug()<< "deviceView::resetModified modified = false";
+    modified = false;
+}
+
 void deviceView::onDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight)
 {
     modified = true;
