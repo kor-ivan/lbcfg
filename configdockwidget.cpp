@@ -202,6 +202,12 @@ bool ConfigDockWidget::openFile(const QString &filePath)
 
 bool ConfigDockWidget::saveFile()
 {
+    int result = isModifiedPages(true);
+
+    if (result == QMessageBox::Cancel) {
+        return false;
+    }
+
     if (currentFilePath.isEmpty())
         return saveFileAs();
     else
@@ -210,6 +216,12 @@ bool ConfigDockWidget::saveFile()
 
 bool ConfigDockWidget::saveFileAs()
 {
+    int result = isModifiedPages(true);
+
+    if (result == QMessageBox::Cancel) {
+        return false;
+    }
+
     QString filePath = QFileDialog::getSaveFileName(this, "Сохранить конфигурацию как...",
                                                     plcName,
                                                     "YAML Files (*.yaml *.yml);;All Files (*)");
@@ -251,6 +263,11 @@ void ConfigDockWidget::onTextChanged()
 
 void ConfigDockWidget::onConfigureClicked()
 {
+    int result = isModifiedPages(true);
+
+    if (result == QMessageBox::Cancel) {
+        return;
+    }
     QString currentSelected = plcSelector->currentText();
     plcSelector->blockSignals(true);
     plcSelector->clear();
@@ -363,6 +380,50 @@ bool ConfigDockWidget::eventFilter(QObject *watched, QEvent *event)
     }
 
     return QDockWidget::eventFilter(watched, event);
+}
+
+void ConfigDockWidget::closeEvent(QCloseEvent *event)
+{
+    // 1. Сначала синхронизируем вкладки Var View и IO View.
+    // Если пользователь нажал Cancel в этом диалоге, отменяем закрытие.
+    if (isModifiedPages(true) == QMessageBox::Cancel) {
+        event->ignore(); // Не закрывать док
+        return;
+    }
+
+    // 2. Теперь проверяем, изменен ли сам YAML (или был изменен только что через вкладки)
+    if (modified) {
+        QMessageBox msgBox(this);
+        msgBox.setIcon(QMessageBox::Question);
+        msgBox.setWindowTitle("Закрытие конфигурации");
+        msgBox.setText(QString("Конфигурация \"%1\" была изменена.").arg(plcName));
+        msgBox.setInformativeText("Хотите сохранить изменения перед закрытием?");
+
+        // Создаем кнопки с понятным текстом
+        QPushButton *saveButton = msgBox.addButton("Сохранить", QMessageBox::AcceptRole);
+        QPushButton *discardButton = msgBox.addButton("Закрыть без сохранения", QMessageBox::DestructiveRole);
+        QPushButton *cancelButton = msgBox.addButton("Отмена", QMessageBox::RejectRole);
+
+        msgBox.setDefaultButton(cancelButton);
+        msgBox.exec();
+
+        if (msgBox.clickedButton() == saveButton) {
+            // Пытаемся сохранить файл
+            if (saveFile())
+                event->accept(); // Сохранено успешно, закрываем док
+            else
+                event->ignore(); // Ошибка сохранения или отмена в диалоге Сохранить Как
+        }
+        else if (msgBox.clickedButton() == discardButton) {
+            event->accept(); // Закрываем без сохранения (данные теряются)
+        }
+        else if (msgBox.clickedButton() == cancelButton) {
+            event->ignore(); // Возврат к работе над конфигурацией
+        }
+    } else {
+        // Если изменений не было, просто закрываем
+        event->accept();
+    }
 }
 
 
@@ -519,8 +580,32 @@ bool ConfigDockWidget::replacePlcBlockInYaml(const QString &newPlcBlockText)
 
 }
 
-bool ConfigDockWidget::isModifiedPages()
+int ConfigDockWidget::isModifiedPages(bool allowCancel)
 {
+    // Проверяем, есть ли вообще изменения во вкладках
+    bool hasChanges = varPage->isModified() || devicePage->isModified();
+    if (!hasChanges) {
+        return QMessageBox::No; // Изменений нет, можно продолжать стандартный флоу
+    }
+
+    // Настраиваем конфигурацию кнопок в зависимости от контекста
+    QMessageBox::StandardButtons buttons = QMessageBox::Yes | QMessageBox::No;
+    if (allowCancel) {
+        buttons |= QMessageBox::Cancel;
+    }
+
+    // Показываем диалог
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this, "Изменение конфигурации",
+        "Данные в визуальных вкладках были изменены. Обновить исходный YAML?",
+        buttons
+        );
+
+    // Если пользователь нажал Cancel или No, изменения в YAML не вносятся
+    if (reply == QMessageBox::Cancel || reply == QMessageBox::No) {
+        return reply;
+    }
+
     if (varPage->isModified()){
         // Применяем изменения переменных в парсер
         yamlParser->implementLbVarMap(varPage->getUpdatedData());
@@ -528,7 +613,6 @@ bool ConfigDockWidget::isModifiedPages()
         // Генерируем текст блока и вызываем наш метод
         QString plcYamlText = yamlParser->getFormattedYaml(lbyaml::retainY);
         replacePlcBlockInYaml(plcYamlText);
-        return true;
     }else if (devicePage->isModified()){
         // Забираем измененную структуру в виде JSON
         QJsonObject updatedJson = devicePage->getUpdateData();
@@ -539,9 +623,8 @@ bool ConfigDockWidget::isModifiedPages()
 
         // Вызываем тот же метод для точечной замены блока модулей в YAML
         replacePlcBlockInYaml(updatedYamlText);
-        return true;
     }
-    return false;
+    return reply;
 }
 
 QString ConfigDockWidget::getCurrentFilePath() const

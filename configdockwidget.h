@@ -46,6 +46,7 @@ private slots:
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
+    void closeEvent(QCloseEvent *event) override;
 
 private:
     plcManager *lbplc = nullptr;
@@ -80,7 +81,7 @@ private:
     void onAddVariableToWatch(const QString &varName);
 
     bool replacePlcBlockInYaml(const QString& newPlcBlockText);
-    bool isModifiedPages();
+    int isModifiedPages(bool allowCancel = false);
 };
 
 #endif // CONFIGDOCKWIDGET_H
