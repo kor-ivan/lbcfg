@@ -226,8 +226,10 @@ void WatchDockWidget::showIpEditDialog(QPushButton *anchorButton)
 
 void WatchDockWidget::toggleConnection()
 {
-    if (session && session->isConnected())
+    if (session && session->isConnected()){
         session->stop();
+        return;
+    }
 
     plcManager::CommandContext ctx;
     ctx.ipv6 = ipv6;

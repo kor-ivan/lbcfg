@@ -17,6 +17,7 @@ LogDockWidget::LogDockWidget(QWidget *parent)
     logViewer->setMinimumHeight(50); // Минумум, чтобы совсем не пропал
     logViewer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     this->setMinimumSize(QSize(0, 50)); // Сбрасываем ограничения самого дока
+    logViewer->setMaximumBlockCount(1000);
 
     logViewer->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(logViewer, &QPlainTextEdit::customContextMenuRequested,
