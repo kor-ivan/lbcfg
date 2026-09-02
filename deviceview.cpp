@@ -581,6 +581,74 @@ void deviceView::showContextMenu(const QPoint &pos)
                 modified = true;
                 emit onChanged();
             });
+            // ДИНАМИЧЕСКИЙ ЭКСПОРТ ПЕРЕМЕННОЙ В FORTE / VAR / VAR_OUT
+            QStandardItem *forteSection = nullptr;
+            for (int j = 0; j < deviceModel->rowCount(); ++j) {
+                if (deviceModel->item(j, 0) && deviceModel->item(j, 0)->text() == "forte") {
+                    forteSection = deviceModel->item(j, 0);
+                    break;
+                }
+            }
+            QString currentVarName = currentItem->text();
+            if (forteSection) {
+                // Лямбда-помощник для проверки наличия и добавления переменной в массив forte
+                auto tryAddVarToForteArray = [this, currentVarName](QStandardItem* forteSubSection, const QString& menuText) -> QAction* {
+                    if (!forteSubSection) return nullptr;
+
+                    // Проверяем, нет ли уже этой переменной в данном списке forte
+                    bool alreadyExists = false;
+                    for (int j = 0; j < forteSubSection->rowCount(); ++j) {
+                        if (forteSubSection->child(j, 0) && forteSubSection->child(j, 0)->text() == currentVarName) {
+                            alreadyExists = true;
+                            break;
+                        }
+                    }
+
+                    // Если переменной там нет, возвращаем действие для её добавления
+                    if (!alreadyExists) {
+                        return new QAction(menuText, this);
+                    }
+                    return nullptr;
+                };
+                // Ищем внутренние ветки "var" и "var_out" внутри секции forte
+                QStandardItem *forteVarNode = nullptr;
+                QStandardItem *forteVarOutNode = nullptr;
+                for (int j = 0; j < forteSection->rowCount(); ++j) {
+                    if (forteSection->child(j, 0)) {
+                        if (forteSection->child(j, 0)->text() == "var") forteVarNode = forteSection->child(j, 0);
+                        if (forteSection->child(j, 0)->text() == "var_out") forteVarOutNode = forteSection->child(j, 0);
+                    }
+                }
+
+                // Создаем действия, если проверки прошли успешно
+                QAction *actAddToVar = tryAddVarToForteArray(forteVarNode, "Добавить в forte/var");
+                QAction *actAddToVarOut = tryAddVarToForteArray(forteVarOutNode, "Добавить в forte/var_out");
+
+                if (actAddToVar || actAddToVarOut) {
+                    if (actAddToVar) {
+                        menu.addAction(actAddToVar);
+                        connect(actAddToVar, &QAction::triggered, this, [this, forteVarNode, currentVarName]() {
+                            QStandardItem *newItem = new QStandardItem(currentVarName);
+                            newItem->setEditable(true);
+                            forteVarNode->insertRow(0, {newItem, new QStandardItem(), new QStandardItem()});
+                            deviceTreeView->expand(forteVarNode->index());
+                            modified = true;
+                            emit onChanged();
+                        });
+                    }
+                    if (actAddToVarOut) {
+                        menu.addAction(actAddToVarOut);
+                        connect(actAddToVarOut, &QAction::triggered, this, [this, forteVarOutNode, currentVarName]() {
+                            QStandardItem *newItem = new QStandardItem(currentVarName);
+                            newItem->setEditable(true);
+                            forteVarOutNode->insertRow(0, {newItem, new QStandardItem(), new QStandardItem()});
+                            deviceTreeView->expand(forteVarOutNode->index());
+                            modified = true;
+                            emit onChanged();
+                        });
+                    }
+                }
+            }
 
             // Ищем, какие параметры отсутствуют под текущей переменной
             QStringList existingParams;
