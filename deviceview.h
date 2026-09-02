@@ -48,6 +48,49 @@ private:
     bool modified = false;
     void onDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
 
+    void showContextMenu(const QPoint &pos);
+    QJsonObject createDefaultData(const QJsonObject &structureSchema);
+
+    void insertAndEditNewRow(QStandardItem *parentItem, const QString &description = "")
+    {
+        insertAndEditNewRow(parentItem, description, [](QStandardItem*) {});
+    }
+
+    template <typename Callable>
+    void insertAndEditNewRow(QStandardItem *parentItem,
+                             const QString &description = "",
+                             Callable midProcessing = nullptr)
+    {
+        if (!parentItem || !deviceTreeView) return;
+        // Автоматическая генерация имени на основе родительского узла
+        int newIdx = parentItem->rowCount() + 1;
+        QString prefix = parentItem->text();
+        QString defaultName = QString("%1_%2").arg(prefix).arg(newIdx);
+
+        QStandardItem *newItemName = new QStandardItem(defaultName);
+        newItemName->setEditable(true);
+
+        QStandardItem *newItemValue = new QStandardItem("");
+        newItemValue->setEditable(false);
+
+        QStandardItem *newItemDesc = new QStandardItem(description);
+        newItemDesc->setEditable(false);
+
+        parentItem->insertRow(0, {newItemName, newItemValue, newItemDesc});
+
+        midProcessing(newItemName);
+
+        QModelIndex newIndexModel = newItemName->index();
+        deviceTreeView->expand(parentItem->index());
+        deviceTreeView->scrollTo(newIndexModel);
+        deviceTreeView->setCurrentIndex(newIndexModel);
+        deviceTreeView->edit(newIndexModel);
+
+        modified = true;
+        emit onChanged();
+
+    }
+
 };
 
 #endif // DEVICEVIEW_H

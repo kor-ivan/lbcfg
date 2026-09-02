@@ -473,6 +473,7 @@ void ConfigDockWidget::onSidebarRowChanged(int index)
 
     // Логика синхронизации данных между представлениями
     if (index == 1) {
+        isModifiedPages();
         if (modified)
             yamlParser->setConfig(yamlPage->text(), lbyaml::data);
         if (varPage)
@@ -481,6 +482,7 @@ void ConfigDockWidget::onSidebarRowChanged(int index)
     else if (index == 2) {
         // Пользователь перешел во вкладку "Модули I/O" (DeviceView)
         // Аналогично парсим YAML под нужды конфигуратора модулей
+        isModifiedPages();
         if (modified)
             yamlParser->setConfig(yamlPage->text(), lbyaml::data);
         if (devicePage)

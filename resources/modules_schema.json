@@ -13,7 +13,7 @@
         "description": "Переменные проекта",
         "any": {
             "structure": {
-                "init": {"type": "int", "description": "Значение по умолчанию"},
+                "init": {"type": "int", "description": "Значение по умолчанию", "default": 0},
                 "retain": {"type": "enum", "values": ["y", "n"], "description": "Хранить в энергонезависимой памяти"},
                 "multisource": {"type": "enum", "values": ["y", "n"], "description": "Multisource переменная"}
             }

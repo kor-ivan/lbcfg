@@ -52,17 +52,17 @@ void CommandManager::getLogMenu(const plcManager::CommandContext &ctx, QMenu *pa
 {
     QMenu *logMenu = parentMenu->addMenu(text);
     QAction *logAll = logMenu->addAction("Запросить весь лог");
-    connect(logAll, &QAction::triggered, this, [this, ctx](){
+    connect(logAll, &QAction::triggered, logAll, [this, ctx](){
         lbplc->startLog(ctx, "a");
     });
 
     QAction *logLast100 = logMenu->addAction("Запросить 100 сообщений");
-    connect(logLast100, &QAction::triggered, this, [this, ctx](){
+    connect(logLast100, &QAction::triggered, logLast100, [this, ctx](){
         lbplc->startLog(ctx, "a100");
     });
 
     QAction *logLast100f = logMenu->addAction("Запросить 100 и следовать");
-    connect(logLast100f, &QAction::triggered, this, [this, ctx](){
+    connect(logLast100f, &QAction::triggered, logLast100f, [this, ctx](){
         lbplc->startLog(ctx, "a100f");
     });
 }

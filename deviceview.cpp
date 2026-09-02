@@ -4,6 +4,7 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonArray>
+#include <QMenu>
 
 deviceView::deviceView(QWidget *parent)
     : QWidget{parent}
@@ -23,6 +24,9 @@ deviceView::deviceView(QWidget *parent)
     deviceTreeView->header()->setSectionResizeMode(0, QHeaderView::Interactive);
     deviceTreeView->header()->setSectionResizeMode(1, QHeaderView::Interactive);
     deviceTreeView->header()->setStretchLastSection(true); // Описание растягивается
+    deviceTreeView->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(deviceTreeView, &QTreeView::customContextMenuRequested,
+            this, &deviceView::showContextMenu);
 
     deviceLayout->addWidget(deviceTreeView);
 
@@ -101,12 +105,14 @@ void deviceView::parseSchemaNode(QStandardItem *parentNode, const QJsonObject &s
         if (key == "any" || meta.contains("any")) {
             QJsonObject anyMeta = meta.contains("any") ? meta.value("any").toObject() : meta;
             QJsonObject anyStruct = anyMeta.value("structure").toObject();
+            // QString varDescription = meta.value("description").toString();
             // А) Создаем сначала КОРНЕВОЙ УЗЕЛ для самой секции (например, "var")
             QStandardItem *sectionNameItem = new QStandardItem(key);
             sectionNameItem->setEditable(false);
 
             QStandardItem *sectionValueItem = new QStandardItem("");
             sectionValueItem->setEditable(false);
+            sectionValueItem->setData(meta, deviceView::SchemaMetaRole);
 
             QStandardItem *sectionDescItem = new QStandardItem(meta.value("description").toString());
             sectionDescItem->setEditable(false);
@@ -125,7 +131,7 @@ void deviceView::parseSchemaNode(QStandardItem *parentNode, const QJsonObject &s
                 QStandardItem *varValueItem = new QStandardItem("");
                 varValueItem->setEditable(false);
 
-                QStandardItem *varDescItem = new QStandardItem("Пользовательская переменная");
+                QStandardItem *varDescItem = new QStandardItem("");
                 varDescItem->setEditable(false);
 
                 // ВАЖНО: Добавляем строку в созданную секцию, а не в parentNode!
@@ -321,13 +327,16 @@ void deviceView::parseSchemaNode(QStandardItem *parentNode, const QJsonObject &s
         paramNameItem->setEditable(false);
         // Преобразуем JSON-значение в строку для отображения в ячейке TreeView
         QString displayValue;
-        QJsonValue val = yamlObj.value(key);
-        if (val.isDouble()) {
-            displayValue = QString::number(val.toDouble());
-        } else if (val.isBool()) {
-            displayValue = val.toBool() ? "true" : "false";
-        } else {
-            displayValue = val.toString();
+        // А) Пробуем забрать значение из реального YAML
+        if (yamlObj.contains(key)) {
+            QJsonValue val = yamlObj.value(key);
+            if (val.isDouble()) {
+                displayValue = QString::number(val.toDouble());
+            } else if (val.isBool()) {
+                displayValue = val.toBool() ? "true" : "false";
+            } else {
+                displayValue = val.toString();
+            }
         }
 
         QStandardItem *paramValueItem = new QStandardItem(displayValue);
@@ -470,4 +479,164 @@ void deviceView::onDataChanged(const QModelIndex &topLeft, const QModelIndex &bo
 {
     modified = true;
     emit onChanged();
+}
+
+void deviceView::showContextMenu(const QPoint &pos)
+{
+    QModelIndex index = deviceTreeView->indexAt(pos);
+    if (!index.isValid()) return;
+
+    QModelIndex nameIndex = index.siblingAtColumn(0);
+    QModelIndex valueIndex = index.siblingAtColumn(1);
+
+    QStandardItem *nameItem = deviceModel->itemFromIndex(nameIndex);
+    QStandardItem *valueItem = deviceModel->itemFromIndex(valueIndex);
+    if (!nameItem) return;
+
+    QJsonObject meta = valueItem ? valueItem->data(deviceView::SchemaMetaRole).value<QJsonObject>() : QJsonObject();
+    qDebug()<<meta;
+    QString type = meta.value("type").toString();
+
+    QStandardItem *targetSectionItem = nullptr; // Папка-родитель (куда добавляем)
+    QStandardItem *currentItem = nullptr;       // Элемент, по которому кликнули (если внутри папки)
+    QJsonObject anyStruct;
+    QString varDescription;
+
+    // Режимы контекста
+    bool isSequenceMode = (type == "sequence");
+    bool isAnyMode = meta.contains("any");
+    bool isChildItem = false; // Кликнули по элементу внутри папки
+
+
+    // Сценарий А: Кликнули на саму секцию "var"
+    if (isAnyMode || isSequenceMode) {
+        targetSectionItem = nameItem;
+        if (isAnyMode)
+        {
+            QJsonObject anyObj = meta.value("any").toObject();
+            anyStruct = anyObj.value("structure").toObject();
+            varDescription = anyObj.value("description").toString();
+        }
+    }
+    // Сценарий Б: Кликнули на дочерний элемент секции "var" (на имя переменной вроде dw0)
+    else if (nameItem->parent()) {
+        QStandardItem *parentNameItem = nameItem->parent();
+        QStandardItem *parentValueItem = nullptr;
+        if (parentNameItem->parent()) {
+            parentValueItem = parentNameItem->parent()->child(parentNameItem->row(), 1);
+        } else {
+            parentValueItem = deviceModel->item(parentNameItem->row(), 1); // Если родитель в корне
+        }
+        QJsonObject parentMeta = parentValueItem ? parentValueItem->data(deviceView::SchemaMetaRole).value<QJsonObject>() : QJsonObject();
+        targetSectionItem = parentNameItem;
+        currentItem = nameItem;
+        isChildItem = true;
+        if (parentMeta.contains("any")) {
+            isAnyMode = true;
+            QJsonObject anyObj = parentMeta.value("any").toObject();
+            anyStruct = anyObj.value("structure").toObject();
+            varDescription = anyObj.value("description").toString();
+        } else if (parentMeta.value("type").toString() == "sequence") {
+            isSequenceMode = true;
+        }
+    }
+    qDebug() << isSequenceMode << isAnyMode << type << isChildItem << anyStruct;
+    if (currentItem)
+        qDebug()<<currentItem->text();
+    else
+        qDebug()<<&currentItem;
+    if (!targetSectionItem) {
+        return;
+    }
+
+    QMenu menu(this);
+
+
+    // ЛОГИКА 1: МЕНЮ ДЛЯ МАССИВОВ ТИПА SEQUENCE (forte: var / var_out)
+    if (isSequenceMode) {
+        if (!isChildItem) {
+            menu.addAction("Добавить элемент списка", this, [this, targetSectionItem]() {
+                insertAndEditNewRow(targetSectionItem);
+            });
+        } else if (currentItem) {
+            menu.addAction("Удалить элемент списка", this, [this, targetSectionItem, currentItem]() {
+                targetSectionItem->removeRow(currentItem->row());
+                modified = true;
+                emit onChanged();
+            });
+        }
+    }
+    // ЛОГИКА 2: ЛОГИКА ДЛЯ СЕКЦИИ С СТРУКТУРОЙ "ANY" (глобальный var)
+    else if (isAnyMode && !anyStruct.isEmpty()) {
+        if (!isChildItem) {
+            menu.addAction(tr("Добавить переменную"), this, [this, targetSectionItem, anyStruct, varDescription]() {
+                insertAndEditNewRow(targetSectionItem, varDescription, [this, anyStruct](QStandardItem* insertedNode) {
+                    QJsonObject defaultYamlData = createDefaultData(anyStruct);
+                    parseSchemaNode(insertedNode, anyStruct, QJsonValue(defaultYamlData));
+                });
+            });
+        } else if (currentItem) {
+            menu.addAction(tr("Удалить переменную"), this, [this, targetSectionItem, currentItem]() {
+                targetSectionItem->removeRow(currentItem->row());
+                modified = true;
+                emit onChanged();
+            });
+
+            // Ищем, какие параметры отсутствуют под текущей переменной
+            QStringList existingParams;
+            for (int j = 0; j < currentItem->rowCount(); ++j) {
+                if (currentItem->child(j, 0)) {
+                    existingParams.append(currentItem->child(j, 0)->text());
+                }
+            }
+
+            QStringList missingParams;
+            for (auto it = anyStruct.begin(); it != anyStruct.end(); ++it) {
+                if (!existingParams.contains(it.key())) {
+                    missingParams.append(it.key());
+                }
+            }
+
+            if (!missingParams.isEmpty()) {
+                QMenu *subMenu = menu.addMenu(tr("Добавить..."));
+                for (const QString &missingKey : missingParams) {
+                    QJsonObject paramMeta = anyStruct.value(missingKey).toObject();
+                    subMenu->addAction(missingKey, this, [this, currentItem, missingKey, paramMeta]() {
+                        QJsonObject singleSchema;
+                        singleSchema.insert(missingKey, paramMeta);
+                        QJsonObject singleData = createDefaultData(singleSchema);
+
+                        parseSchemaNode(currentItem, singleSchema, QJsonValue(singleData));
+                        deviceTreeView->expand(currentItem->index());
+
+                        modified = true;
+                        emit onChanged();
+                    });
+                }
+            }
+        }
+    }
+
+    // Отображаем меню на экране
+    menu.exec(deviceTreeView->viewport()->mapToGlobal(pos));
+
+}
+
+QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema)
+{
+    QJsonObject defaultObj;
+    // if (structureSchema.contains("type")) {
+    //     // todo later
+    // }
+    for (auto it = structureSchema.begin(); it != structureSchema.end(); ++it) {
+        QJsonObject paramMeta = it.value().toObject();
+
+        if (paramMeta.contains("default")) {
+            defaultObj.insert(it.key(), paramMeta.value("default"));
+        } else {
+            defaultObj.insert(it.key(), ""); // Фоллбэк, если дефолт забыли указать
+        }
+    }
+
+    return defaultObj;
 }
