@@ -5,6 +5,7 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QMenu>
+#include "logmanager.h"
 
 deviceView::deviceView(QWidget *parent)
     : QWidget{parent}
@@ -30,21 +31,21 @@ deviceView::deviceView(QWidget *parent)
 
     deviceLayout->addWidget(deviceTreeView);
 
-    qDebug()<<"ModulesSchema loaded:"<<loadModulesSchema(":/config/resources/modules_schema.json");
+    debugApp()<<"ModulesSchema loaded:"<<loadModulesSchema(":/config/resources/modules_schema.json");
 }
 
 bool deviceView::loadModulesSchema(const QString &jsonPath)
 {
     QFile file(jsonPath);
     if (!file.open(QIODevice::ReadOnly)) return false;
-    qDebug()<< "modules_schema.json opened";
+    // qDebug()<< "modules_schema.json opened";
 
     QJsonParseError error;
 
     QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &error);
-    qDebug()<<error.error<<error.errorString()<<error.offset;
+    // qDebug()<<error.error<<error.errorString()<<error.offset;
     if (!doc.isObject()) return false;
-    qDebug()<< "QJsonDocument isObject";
+    // qDebug()<< "QJsonDocument isObject";
 
     m_schemaRoot = doc.object();
     m_schemaLoaded = !m_schemaRoot.isEmpty();
@@ -57,7 +58,7 @@ void deviceView::updateData(lbyaml *parser)
     deviceModel->removeRows(0, deviceModel->rowCount());
 
     QJsonObject yamlRoot = parser->getlbJsonObject();
-    qDebug()<<yamlRoot;
+    // qDebug()<<yamlRoot;
 
     disconnect(deviceModel, &QStandardItemModel::dataChanged,
                this, &deviceView::onDataChanged);
@@ -471,7 +472,7 @@ bool deviceView::isModified() const
 
 void deviceView::resetModified()
 {
-    qDebug()<< "deviceView::resetModified modified = false";
+    // qDebug()<< "deviceView::resetModified modified = false";
     modified = false;
 }
 
@@ -494,7 +495,7 @@ void deviceView::showContextMenu(const QPoint &pos)
     if (!nameItem) return;
 
     QJsonObject meta = valueItem ? valueItem->data(deviceView::SchemaMetaRole).value<QJsonObject>() : QJsonObject();
-    qDebug()<<meta;
+    // qDebug()<<meta;
     QString type = meta.value("type").toString();
 
     QStandardItem *targetSectionItem = nullptr; // Папка-родитель (куда добавляем)
@@ -540,11 +541,11 @@ void deviceView::showContextMenu(const QPoint &pos)
             isSequenceMode = true;
         }
     }
-    qDebug() << isSequenceMode << isAnyMode << type << isChildItem << anyStruct;
-    if (currentItem)
-        qDebug()<<currentItem->text();
-    else
-        qDebug()<<&currentItem;
+    // qDebug() << isSequenceMode << isAnyMode << type << isChildItem << anyStruct;
+    // if (currentItem)
+    //     qDebug()<<currentItem->text();
+    // else
+    //     qDebug()<<&currentItem;
     if (!targetSectionItem) {
         return;
     }
