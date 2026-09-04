@@ -34,7 +34,7 @@
         "description": "Слот для модулей ввода/вывода",
         "modules": [
             {
-                "name": "LB241CPU", "description": "Процессорный базовый модуль", "structure": {
+                "name": "LB241CPU", "description": "Процессорный базовый модуль", "base": 4, "structure": {
                     "module": {"value": ["bcbase", "LB241CPU"]},
                     "macaddr": {"type": "string", "description": "MAC адрес"},
                     "modbus_server": {
@@ -122,7 +122,7 @@
                 }
             },
             {
-                "name": "LB241BC", "description": "Базовый модуль УСО", "structure": {
+                "name": "LB241BC", "description": "Базовый модуль УСО", "base": 4, "structure": {
                     "module": {"value": "LB241BC"},
                     "macaddr": {"type": "string", "description": "MAC адрес"},
                     "modbus_server": {
@@ -210,7 +210,7 @@
                 }
             },
             {
-                "name": "LB241DI16", "description": "Модуль дискретного ввода 24В", "structure": {
+                "name": "LB241DI16", "description": "Модуль дискретного ввода 24В", "io": 20, "structure": {
                     "module": {"value": "bcdi"},
                     "in": {
                         "type": "link", "structure": { "var": {"type": "string"} }

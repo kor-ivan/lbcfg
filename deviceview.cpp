@@ -484,104 +484,254 @@ void deviceView::onDataChanged(const QModelIndex &topLeft, const QModelIndex &bo
 void deviceView::showContextMenu(const QPoint &pos)
 {
     QModelIndex index = deviceTreeView->indexAt(pos);
-    if (!index.isValid()) return;
 
-    QModelIndex nameIndex = index.siblingAtColumn(0);
-    QModelIndex valueIndex = index.siblingAtColumn(1);
-
-    QStandardItem *nameItem = deviceModel->itemFromIndex(nameIndex);
-    QStandardItem *valueItem = deviceModel->itemFromIndex(valueIndex);
-    if (!nameItem) return;
-
-    QJsonObject meta = valueItem ? valueItem->data(deviceView::SchemaMetaRole).value<QJsonObject>() : QJsonObject();
-    qDebug()<<meta;
-    QString type = meta.value("type").toString();
-
-    QStandardItem *targetSectionItem = nullptr; // Папка-родитель (куда добавляем)
-    QStandardItem *currentItem = nullptr;       // Элемент, по которому кликнули (если внутри папки)
-    QJsonObject anyStruct;
-    QString varDescription;
-
-    // Режимы контекста
-    bool isSequenceMode = (type == "sequence");
-    bool isAnyMode = meta.contains("any");
-    bool isChildItem = false; // Кликнули по элементу внутри папки
-
-
-    // Сценарий А: Кликнули на саму секцию "var"
-    if (isAnyMode || isSequenceMode) {
-        targetSectionItem = nameItem;
-        if (isAnyMode)
-        {
-            QJsonObject anyObj = meta.value("any").toObject();
-            anyStruct = anyObj.value("structure").toObject();
-            varDescription = anyObj.value("description").toString();
-        }
-    }
-    // Сценарий Б: Кликнули на дочерний элемент секции "var" (на имя переменной вроде dw0)
-    else if (nameItem->parent()) {
-        QStandardItem *parentNameItem = nameItem->parent();
-        QStandardItem *parentValueItem = nullptr;
-        if (parentNameItem->parent()) {
-            parentValueItem = parentNameItem->parent()->child(parentNameItem->row(), 1);
-        } else {
-            parentValueItem = deviceModel->item(parentNameItem->row(), 1); // Если родитель в корне
-        }
-        QJsonObject parentMeta = parentValueItem ? parentValueItem->data(deviceView::SchemaMetaRole).value<QJsonObject>() : QJsonObject();
-        targetSectionItem = parentNameItem;
-        currentItem = nameItem;
-        isChildItem = true;
-        if (parentMeta.contains("any")) {
-            isAnyMode = true;
-            QJsonObject anyObj = parentMeta.value("any").toObject();
-            anyStruct = anyObj.value("structure").toObject();
-            varDescription = anyObj.value("description").toString();
-        } else if (parentMeta.value("type").toString() == "sequence") {
-            isSequenceMode = true;
-        }
-    }
-    qDebug() << isSequenceMode << isAnyMode << type << isChildItem << anyStruct;
-    if (currentItem)
-        qDebug()<<currentItem->text();
-    else
-        qDebug()<<&currentItem;
-    if (!targetSectionItem) {
-        return;
-    }
-
+    // 1. ЭТАП АНАЛИЗА: Получаем чистый контекст точки клика
+    ContextMenuContext ctx = analyzeMenuContext(index);
+    if (!ctx.isValidClick) return;
     QMenu menu(this);
+    if (ctx.targetSectionItem && !ctx.targetSectionItem->parent()) {
+        QString clickedSlotKey = ctx.targetSectionItem->data(deviceView::SlotKeyRole).toString();
+        bool isSlot = clickedSlotKey.startsWith("slot");
 
+        QString actionText = isSlot ? tr("Удалить модуль со слота") : tr("Удалить блок конфигурации");
 
-    // ЛОГИКА 1: МЕНЮ ДЛЯ МАССИВОВ ТИПА SEQUENCE (forte: var / var_out)
-    if (isSequenceMode) {
-        if (!isChildItem) {
-            menu.addAction("Добавить элемент списка", this, [this, targetSectionItem]() {
-                insertAndEditNewRow(targetSectionItem);
+        menu.addAction(actionText, this, [this, ctx, isSlot, clickedSlotKey]() {
+            // Физически удаляем всю строку корневой секции из модели
+            deviceModel->invisibleRootItem()->removeRow(ctx.targetSectionItem->row());
+
+            // Если удалили слот, запускаем автоматический пересчет индексов шасси железа
+            if (isSlot) {
+                bool isBaseType = (clickedSlotKey.mid(4).toInt() < 0);
+                reindexSlotsOfType(isBaseType);
+            }
+
+            modified = true;
+            emit onChanged();
+        });
+
+        menu.addSeparator();
+    }
+    // БЛОК 1: КЛИК ПО ПУСТОМУ ПРОСТРАНСТВУ (Глобальное конструирование)
+    if (ctx.isBlankSpace) {
+        // А) Сканируем текущую модель, чтобы узнать, какие блоки уже добавлены в корень
+        QStringList existingRootItems;
+        for (int i = 0; i < deviceModel->rowCount(); ++i) {
+            if (deviceModel->item(i, 0)) {
+                QString name = deviceModel->item(i, 0)->text();
+                // Для слотов собираем общую маску "slot", так как их может быть много
+                existingRootItems.append(name.contains("slot") ? "slot" : name);
+            }
+        }
+
+        // Б) Находим базовые блоки из схемы, которых ещё нет на экране (forte, clock, ipaddr...)
+        QStringList missingRootBlocks;
+        bool hasSlotSpecification = m_schemaRoot.contains("slot");
+
+        for (auto it = m_schemaRoot.begin(); it != m_schemaRoot.end(); ++it) {
+            if (it.key() != "slot" && !existingRootItems.contains(it.key())) {
+                missingRootBlocks.append(it.key());
+            }
+        }
+
+        // ДЕЙСТВИЕ 1: Выводим меню для обычных пропущенных блоков
+        if (!missingRootBlocks.isEmpty()) {
+            QMenu *addBlockMenu = menu.addMenu(tr("Добавить блок конфигурации"));
+            for (const QString &blockKey : missingRootBlocks) {
+                QJsonObject blockMeta = m_schemaRoot.value(blockKey).toObject();
+                QString blockDesc = blockMeta.value("description").toString();
+                addBlockMenu->addAction(blockKey, this, [this, blockKey, blockMeta, blockDesc]() {
+                    QJsonObject defaultData;
+                    QJsonObject subSchema = blockMeta.contains("structure") ? blockMeta.value("structure").toObject() : m_schemaRoot;
+                    if (blockMeta.contains("structure")) {
+                        // Для сложных блоков (clock, forte) генерируем дефолтный объект и пускаем в рекурсию
+                        defaultData.insert(blockKey, createDefaultData(subSchema));
+                        parseSchemaNode(deviceModel->invisibleRootItem(), m_schemaRoot, QJsonValue(defaultData));
+                    }
+                    else{
+                        // Для плоских параметров в корне (ipaddr, gateway) сразу создаем строку ячеек
+                        QStandardItem *pName = new QStandardItem(blockKey);
+                        pName->setEditable(false);
+                        QStandardItem *pValue = new QStandardItem("");
+                        pValue->setEditable(true);
+                        pValue->setData(blockMeta, deviceView::SchemaMetaRole);
+                        QStandardItem *pDesc = new QStandardItem(blockDesc);
+                        pDesc->setEditable(false);
+                        deviceModel->invisibleRootItem()->appendRow({pName, pValue, pDesc});
+                    }
+                    modified = true;
+                    emit onChanged();
+                });
+            }
+        }
+        // ДЕЙСТВИЕ 2: Выводим подменю для добавления нового СЛОТА железа
+        if (hasSlotSpecification) {
+            QMenu *addSlotMenu = menu.addMenu(tr("Добавить модуль в новый слот"));
+            QJsonObject slotMeta = m_schemaRoot.value("slot").toObject();
+            QJsonArray availableModules = slotMeta.value("modules").toArray();
+
+            // АНАЛИЗ ТЕКУЩЕЙ ТОПОЛОГИИ ЧЕРЕЗ USER_ROLE
+            int currentBaseCount = 0;
+            int currentIoCount = 0;
+
+            int minBaseIdx = 0; // Для отрицательных индексов слотов базовых модулей (-1, -2)
+            int maxIoIdx = 0;   // Для положительных индексов слотов ввода-вывода (1, 2)
+            int firstIoRowIndex = -1; // Индекс строки, где начинается первый IO модуль (для правильной вставки base)
+
+            for (int i = 0; i < deviceModel->rowCount(); ++i) {
+                QStandardItem *rootItem = deviceModel->item(i, 0);
+                if (!rootItem) continue;
+                QString savedSlotKey = rootItem->data(deviceView::SlotKeyRole).toString();
+                if (savedSlotKey.startsWith("slot")) {
+                    // Отрезаем слово "slot" и переводим остаток в число
+                    int slotNum = savedSlotKey.mid(4).toInt();
+                    if (slotNum < 0) {
+                        currentBaseCount++;
+                        if (slotNum < minBaseIdx) minBaseIdx = slotNum;
+                    } else {
+                        currentIoCount++;
+                        if (slotNum > maxIoIdx) maxIoIdx = slotNum;
+                        if (firstIoRowIndex == -1) firstIoRowIndex = i; // Запомнили, где пошло IO
+                    }
+                }
+            }
+            // 2. СТРОИМ ДИНАМИЧЕСКОЕ МЕНЮ С КОНТРОЛЕМ ЛИМИТОВ ИЗ JSON
+            for (const QJsonValue &modVal : availableModules) {
+                QJsonObject modObj = modVal.toObject();
+                QString modName = modObj.value("name").toString();
+                QString modDesc = modObj.value("description").toString();
+                QJsonObject modStructure = modObj.value("structure").toObject();
+                // Извлекаем тип модуля (base или io) и его лимиты из схемы
+                bool isBaseModule = modObj.contains("base");
+                bool isIoModule = modObj.contains("io");
+                int maxAllowed;
+                int currentCount;
+                if (isBaseModule){
+                    maxAllowed = modObj.value("base").toInt();
+                    currentCount = currentBaseCount;
+                }
+                if (isIoModule){
+                    maxAllowed = modObj.value("io").toInt();
+                    currentCount = currentIoCount;
+                }
+                // Создаем действие для этого модуля
+                QAction *modAction = new QAction(modName, this);
+                if (currentCount >= maxAllowed) {
+                    modAction->setEnabled(false);
+                    modAction->setText(QString("%1 [%2]").arg(modAction->text(), tr("ЛИМИТ ДОСТИГНУТ")));
+                }
+                addSlotMenu->addAction(modAction);
+
+                connect(modAction, &QAction::triggered, this, [this, modStructure, modName, modDesc, isIoModule, isBaseModule, minBaseIdx, maxIoIdx, firstIoRowIndex]() {
+                    QString newSlotKey;
+                    if (isBaseModule) {
+                        newSlotKey = QString("slot%1").arg(minBaseIdx - 1);
+                    }
+                    if (isIoModule) {
+                        newSlotKey = QString("slot%1").arg(maxIoIdx + 1);
+                    }
+                    // Читаем moduleType из структуры схемы для сохранения в метаданные
+                    QString rawModuleType = modStructure.value("module").toObject().value("value").toString();
+                    if (rawModuleType.isEmpty() && modStructure.value("module").toObject().value("value").isArray()) {
+                        rawModuleType = modStructure.value("module").toObject().value("value").toArray().at(0).toString();
+                    }
+                    // Создаем строку ячеек для нового слота
+                    QStandardItem *slotNameItem = new QStandardItem(QString("%1 (%2)").arg(newSlotKey, modName));
+                    slotNameItem->setEditable(false);
+                    // Намертво привязываем метаданные
+                    slotNameItem->setData(newSlotKey, deviceView::SlotKeyRole);
+                    slotNameItem->setData(rawModuleType, deviceView::ModuleTypeRole);
+
+                    QStandardItem *slotValueItem = new QStandardItem("");
+                    slotValueItem->setEditable(false);
+
+                    QStandardItem *slotDescItem = new QStandardItem(modDesc);
+                    slotDescItem->setEditable(false);
+                    // ПРАВИЛЬНОЕ ПОЗИЦИОНИРОВАНИЕ В ДЕРЕВЕ
+                    if (isBaseModule) {
+                        // Если в дереве уже есть IO модули, вставляем новый base прямо перед ними
+                        if (firstIoRowIndex != -1) {
+                            deviceModel->invisibleRootItem()->insertRow(firstIoRowIndex, {slotNameItem, slotValueItem, slotDescItem});
+                        } else {
+                            // Если IO модулей еще нет, вставляем в самый конец верхних блоков (перед var/forte)
+                            // Для сохранения красивого порядка найдем строку секции "forte" или "var"
+                            int insertRow = deviceModel->rowCount();
+                            for (int r = 0; r < deviceModel->rowCount(); ++r) {
+                                if (deviceModel->item(r, 0) && (deviceModel->item(r, 0)->text() == "forte" || deviceModel->item(r, 0)->text() == "var")) {
+                                    insertRow = r;
+                                    break;
+                                }
+                            }
+                            deviceModel->invisibleRootItem()->insertRow(insertRow, {slotNameItem, slotValueItem, slotDescItem});
+                        }
+                    } else {
+                        // IO модули всегда складываем в конец списка слотов (перед глобальными секциями forte/var)
+                        int insertRow = deviceModel->rowCount();
+                        for (int r = 0; r < deviceModel->rowCount(); ++r) {
+                            if (deviceModel->item(r, 0) && (deviceModel->item(r, 0)->text() == "forte" || deviceModel->item(r, 0)->text() == "var")) {
+                                insertRow = r;
+                                break;
+                            }
+                        }
+                        deviceModel->invisibleRootItem()->insertRow(insertRow, {slotNameItem, slotValueItem, slotDescItem});
+                    }
+
+                    // Наполняем вложенные параметры
+                    QJsonObject defaultSlotData = createDefaultData(modStructure);
+                    parseSchemaNode(slotNameItem, modStructure, QJsonValue(defaultSlotData));
+                    deviceTreeView->expand(slotNameItem->index());
+
+                    modified = true;
+                    emit onChanged();
+                });
+            }
+        }
+        if (!menu.isEmpty()) {
+            menu.exec(deviceTreeView->viewport()->mapToGlobal(pos));
+        }
+        return; // Полностью выходим из метода, так как клик по пустоте обработан
+    }
+    // БЛОК 2: КЛИК ПО СУЩЕСТВУЮЩИМ СТРОКАМ ДЕРЕВА
+    // ВЕТКА 2.1: Работа с массивами / списками (тип "sequence", например, forte)
+    if (ctx.isSequenceMode) {
+        // Сценарий А: Кликнули на саму папку-заголовок массива (например, "var" или "var_out")
+        if (!ctx.isChildItem) {
+            menu.addAction("Добавить элемент списка", this, [this, ctx]() {
+                // Используем наш универсальный шаблон! Имя сгенерируется само как var_1, var_out_1
+                insertAndEditNewRow(ctx.targetSectionItem);
             });
-        } else if (currentItem) {
-            menu.addAction("Удалить элемент списка", this, [this, targetSectionItem, currentItem]() {
-                targetSectionItem->removeRow(currentItem->row());
+        }
+        // Сценарий Б: Кликнули на конкретную переменную внутри списка (например, на "do0..15")
+        else if (ctx.currentItem) {
+            menu.addAction("Удалить элемент списка", this, [this, ctx]() {
+                ctx.targetSectionItem->removeRow(ctx.currentItem->row());
                 modified = true;
                 emit onChanged();
             });
         }
     }
-    // ЛОГИКА 2: ЛОГИКА ДЛЯ СЕКЦИИ С СТРУКТУРОЙ "ANY" (глобальный var)
-    else if (isAnyMode && !anyStruct.isEmpty()) {
-        if (!isChildItem) {
-            menu.addAction(tr("Добавить переменную"), this, [this, targetSectionItem, anyStruct, varDescription]() {
-                insertAndEditNewRow(targetSectionItem, varDescription, [this, anyStruct](QStandardItem* insertedNode) {
-                    QJsonObject defaultYamlData = createDefaultData(anyStruct);
-                    parseSchemaNode(insertedNode, anyStruct, QJsonValue(defaultYamlData));
+    // ВЕТКА 2.2: Работа с глобальной секцией переменных проекта (структура "any")
+    else if (ctx.isAnyMode && !ctx.anyStruct.isEmpty()) {
+        // Сценарий А: Кликнули на заголовок секции "var" в корне проекта
+        if (!ctx.isChildItem) {
+            menu.addAction(tr("Добавить переменную"), this, [this, ctx]() {
+                // Передаем в шаблон описание и лямбду для рекурсивного выращивания параметров (init, retain)
+                insertAndEditNewRow(ctx.targetSectionItem, ctx.varDescription, [this, ctx](QStandardItem* insertedNode) {
+                    QJsonObject defaultYamlData = createDefaultData(ctx.anyStruct);
+                    parseSchemaNode(insertedNode, ctx.anyStruct, QJsonValue(defaultYamlData));
                 });
             });
-        } else if (currentItem) {
-            menu.addAction(tr("Удалить переменную"), this, [this, targetSectionItem, currentItem]() {
-                targetSectionItem->removeRow(currentItem->row());
+        }
+        // Сценарий Б: Кликнули на конкретную глобальную переменную (например, "dw0")
+        else if (ctx.currentItem) {
+            QString currentVarName = ctx.currentItem->text();
+
+            menu.addAction(tr("Удалить переменную"), this, [this, ctx]() {
+                ctx.targetSectionItem->removeRow(ctx.currentItem->row());
                 modified = true;
                 emit onChanged();
             });
-            // ДИНАМИЧЕСКИЙ ЭКСПОРТ ПЕРЕМЕННОЙ В FORTE / VAR / VAR_OUT
+
+            // --- ДОПОЛНИТЕЛЬНО: Быстрый экспорт переменной в Forte ---
             QStandardItem *forteSection = nullptr;
             for (int j = 0; j < deviceModel->rowCount(); ++j) {
                 if (deviceModel->item(j, 0) && deviceModel->item(j, 0)->text() == "forte") {
@@ -589,13 +739,11 @@ void deviceView::showContextMenu(const QPoint &pos)
                     break;
                 }
             }
-            QString currentVarName = currentItem->text();
+
             if (forteSection) {
-                // Лямбда-помощник для проверки наличия и добавления переменной в массив forte
+                // Лямбда-помощник проверяет, нет ли уже тега в forte/var или forte/var_out
                 auto tryAddVarToForteArray = [this, currentVarName](QStandardItem* forteSubSection, const QString& menuText) -> QAction* {
                     if (!forteSubSection) return nullptr;
-
-                    // Проверяем, нет ли уже этой переменной в данном списке forte
                     bool alreadyExists = false;
                     for (int j = 0; j < forteSubSection->rowCount(); ++j) {
                         if (forteSubSection->child(j, 0) && forteSubSection->child(j, 0)->text() == currentVarName) {
@@ -603,14 +751,10 @@ void deviceView::showContextMenu(const QPoint &pos)
                             break;
                         }
                     }
-
-                    // Если переменной там нет, возвращаем действие для её добавления
-                    if (!alreadyExists) {
-                        return new QAction(menuText, this);
-                    }
+                    if (!alreadyExists) return new QAction(menuText, this);
                     return nullptr;
                 };
-                // Ищем внутренние ветки "var" и "var_out" внутри секции forte
+
                 QStandardItem *forteVarNode = nullptr;
                 QStandardItem *forteVarOutNode = nullptr;
                 for (int j = 0; j < forteSection->rowCount(); ++j) {
@@ -620,46 +764,43 @@ void deviceView::showContextMenu(const QPoint &pos)
                     }
                 }
 
-                // Создаем действия, если проверки прошли успешно
                 QAction *actAddToVar = tryAddVarToForteArray(forteVarNode, "Добавить в forte/var");
                 QAction *actAddToVarOut = tryAddVarToForteArray(forteVarOutNode, "Добавить в forte/var_out");
 
-                if (actAddToVar || actAddToVarOut) {
-                    if (actAddToVar) {
-                        menu.addAction(actAddToVar);
-                        connect(actAddToVar, &QAction::triggered, this, [this, forteVarNode, currentVarName]() {
-                            QStandardItem *newItem = new QStandardItem(currentVarName);
-                            newItem->setEditable(true);
-                            forteVarNode->insertRow(0, {newItem, new QStandardItem(), new QStandardItem()});
-                            deviceTreeView->expand(forteVarNode->index());
-                            modified = true;
-                            emit onChanged();
-                        });
-                    }
-                    if (actAddToVarOut) {
-                        menu.addAction(actAddToVarOut);
-                        connect(actAddToVarOut, &QAction::triggered, this, [this, forteVarOutNode, currentVarName]() {
-                            QStandardItem *newItem = new QStandardItem(currentVarName);
-                            newItem->setEditable(true);
-                            forteVarOutNode->insertRow(0, {newItem, new QStandardItem(), new QStandardItem()});
-                            deviceTreeView->expand(forteVarOutNode->index());
-                            modified = true;
-                            emit onChanged();
-                        });
-                    }
+                if (actAddToVar) {
+                    menu.addAction(actAddToVar);
+                    connect(actAddToVar, &QAction::triggered, this, [this, forteVarNode, currentVarName]() {
+                        QStandardItem *newItem = new QStandardItem(currentVarName);
+                        newItem->setEditable(true);
+                        forteVarNode->insertRow(0, {newItem, new QStandardItem(), new QStandardItem()});
+                        deviceTreeView->expand(forteVarNode->index());
+                        modified = true;
+                        emit onChanged();
+                    });
+                }
+                if (actAddToVarOut) {
+                    menu.addAction(actAddToVarOut);
+                    connect(actAddToVarOut, &QAction::triggered, this, [this, forteVarOutNode, currentVarName]() {
+                        QStandardItem *newItem = new QStandardItem(currentVarName);
+                        newItem->setEditable(true);
+                        forteVarOutNode->insertRow(0, {newItem, new QStandardItem(), new QStandardItem()});
+                        deviceTreeView->expand(forteVarOutNode->index());
+                        modified = true;
+                        emit onChanged();
+                    });
                 }
             }
 
-            // Ищем, какие параметры отсутствуют под текущей переменной
+            // --- ДОПОЛНИТЕЛЬНО: Добавление стёртых / отсутствующих полей (init, retain) ---
             QStringList existingParams;
-            for (int j = 0; j < currentItem->rowCount(); ++j) {
-                if (currentItem->child(j, 0)) {
-                    existingParams.append(currentItem->child(j, 0)->text());
+            for (int j = 0; j < ctx.currentItem->rowCount(); ++j) {
+                if (ctx.currentItem->child(j, 0)) {
+                    existingParams.append(ctx.currentItem->child(j, 0)->text());
                 }
             }
 
             QStringList missingParams;
-            for (auto it = anyStruct.begin(); it != anyStruct.end(); ++it) {
+            for (auto it = ctx.anyStruct.begin(); it != ctx.anyStruct.end(); ++it) {
                 if (!existingParams.contains(it.key())) {
                     missingParams.append(it.key());
                 }
@@ -668,14 +809,14 @@ void deviceView::showContextMenu(const QPoint &pos)
             if (!missingParams.isEmpty()) {
                 QMenu *subMenu = menu.addMenu(tr("Добавить..."));
                 for (const QString &missingKey : missingParams) {
-                    QJsonObject paramMeta = anyStruct.value(missingKey).toObject();
-                    subMenu->addAction(missingKey, this, [this, currentItem, missingKey, paramMeta]() {
+                    QJsonObject paramMeta = ctx.anyStruct.value(missingKey).toObject();
+                    subMenu->addAction(missingKey, this, [this, ctx, missingKey, paramMeta]() {
                         QJsonObject singleSchema;
                         singleSchema.insert(missingKey, paramMeta);
                         QJsonObject singleData = createDefaultData(singleSchema);
 
-                        parseSchemaNode(currentItem, singleSchema, QJsonValue(singleData));
-                        deviceTreeView->expand(currentItem->index());
+                        parseSchemaNode(ctx.currentItem, singleSchema, QJsonValue(singleData));
+                        deviceTreeView->expand(ctx.currentItem->index());
 
                         modified = true;
                         emit onChanged();
@@ -685,10 +826,222 @@ void deviceView::showContextMenu(const QPoint &pos)
         }
     }
 
-    // Отображаем меню на экране
-    menu.exec(deviceTreeView->viewport()->mapToGlobal(pos));
+    // БЛОК 3: ОБЩИЕ ПУНКТЫ МЕНЯ ДЛЯ ВСЕХ СЛУЧАЕВ КЛИКАПО СТРОКАМ
+    if (!menu.isEmpty()) {
+        menu.addSeparator();
+        menu.addAction(tr("Развернуть всё дерево"), deviceTreeView, &QTreeView::expandAll);
+        menu.addAction(tr("Свернуть всё дерево"), deviceTreeView, &QTreeView::collapseAll);
+
+        // Запуск отображения контекстного меню
+        menu.exec(deviceTreeView->viewport()->mapToGlobal(pos));
+    }
 
 }
+    // QModelIndex index = deviceTreeView->indexAt(pos);
+    // if (!index.isValid()) return;
+
+    // QModelIndex nameIndex = index.siblingAtColumn(0);
+    // QModelIndex valueIndex = index.siblingAtColumn(1);
+
+    // QStandardItem *nameItem = deviceModel->itemFromIndex(nameIndex);
+    // QStandardItem *valueItem = deviceModel->itemFromIndex(valueIndex);
+    // if (!nameItem) return;
+
+    // QJsonObject meta = valueItem ? valueItem->data(deviceView::SchemaMetaRole).value<QJsonObject>() : QJsonObject();
+    // qDebug()<<meta;
+    // QString type = meta.value("type").toString();
+
+    // QStandardItem *targetSectionItem = nullptr; // Папка-родитель (куда добавляем)
+    // QStandardItem *currentItem = nullptr;       // Элемент, по которому кликнули (если внутри папки)
+    // QJsonObject anyStruct;
+    // QString varDescription;
+
+    // // Режимы контекста
+    // bool isSequenceMode = (type == "sequence");
+    // bool isAnyMode = meta.contains("any");
+    // bool isChildItem = false; // Кликнули по элементу внутри папки
+
+
+    // // Сценарий А: Кликнули на саму секцию "var"
+    // if (isAnyMode || isSequenceMode) {
+    //     targetSectionItem = nameItem;
+    //     if (isAnyMode)
+    //     {
+    //         QJsonObject anyObj = meta.value("any").toObject();
+    //         anyStruct = anyObj.value("structure").toObject();
+    //         varDescription = anyObj.value("description").toString();
+    //     }
+    // }
+    // // Сценарий Б: Кликнули на дочерний элемент секции "var" (на имя переменной вроде dw0)
+    // else if (nameItem->parent()) {
+    //     QStandardItem *parentNameItem = nameItem->parent();
+    //     QStandardItem *parentValueItem = nullptr;
+    //     if (parentNameItem->parent()) {
+    //         parentValueItem = parentNameItem->parent()->child(parentNameItem->row(), 1);
+    //     } else {
+    //         parentValueItem = deviceModel->item(parentNameItem->row(), 1); // Если родитель в корне
+    //     }
+    //     QJsonObject parentMeta = parentValueItem ? parentValueItem->data(deviceView::SchemaMetaRole).value<QJsonObject>() : QJsonObject();
+    //     targetSectionItem = parentNameItem;
+    //     currentItem = nameItem;
+    //     isChildItem = true;
+    //     if (parentMeta.contains("any")) {
+    //         isAnyMode = true;
+    //         QJsonObject anyObj = parentMeta.value("any").toObject();
+    //         anyStruct = anyObj.value("structure").toObject();
+    //         varDescription = anyObj.value("description").toString();
+    //     } else if (parentMeta.value("type").toString() == "sequence") {
+    //         isSequenceMode = true;
+    //     }
+    // }
+    // qDebug() << isSequenceMode << isAnyMode << type << isChildItem << anyStruct;
+    // if (currentItem)
+    //     qDebug()<<currentItem->text();
+    // else
+    //     qDebug()<<&currentItem;
+    // if (!targetSectionItem) {
+    //     return;
+    // }
+
+    // QMenu menu(this);
+
+
+    // // ЛОГИКА 1: МЕНЮ ДЛЯ МАССИВОВ ТИПА SEQUENCE (forte: var / var_out)
+    // if (isSequenceMode) {
+    //     if (!isChildItem) {
+    //         menu.addAction("Добавить элемент списка", this, [this, targetSectionItem]() {
+    //             insertAndEditNewRow(targetSectionItem);
+    //         });
+    //     } else if (currentItem) {
+    //         menu.addAction("Удалить элемент списка", this, [this, targetSectionItem, currentItem]() {
+    //             targetSectionItem->removeRow(currentItem->row());
+    //             modified = true;
+    //             emit onChanged();
+    //         });
+    //     }
+    // }
+    // // ЛОГИКА 2: ЛОГИКА ДЛЯ СЕКЦИИ С СТРУКТУРОЙ "ANY" (глобальный var)
+    // else if (isAnyMode && !anyStruct.isEmpty()) {
+    //     if (!isChildItem) {
+    //         menu.addAction(tr("Добавить переменную"), this, [this, targetSectionItem, anyStruct, varDescription]() {
+    //             insertAndEditNewRow(targetSectionItem, varDescription, [this, anyStruct](QStandardItem* insertedNode) {
+    //                 QJsonObject defaultYamlData = createDefaultData(anyStruct);
+    //                 parseSchemaNode(insertedNode, anyStruct, QJsonValue(defaultYamlData));
+    //             });
+    //         });
+    //     } else if (currentItem) {
+    //         menu.addAction(tr("Удалить переменную"), this, [this, targetSectionItem, currentItem]() {
+    //             targetSectionItem->removeRow(currentItem->row());
+    //             modified = true;
+    //             emit onChanged();
+    //         });
+    //         // ДИНАМИЧЕСКИЙ ЭКСПОРТ ПЕРЕМЕННОЙ В FORTE / VAR / VAR_OUT
+    //         QStandardItem *forteSection = nullptr;
+    //         for (int j = 0; j < deviceModel->rowCount(); ++j) {
+    //             if (deviceModel->item(j, 0) && deviceModel->item(j, 0)->text() == "forte") {
+    //                 forteSection = deviceModel->item(j, 0);
+    //                 break;
+    //             }
+    //         }
+    //         QString currentVarName = currentItem->text();
+    //         if (forteSection) {
+    //             // Лямбда-помощник для проверки наличия и добавления переменной в массив forte
+    //             auto tryAddVarToForteArray = [this, currentVarName](QStandardItem* forteSubSection, const QString& menuText) -> QAction* {
+    //                 if (!forteSubSection) return nullptr;
+
+    //                 // Проверяем, нет ли уже этой переменной в данном списке forte
+    //                 bool alreadyExists = false;
+    //                 for (int j = 0; j < forteSubSection->rowCount(); ++j) {
+    //                     if (forteSubSection->child(j, 0) && forteSubSection->child(j, 0)->text() == currentVarName) {
+    //                         alreadyExists = true;
+    //                         break;
+    //                     }
+    //                 }
+
+    //                 // Если переменной там нет, возвращаем действие для её добавления
+    //                 if (!alreadyExists) {
+    //                     return new QAction(menuText, this);
+    //                 }
+    //                 return nullptr;
+    //             };
+    //             // Ищем внутренние ветки "var" и "var_out" внутри секции forte
+    //             QStandardItem *forteVarNode = nullptr;
+    //             QStandardItem *forteVarOutNode = nullptr;
+    //             for (int j = 0; j < forteSection->rowCount(); ++j) {
+    //                 if (forteSection->child(j, 0)) {
+    //                     if (forteSection->child(j, 0)->text() == "var") forteVarNode = forteSection->child(j, 0);
+    //                     if (forteSection->child(j, 0)->text() == "var_out") forteVarOutNode = forteSection->child(j, 0);
+    //                 }
+    //             }
+
+    //             // Создаем действия, если проверки прошли успешно
+    //             QAction *actAddToVar = tryAddVarToForteArray(forteVarNode, "Добавить в forte/var");
+    //             QAction *actAddToVarOut = tryAddVarToForteArray(forteVarOutNode, "Добавить в forte/var_out");
+
+    //             if (actAddToVar || actAddToVarOut) {
+    //                 if (actAddToVar) {
+    //                     menu.addAction(actAddToVar);
+    //                     connect(actAddToVar, &QAction::triggered, this, [this, forteVarNode, currentVarName]() {
+    //                         QStandardItem *newItem = new QStandardItem(currentVarName);
+    //                         newItem->setEditable(true);
+    //                         forteVarNode->insertRow(0, {newItem, new QStandardItem(), new QStandardItem()});
+    //                         deviceTreeView->expand(forteVarNode->index());
+    //                         modified = true;
+    //                         emit onChanged();
+    //                     });
+    //                 }
+    //                 if (actAddToVarOut) {
+    //                     menu.addAction(actAddToVarOut);
+    //                     connect(actAddToVarOut, &QAction::triggered, this, [this, forteVarOutNode, currentVarName]() {
+    //                         QStandardItem *newItem = new QStandardItem(currentVarName);
+    //                         newItem->setEditable(true);
+    //                         forteVarOutNode->insertRow(0, {newItem, new QStandardItem(), new QStandardItem()});
+    //                         deviceTreeView->expand(forteVarOutNode->index());
+    //                         modified = true;
+    //                         emit onChanged();
+    //                     });
+    //                 }
+    //             }
+    //         }
+
+    //         // Ищем, какие параметры отсутствуют под текущей переменной
+    //         QStringList existingParams;
+    //         for (int j = 0; j < currentItem->rowCount(); ++j) {
+    //             if (currentItem->child(j, 0)) {
+    //                 existingParams.append(currentItem->child(j, 0)->text());
+    //             }
+    //         }
+
+    //         QStringList missingParams;
+    //         for (auto it = anyStruct.begin(); it != anyStruct.end(); ++it) {
+    //             if (!existingParams.contains(it.key())) {
+    //                 missingParams.append(it.key());
+    //             }
+    //         }
+
+    //         if (!missingParams.isEmpty()) {
+    //             QMenu *subMenu = menu.addMenu(tr("Добавить..."));
+    //             for (const QString &missingKey : missingParams) {
+    //                 QJsonObject paramMeta = anyStruct.value(missingKey).toObject();
+    //                 subMenu->addAction(missingKey, this, [this, currentItem, missingKey, paramMeta]() {
+    //                     QJsonObject singleSchema;
+    //                     singleSchema.insert(missingKey, paramMeta);
+    //                     QJsonObject singleData = createDefaultData(singleSchema);
+
+    //                     parseSchemaNode(currentItem, singleSchema, QJsonValue(singleData));
+    //                     deviceTreeView->expand(currentItem->index());
+
+    //                     modified = true;
+    //                     emit onChanged();
+    //                 });
+    //             }
+    //         }
+    //     }
+    // }
+
+    // // Отображаем меню на экране
+    // menu.exec(deviceTreeView->viewport()->mapToGlobal(pos));
+
 
 QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema)
 {
@@ -707,4 +1060,103 @@ QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema)
     }
 
     return defaultObj;
+}
+
+deviceView::ContextMenuContext deviceView::analyzeMenuContext(const QModelIndex &index)
+{
+    ContextMenuContext ctx;
+    ctx.isValidClick = true;
+
+    // Сценарий 1: Клик по пустому пространству
+    if (!index.isValid()) {
+        ctx.isBlankSpace = true;
+        return ctx;
+    }
+
+    // Сценарий 2: Клик по существующим строкам
+    QModelIndex nameIndex = index.siblingAtColumn(0);
+    QModelIndex valueIndex = index.siblingAtColumn(1);
+
+    QStandardItem *nameItem = deviceModel->itemFromIndex(nameIndex);
+    QStandardItem *valueItem = deviceModel->itemFromIndex(valueIndex);
+    if (!nameItem) {
+        ctx.isValidClick = false;
+        return ctx;
+    }
+
+    QJsonObject meta = valueItem ? valueItem->data(deviceView::SchemaMetaRole).value<QJsonObject>() : QJsonObject();
+    QString type = meta.value("type").toString();
+
+    ctx.isSequenceMode = (type == "sequence");
+    ctx.isAnyMode = meta.contains("any");
+
+    // Сценарий А: Кликнули на саму корневую папку ("var" или массивы "forte")
+    if (ctx.isAnyMode || ctx.isSequenceMode) {
+        ctx.targetSectionItem = nameItem;
+        if (ctx.isAnyMode) {
+            QJsonObject anyObj = meta.value("any").toObject();
+            ctx.anyStruct = anyObj.value("structure").toObject();
+            ctx.varDescription = anyObj.value("description").toString();
+        }
+    }
+    // Сценарий Б: Кликнули на дочерний элемент внутри какой-то папки
+    else if (nameItem->parent()) {
+        QStandardItem *parentNameItem = nameItem->parent();
+        QStandardItem *parentValueItem = nullptr;
+        QModelIndex parentNameIndex = parentNameItem->index();
+        QModelIndex parentValueIndex = parentNameIndex.siblingAtColumn(1);
+        parentValueItem = deviceModel->itemFromIndex(parentValueIndex);
+
+        QJsonObject parentMeta = parentValueItem ? parentValueItem->data(deviceView::SchemaMetaRole).value<QJsonObject>() : QJsonObject();
+        ctx.targetSectionItem = parentNameItem;
+        ctx.currentItem = nameItem;
+        ctx.isChildItem = true;
+
+        if (parentMeta.contains("any")) {
+            ctx.isAnyMode = true;
+            QJsonObject anyObj = parentMeta.value("any").toObject();
+            ctx.anyStruct = anyObj.value("structure").toObject();
+            ctx.varDescription = anyObj.value("description").toString();
+        } else if (parentMeta.value("type").toString() == "sequence") {
+            ctx.isSequenceMode = true;
+        }
+    }
+
+    return ctx;
+}
+
+void deviceView::reindexSlotsOfType(bool isBaseType)
+{
+    int nextIdx = 1; // Стартовый номер для IO: slot1, slot2...
+    int nextBaseIdx = -1; // Стартовый номер для базовых: slot-1, slot-2...
+
+    for (int i = 0; i < deviceModel->rowCount(); ++i) {
+        QStandardItem *rootItem = deviceModel->item(i, 0);
+        if (!rootItem) continue;
+
+        QString savedSlotKey = rootItem->data(deviceView::SlotKeyRole).toString();
+        if (savedSlotKey.startsWith("slot")) {
+            int oldSlotNum = savedSlotKey.mid(4).toInt();
+            bool currentIsBase = (oldSlotNum < 0);
+
+            // Если тип совпадает с тем, который мы пересчитываем
+            if (currentIsBase == isBaseType) {
+                QString newSlotKey;
+                if (isBaseType) {
+                    newSlotKey = QString("slot%1").arg(nextBaseIdx--);
+                } else {
+                    newSlotKey = QString("slot%1").arg(nextIdx++);
+                }
+
+                // Вытаскиваем имя модуля из круглых скобок старого заголовка
+                QString currentText = rootItem->text();
+                QString modName = currentText.split("(").last().trimmed();
+                if (modName.endsWith(")")) modName.chop(1);
+
+                // Обновляем текст строки дерева и метаданные роли
+                rootItem->setText(QString("%1 (%2)").arg(newSlotKey, modName));
+                rootItem->setData(newSlotKey, deviceView::SlotKeyRole);
+            }
+        }
+    }
 }

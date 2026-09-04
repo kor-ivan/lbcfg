@@ -16,6 +16,7 @@ public:
         SlotKeyRole = Qt::UserRole + 2,     // Чистый ключ слота (например, "slot-1")
         ModuleTypeRole = Qt::UserRole + 3   // Системный тип модуля (например, "bcbase")
     };
+
     explicit deviceView(QWidget *parent = nullptr);
     bool loadModulesSchema(const QString &jsonPath);
     void updateData(lbyaml *parser);
@@ -50,6 +51,22 @@ private:
 
     void showContextMenu(const QPoint &pos);
     QJsonObject createDefaultData(const QJsonObject &structureSchema);
+
+    struct ContextMenuContext {
+        bool isValidClick = false;
+        bool isBlankSpace = false;
+        // Для клика по элементам дерева
+        QStandardItem *targetSectionItem = nullptr;
+        QStandardItem *currentItem = nullptr;
+        QJsonObject anyStruct;
+        QString varDescription;
+        bool isSequenceMode = false;
+        bool isAnyMode = false;
+        bool isChildItem = false;
+    };
+
+    ContextMenuContext analyzeMenuContext(const QModelIndex &index);
+    void reindexSlotsOfType(bool isBaseType);
 
     void insertAndEditNewRow(QStandardItem *parentItem, const QString &description = "")
     {
