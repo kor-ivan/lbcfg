@@ -1,5 +1,6 @@
 #include "logmanager.h"
 #include <QRegularExpression>
+#include <qtimezone.h>
 
 LogManager::LogManager(const plcManager::CommandContext &ctx, bool parse, Source source)
     : m_ctx(ctx), m_parse(parse), m_source(source), m_level(LogCatcher::Debug)
@@ -35,7 +36,7 @@ LogManager::~LogManager()
                     bool ok;
                     qint64 us = timeContent.toLongLong(&ok);
                     if (ok) {
-                        m_timestamp = QDateTime::fromMSecsSinceEpoch(us/1000, Qt::UTC);
+                        m_timestamp = QDateTime::fromMSecsSinceEpoch(us/1000, QTimeZone::UTC);
                         m_timetype = LogCatcher::TimeUptime;
                     }
                     m_buffer = match.captured(5);  // Оставшийся текст сообщения
@@ -56,7 +57,7 @@ LogManager::~LogManager()
                         bool ok;
                         qint64 ms = timeContent.toLongLong(&ok);
                         if (ok) {
-                            m_timestamp = QDateTime::fromMSecsSinceEpoch(ms, Qt::UTC);
+                            m_timestamp = QDateTime::fromMSecsSinceEpoch(ms, QTimeZone::UTC);
                             m_timetype = LogCatcher::TimeUptime;
                         }
                     }
