@@ -218,7 +218,7 @@
                 }
             },
             {
-                "name": "LB241DO16", "description": "Модуль дискретного вывода 24В", "structure": {
+                "name": "LB241DO16", "description": "Модуль дискретного вывода 24В", "io": 20, "structure": {
                     "module": {"value": "bcdo"},
                     "out": {
                         "type": "link", "structure": { "var_out": {"type": "string"}, "holdtime": {"type": "time"} }
@@ -227,7 +227,7 @@
                 }
             },
             {
-                "name": "LB241AI4", "description": "Модуль аналогового ввода 4 канала", "structure": {
+                "name": "LB241AI4", "description": "Модуль аналогового ввода 4 канала", "io": 20, "structure": {
                     "module": {"value": "bcai"},
                     "chan": {
                         "type": "link", "structure": {
@@ -244,7 +244,7 @@
                 }
             },
             {
-                "name": "LB241AO4", "description": "Модуль аналогового вывода 4 канала", "structure": {
+                "name": "LB241AO4", "description": "Модуль аналогового вывода 4 канала", "io": 20, "structure": {
                     "module": {"type": "const", "value": "bcao"},
                     "chan": {
                         "type": "link", "structure": {
