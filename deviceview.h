@@ -67,6 +67,7 @@ private:
 
     ContextMenuContext analyzeMenuContext(const QModelIndex &index);
     void reindexSlotsOfType(bool isBaseType);
+    void applyVariablePostfix(QJsonObject &defaultSubData, const QJsonObject &subStruct, const QString &postfix);
 
     void insertAndEditNewRow(QStandardItem *parentItem, const QString &description = "")
     {
