@@ -22,7 +22,7 @@
     "forte": {
         "description": "Управление рантаймом Forte",
         "structure": {
-            "enable": {"type": "enum", "values": ["y", "n"], "description": "Активировать Forte"},
+            "enable": {"type": "enum", "values": ["y", "n"], "description": "Активировать Forte", "default": "y"},
             "var": {"type": "sequence", "description": "Переменные от Forte"},
             "var_out": {"type": "sequence", "description": "Переменные к Forte"}
         }

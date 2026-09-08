@@ -55,19 +55,32 @@ private:
     struct ContextMenuContext {
         bool isValidClick = false;
         bool isBlankSpace = false;
-        // Для клика по элементам дерева
-        QStandardItem *targetSectionItem = nullptr;
-        QStandardItem *currentItem = nullptr;
-        QJsonObject anyStruct;
+
+        QStandardItem *targetSectionItem = nullptr; // Элемент, по которому кликнули
+        QStandardItem *parentContainer = nullptr;   // Физический родитель для операций вставки/удаления
+        QJsonObject anyStruct;                      // Активная структура схемы для поиска стёртых полей
         QString varDescription;
-        bool isSequenceMode = false;
+
+        // Декларативные флаги-команды для сборки UI
+        bool showSlotManagement = false;  // Показать перемещение и удаление всего слота железа
+        bool showRootBlockDelete = false; // Показать удаление обычного корневого блока (clock, forte)
+        bool allowAddSequenceItem = false;// Разрешить добавление элемента в массив (forte->var)
+        bool allowDeleteSequenceItem = false; // Разрешить удаление элемента из массива
+        bool allowAddGlobalVariable = false;  // Разрешить создание глобальной переменной проекта
+        bool allowDeleteVariableOrParam = false; // Разрешить удаление параметра/переменной/канала
+        bool allowVariableExportToForte = false; // Разрешить экспорт переменной в массивы Forte
+        bool allowRestoreSchemaParams = false;   // Разрешить подменю "Добавить отсутствующие параметры"
+
+        // Вспомогательные маркеры для лямбд
         bool isAnyMode = false;
-        bool isChildItem = false;
+        bool isSequenceMode = false;
+        QString currentItemText;
     };
 
     ContextMenuContext analyzeMenuContext(const QModelIndex &index);
     void reindexSlotsOfType(bool isBaseType);
     void applyVariablePostfix(QJsonObject &defaultSubData, const QJsonObject &subStruct, const QString &postfix);
+    void buildRestoreMenu(QMenu *parentMenu, QStandardItem *menuTargetItem, const QJsonObject &activeStruct);
 
     void insertAndEditNewRow(QStandardItem *parentItem, const QString &description = "")
     {
