@@ -26,6 +26,8 @@ public:
     bool isModified() const;
     void resetModified();
 
+    QStringList getAllProjectVariables() const;
+
 signals:
     void onChanged();
 
@@ -50,7 +52,7 @@ private:
     void onDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
 
     void showContextMenu(const QPoint &pos);
-    QJsonObject createDefaultData(const QJsonObject &structureSchema);
+    QJsonObject createDefaultData(const QJsonObject &structureSchema, bool forceCreateAll = false);
 
     struct ContextMenuContext {
         bool isValidClick = false;

@@ -106,30 +106,26 @@ void deviceView::parseSchemaNode(QStandardItem *parentNode, const QJsonObject &s
             QJsonObject anyMeta = meta.contains("any") ? meta.value("any").toObject() : meta;
             QJsonObject anyStruct = anyMeta.value("structure").toObject();
 
-            // ЗАЩИТА ОТ ДУБЛИРОВАНИЯ: Ищем, нет ли уже на текущем уровне узла с таким именем (например, "var")
+            // ЗАЩИТА ОТ ДУБЛИРОВАНИЯ: Ищем, нет ли уже на текущем уровне узла с таким именем
             QStandardItem *sectionNameItem = nullptr;
-            QStandardItem *sectionValueItem = nullptr;
-            QStandardItem *sectionDescItem = nullptr;
 
             for (int r = 0; r < parentNode->rowCount(); ++r) {
                 if (parentNode->child(r, 0) && parentNode->child(r, 0)->text() == key) {
                     sectionNameItem = parentNode->child(r, 0);
-                    sectionValueItem = parentNode->child(r, 1);
-                    sectionDescItem = parentNode->child(r, 2);
-                    break; // Нашли существующую секцию, используем её!
+                    break; // Нашли существующую секцию, её имя нам известно!
                 }
             }
 
-            // Если секции ещё нет в дереве (например, при самом первом открытии пустого конфига), создаём её с нуля
+            // Если секции ещё нет в дереве, создаём её с нуля
             if (!sectionNameItem) {
                 sectionNameItem = new QStandardItem(key);
                 sectionNameItem->setEditable(false);
 
-                sectionValueItem = new QStandardItem("");
+                QStandardItem *sectionValueItem = new QStandardItem("");
                 sectionValueItem->setEditable(false);
                 sectionValueItem->setData(meta, deviceView::SchemaMetaRole);
 
-                sectionDescItem = new QStandardItem(meta.value("description").toString());
+                QStandardItem *sectionDescItem = new QStandardItem(meta.value("description").toString());
                 sectionDescItem->setEditable(false);
 
                 // Добавляем саму секцию в модель
@@ -503,6 +499,33 @@ void deviceView::resetModified()
     modified = false;
 }
 
+QStringList deviceView::getAllProjectVariables() const
+{
+    QStringList variableNames;
+    if (!deviceModel) return variableNames;
+
+    // Ищем на верхнем уровне модели корневую папку "var"
+    QStandardItem *varSectionItem = nullptr;
+    for (int i = 0; i < deviceModel->rowCount(); ++i) {
+        if (deviceModel->item(i, 0) && deviceModel->item(i, 0)->text() == "var") {
+            varSectionItem = deviceModel->item(i, 0);
+            break;
+        }
+    }
+
+    // Если папка найдена, забираем имена всех её дочерних строк
+    if (varSectionItem) {
+        for (int j = 0; j < varSectionItem->rowCount(); ++j) {
+            if (varSectionItem->child(j, 0)) {
+                variableNames.append(varSectionItem->child(j, 0)->text());
+            }
+        }
+    }
+
+    return variableNames;
+}
+
+
 void deviceView::onDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight)
 {
     modified = true;
@@ -524,10 +547,31 @@ void deviceView::showContextMenu(const QPoint &pos)
     // =========================================================================
     if (ctx.isBlankSpace) {
         QStringList existingRootItems;
+        int currentBaseCount = 0;
+        int currentIoCount = 0;
+
+        int minBaseIdx = 0; // Для отрицательных индексов слотов базовых модулей (-1, -2)
+        int maxIoIdx = 0;   // Для положительных индексов слотов ввода-вывода (1, 2)
+
+        // 1. АНАЛИЗИРУЕМ ТЕКУЩУЮ ТОПОЛОГИЮ ШАССИ
         for (int i = 0; i < deviceModel->rowCount(); ++i) {
-            if (deviceModel->item(i, 0)) {
-                QString name = deviceModel->item(i, 0)->text();
-                existingRootItems.append(name.contains("slot") ? "slot" : name);
+            QStandardItem *rootItem = deviceModel->item(i, 0);
+            if (!rootItem) continue;
+
+            QString name = rootItem->text();
+            existingRootItems.append(name.contains("slot") ? "slot" : name);
+
+            QString savedSlotKey = rootItem->data(deviceView::SlotKeyRole).toString();
+            if (savedSlotKey.startsWith("slot")) {
+                int slotNum = QStringView(savedSlotKey).mid(4).toInt();
+
+                if (slotNum < 0) {
+                    currentBaseCount++;
+                    if (slotNum < minBaseIdx) minBaseIdx = slotNum;
+                } else {
+                    currentIoCount++;
+                    if (slotNum > maxIoIdx) maxIoIdx = slotNum;
+                }
             }
         }
 
@@ -539,6 +583,7 @@ void deviceView::showContextMenu(const QPoint &pos)
             }
         }
 
+        // Выводим меню для обычных пропущенных блоков (clock, ipaddr)
         if (!missingRootBlocks.isEmpty()) {
             QMenu *addBlockMenu = menu.addMenu(tr("Добавить блок конфигурации"));
             for (const QString &blockKey : missingRootBlocks) {
@@ -567,23 +612,11 @@ void deviceView::showContextMenu(const QPoint &pos)
             }
         }
 
+        // Выводим меню для добавления новых плат в слоты шасси железа
         if (hasSlotSpecification) {
             QMenu *addSlotMenu = menu.addMenu(tr("Добавить модуль в новый слот"));
             QJsonObject slotMeta = m_schemaRoot.value("slot").toObject();
             QJsonArray availableModules = slotMeta.value("modules").toArray();
-
-            int maxSlotIdx = 0;
-            for (int i = 0; i < deviceModel->rowCount(); ++i) {
-                if (deviceModel->item(i, 0)) {
-                    QString name = deviceModel->item(i, 0)->text();
-                    if (name.startsWith("slot") && !name.startsWith("slot-1")) {
-                        QString rawNum = QStringView(name).mid(4).toString();
-                        QString numStr = rawNum.split(' ').first();
-                        int num = numStr.toInt();
-                        if (num > maxSlotIdx) maxSlotIdx = num;
-                    }
-                }
-            }
 
             for (const QJsonValue &modVal : availableModules) {
                 QJsonObject modObj = modVal.toObject();
@@ -591,15 +624,27 @@ void deviceView::showContextMenu(const QPoint &pos)
                 QString modDesc = modObj.value("description").toString();
                 QJsonObject modStructure = modObj.value("structure").toObject();
 
+                // Декларативно вытаскиваем лимиты из параметров схемы модулей
+                bool isBaseModule = modObj.contains("base");
+                int maxAllowed = isBaseModule ? modObj.value("base").toInt() : modObj.value("io").toInt();
+                int currentCount = isBaseModule ? currentBaseCount : currentIoCount;
+
                 QAction *modAction = new QAction(modName, this);
+
+                // КОНТРОЛЬ ЛИМИТОВ ШАССИ: Если платы превысили лимит САПР, блокируем клик
+                if (currentCount >= maxAllowed) {
+                    modAction->setEnabled(false);
+                    modAction->setText(QString("%1 [%2]").arg(modAction->text(), tr("лимит")));
+                }
                 addSlotMenu->addAction(modAction);
 
-                connect(modAction, &QAction::triggered, this, [this, modStructure, modName, modDesc]() {
-                    QStandardItem *slotNameItem = new QStandardItem(QString("slot_temp (%1)").arg(modName));
-                    slotNameItem->setEditable(false);
+                connect(modAction, &QAction::triggered, this, [this, modStructure, modName, modDesc, isBaseModule, minBaseIdx, maxIoIdx]() {
+                    // Вычисляем имя и SlotKeyRole на основе топологии
+                    QString newSlotKey = isBaseModule ? QString("slot%1").arg(minBaseIdx - 1) : QString("slot%1").arg(maxIoIdx + 1);
 
-                    bool isBaseModule = modStructure.contains("base") || modStructure.value("module").toObject().value("value").toString() == "bcbase";
-                    slotNameItem->setData(isBaseModule ? "slot-99" : "slot99", deviceView::SlotKeyRole);
+                    QStandardItem *slotNameItem = new QStandardItem(QString("%1 (%2)").arg(newSlotKey, modName));
+                    slotNameItem->setEditable(false);
+                    slotNameItem->setData(newSlotKey, deviceView::SlotKeyRole);
 
                     QString rawModuleType = modStructure.value("module").toObject().value("value").toString();
                     if (rawModuleType.isEmpty() && modStructure.value("module").toObject().value("value").isArray()) {
@@ -613,6 +658,9 @@ void deviceView::showContextMenu(const QPoint &pos)
                     QStandardItem *slotDescItem = new QStandardItem(modDesc);
                     slotDescItem->setEditable(false);
 
+                    // =========================================================================
+                    // УМНОЕ ПОЗИЦИОНИРОВАНИЕ НА ШАССИ (Base - вверх, IO - вниз)
+                    // =========================================================================
                     int firstAnySlotRow = -1;
                     int lastAnySlotRow = -1;
                     for (int r = 0; r < deviceModel->rowCount(); ++r) {
@@ -625,12 +673,17 @@ void deviceView::showContextMenu(const QPoint &pos)
 
                     int insertRowIdx = deviceModel->rowCount();
                     if (isBaseModule) {
+                        // Базовые модули нарастают вверх: занимают место самого первого слота, сдвигая IO вниз
                         insertRowIdx = (firstAnySlotRow != -1) ? firstAnySlotRow : 0;
                     } else {
+                        // Модули ввода-вывода (IO) складываются строго вниз: под самый последний слот
                         insertRowIdx = (lastAnySlotRow != -1) ? lastAnySlotRow + 1 : 0;
                     }
 
+                    // Физически добавляем строку на шасси в правильную позицию
                     deviceModel->invisibleRootItem()->insertRow(insertRowIdx, {slotNameItem, slotValueItem, slotDescItem});
+
+                    // Переиндексируем текстовые имена заголовков по порядку
                     reindexSlotsOfType(isBaseModule);
 
                     QJsonObject defaultSlotData = createDefaultData(modStructure);
@@ -837,9 +890,8 @@ void deviceView::showContextMenu(const QPoint &pos)
     }
 }
 
-QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema)
+QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema, bool forceCreateAll)
 {
-    qDebug()<<structureSchema;
     QJsonObject defaultObj;
 
     for (auto it = structureSchema.begin(); it != structureSchema.end(); ++it) {
@@ -847,31 +899,38 @@ QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema)
         QJsonObject paramMeta = it.value().toObject();
         QString type = paramMeta.value("type").toString();
 
-        // 1. СЦЕНАРИЙ А: Универсальные динамические линки-диапазоны (линки каналов/регистров)
+        // СТРОГОЕ ПРАВИЛО: Если у узла схемы нет свойства "default", и мы НЕ находимся в режиме форсированного создания
+        if (!forceCreateAll && key != "module" && !paramMeta.contains("default")) {
+            if (type == "link" || type == "keynum" || paramMeta.contains("structure") || type == "sequence") {
+                continue; // Пропускаем автоматическую генерацию крупных блоков
+            }
+        }
+
+        // 1. СЦЕНАРИЙ А: Универсальные динамические линки-диапазоны (линки каналов/регистров/клиентов)
         if ((type == "link" || type == "keynum") && paramMeta.contains("structure")) {
             QJsonObject subStruct = paramMeta.value("structure").toObject();
-            QJsonObject defaultSubData = createDefaultData(subStruct);
 
-            // Читаем лимит из параметра "max" в схеме (если забыли указать, фоллбэк на 1)
             int maxChannels = paramMeta.contains("max") ? paramMeta.value("max").toInt() : 1;
-
-            // Читаем флаг группировки в диапазон (например, true для in/out, false для chan)
             bool isRangeStyle = paramMeta.value("range").toBool(false);
-            qDebug() << isRangeStyle << maxChannels;
 
             if (isRangeStyle) {
-                // 1. ВАРИАНТ ДИАПАЗОНА (in0..15, out0..15)
                 QString channelPostfix = QString("0..%1").arg(maxChannels - 1);
                 QString rangeKey = key + channelPostfix;
-                QJsonObject defaultSubData = createDefaultData(subStruct);
+
+                // КРИТИЧЕСКИЙ ФИКС: При уходе в рекурсию для вложенных регистров сбрасываем флаг в false!
+                QJsonObject defaultSubData = createDefaultData(subStruct, false);
+
                 applyVariablePostfix(defaultSubData, subStruct, channelPostfix);
                 defaultObj.insert(rangeKey, defaultSubData);
             } else {
-                // ОДНОТИПНО для любых поштучных параметров: разворачиваем плоскую сетку (chan0, chan1...)
-                for (int c = 0; c < maxChannels; ++c) {
+                int channelsToCreate = paramMeta.contains("max") ? maxChannels : 1;
+                for (int c = 0; c < channelsToCreate; ++c) {
                     QString channelPostfix = QString::number(c);
                     QString individualKey = key + channelPostfix;
-                    QJsonObject defaultSubData = createDefaultData(subStruct);
+
+                    // КРИТИЧЕСКИЙ ФИКС: При уходе в рекурсию для вложенных каналов сбрасываем флаг в false!
+                    QJsonObject defaultSubData = createDefaultData(subStruct, false);
+
                     applyVariablePostfix(defaultSubData, subStruct, channelPostfix);
                     defaultObj.insert(individualKey, defaultSubData);
                 }
@@ -882,41 +941,45 @@ QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema)
         // 2. СЦЕНАРИЙ Б: Вложенная фиксированная структурная группа (clock, rs485...)
         if (paramMeta.contains("structure")) {
             QJsonObject subStruct = paramMeta.value("structure").toObject();
-            defaultObj.insert(key, createDefaultData(subStruct));
+
+            // КРИТИЧЕСКИЙ ФИКС: При уходе в рекурсию для внутренних подгрупп сбрасываем флаг в false!
+            QJsonObject subData = createDefaultData(subStruct, false);
+
+            if (!subData.isEmpty() || forceCreateAll) {
+                defaultObj.insert(key, subData);
+            }
             continue;
         }
 
         // 3. СЦЕНАРИЙ В: Списковые параметры ("type": "sequence", например natural)
         if (type == "sequence") {
-            QJsonArray defaultArray;
-            if (paramMeta.contains("default")) {
+            if (paramMeta.contains("default") || forceCreateAll) {
+                QJsonArray defaultArray;
                 QJsonValue defVal = paramMeta.value("default");
                 if (defVal.isArray()) {
                     defaultArray = defVal.toArray();
                 } else if (defVal.isString() && !defVal.toString().isEmpty()) {
-                    // Парсим массив, если он записан JSON-строкой в файле схемы
                     QJsonDocument arrDoc = QJsonDocument::fromJson(defVal.toString().toUtf8());
                     if (arrDoc.isArray()) defaultArray = arrDoc.array();
                 }
+                defaultObj.insert(key, defaultArray);
             }
-            // Никакого хардкода. Если дефолт не задан в схеме — массив остаётся пустым
-            defaultObj.insert(key, defaultArray);
             continue;
         }
 
         // 4. СЦЕНАРИЙ Г: Обычный leaf-параметр (строка, число, enum)
         if (paramMeta.contains("default")) {
-            // Пишем строго то значение по умолчанию, которое заложено в JSON-схему
             defaultObj.insert(key, paramMeta.value("default"));
         } else {
-            // Если дефолт не задан — параметр считается необязательным.
-            // Записываем пустую строку, оставляя ячейку пустой в интерфейсе QTreeView.
+            // Если дефолта нет, но мы находимся на разрешенном forceCreateAll уровне (например, rtu_addr, tcp_port) —
+            // создаем пустое поле, чтобы его можно было заполнить в TreeView
             defaultObj.insert(key, "");
         }
     }
 
     return defaultObj;
 }
+
 
 deviceView::ContextMenuContext deviceView::analyzeMenuContext(const QModelIndex &index)
 {
@@ -1036,8 +1099,6 @@ deviceView::ContextMenuContext deviceView::analyzeMenuContext(const QModelIndex 
                     if (!modType.isEmpty()) ctx.anyStruct = findModuleSchema(modType).value("structure").toObject();
                 }
 
-                // КРИТИЧЕСКИЙ ФИКС: Узел targetSectionItem ОСТАЕТСЯ равен nameItem (самому leaf-параметру)!
-                // Мы ни в коем случае не подменяем его родителем parentItem.
                 ctx.isAnyMode = false;
                 ctx.isSequenceMode = false;
                 ctx.allowRestoreSchemaParams = false; // Полностью блокируем подменю "Добавить..." для плоских leaf-параметров
@@ -1139,39 +1200,65 @@ void deviceView::buildRestoreMenu(QMenu *parentMenu, QStandardItem *menuTargetIt
     struct MissingLinkOption {
         QString menuLabel; QString insertKey; QJsonObject linkMeta;
     };
-
-    // ИСПРАВЛЕНО: Добавлен упущенный тип шаблона контейнера <MissingLinkOption>
     QList<MissingLinkOption> missingLinkOptions;
 
     for (auto it = activeStruct.begin(); it != activeStruct.end(); ++it) {
-        QString schemaKey = it.key();
+        QString schemaKey = it.key(); // Например, "modbus_client", "chan", "out"
         QJsonObject paramMeta = it.value().toObject();
         QString pType = paramMeta.value("type").toString();
 
         if ((pType == "link" || pType == "keynum") && paramMeta.contains("structure")) {
-            int maxChannels = paramMeta.contains("max") ? paramMeta.value("max").toInt() : 1;
             bool isRangeStyle = paramMeta.value("range").toBool(false);
 
-            QStringList missingIndividualChannels;
-            for (int c = 0; c < maxChannels; ++c) {
-                QString individualKey = QString("%1%2").arg(schemaKey).arg(c);
-                if (!expandedUiItems.contains(individualKey) && !existingItems.contains(individualKey)) {
-                    missingIndividualChannels.append(individualKey);
+            // ПРОВЕРКА НА БЕСКОНЕЧНЫЙ ЛИНК (У которого в схеме отсутствует "max", например modbus_client)
+            if (!paramMeta.contains("max")) {
+                int maxExistingIdx = -1;
+                bool hasAnyClient = false;
+
+                // Пробегаем по UI и ищем максимальный занятый индекс для этого префикса
+                for (const QString &uiKey : existingItems) {
+                    if (uiKey.startsWith(schemaKey)) {
+                        hasAnyClient = true;
+                        int num = QStringView(uiKey).mid(schemaKey.length()).toInt();
+                        if (num > maxExistingIdx) maxExistingIdx = num;
+                    }
                 }
-            }
 
-            if (isRangeStyle && missingIndividualChannels.size() == maxChannels) {
-                QString rangeKey = schemaKey + "0.." + QString::number(maxChannels - 1);
+                // Вычисляем следующий свободный индекс (если клиентов еще нет - будет 0, если есть 0 - будет 1, и т.д.)
+                int nextFreeIdx = hasAnyClient ? (maxExistingIdx + 1) : 0;
+                QString nextClientKey = schemaKey + QString::number(nextFreeIdx); // "modbus_client1"
+
                 MissingLinkOption opt;
-                opt.menuLabel = rangeKey + tr(" (Весь диапазон)");
-                opt.insertKey = rangeKey; opt.linkMeta = paramMeta;
+                opt.menuLabel = nextClientKey;
+                opt.insertKey = nextClientKey;
+                opt.linkMeta = paramMeta;
                 missingLinkOptions.append(opt);
             }
+            // КАНАЛЫ С ФИКСИРОВАННЫМ ЛИМИТОМ ИЗ СХЕМЫ (chan0..3, out0..15)
+            else {
+                int maxChannels = paramMeta.value("max").toInt();
 
-            for (const QString &missingChan : missingIndividualChannels) {
-                MissingLinkOption opt;
-                opt.menuLabel = missingChan; opt.insertKey = missingChan; opt.linkMeta = paramMeta;
-                missingLinkOptions.append(opt);
+                QStringList missingIndividualChannels;
+                for (int c = 0; c < maxChannels; ++c) {
+                    QString individualKey = QString("%1%2").arg(schemaKey).arg(c);
+                    if (!expandedUiItems.contains(individualKey) && !existingItems.contains(individualKey)) {
+                        missingIndividualChannels.append(individualKey);
+                    }
+                }
+
+                if (isRangeStyle && missingIndividualChannels.size() == maxChannels) {
+                    QString rangeKey = schemaKey + "0.." + QString::number(maxChannels - 1);
+                    MissingLinkOption opt;
+                    opt.menuLabel = rangeKey + tr(" (Весь диапазон)");
+                    opt.insertKey = rangeKey; opt.linkMeta = paramMeta;
+                    missingLinkOptions.append(opt);
+                }
+
+                for (const QString &missingChan : missingIndividualChannels) {
+                    MissingLinkOption opt;
+                    opt.menuLabel = missingChan; opt.insertKey = missingChan; opt.linkMeta = paramMeta;
+                    missingLinkOptions.append(opt);
+                }
             }
         } else {
             if (!existingItems.contains(schemaKey) && schemaKey != "module") missingFixedParams.append(schemaKey);
@@ -1180,43 +1267,41 @@ void deviceView::buildRestoreMenu(QMenu *parentMenu, QStandardItem *menuTargetIt
 
     if (!missingFixedParams.isEmpty() || !missingLinkOptions.isEmpty()) {
         QMenu *addMissingMenu = parentMenu->addMenu(tr("Добавить..."));
-
-        // А) Восстановление фиксированных свойств (init, holdtime, wires...)
+        // А) Восстановление фиксированных свойств (init, holdtime, wires, modbus_server...)
         for (const QString &missingKey : missingFixedParams) {
             addMissingMenu->addAction(missingKey, this, [this, menuTargetItem, missingKey, activeStruct]() {
-                QJsonObject singleSchema;
-                singleSchema.insert(missingKey, activeStruct.value(missingKey).toObject());
+                QJsonObject singleSchema; singleSchema.insert(missingKey, activeStruct.value(missingKey).toObject());
 
-                parseSchemaNode(menuTargetItem, singleSchema, QJsonValue(createDefaultData(singleSchema)));
+                // ИСПРАВЛЕНО: Передаем true в качестве второго аргумента forceCreateAll!
+                parseSchemaNode(menuTargetItem, singleSchema, QJsonValue(createDefaultData(singleSchema, true)));
+
                 deviceTreeView->expand(menuTargetItem->index());
-
-                modified = true;
-                emit onChanged();
+                modified = true; emit onChanged();
             });
         }
-
         if (!missingFixedParams.isEmpty() && !missingLinkOptions.isEmpty()) addMissingMenu->addSeparator();
-
-        // Б) Восстановление стертых динамических каналов (chan1, chan3, out0..15...)
+        // Б) Восстановление стертых динамических каналов (chan1, modbus_client1...)
         for (const MissingLinkOption &opt : missingLinkOptions) {
-            addMissingMenu->addAction(opt.menuLabel, this, [this, menuTargetItem, opt]() {
+            addMissingMenu->addAction(opt.menuLabel, this, [this, menuTargetItem, opt, activeStruct]() {
                 QJsonObject subStruct = opt.linkMeta.value("structure").toObject();
-                QJsonObject defaultSubData = createDefaultData(subStruct);
+
+                // ИСПРАВЛЕНО: Передаем true в качестве второго аргумента forceCreateAll!
+                QJsonObject defaultSubData = createDefaultData(subStruct, true);
 
                 QString rawKey = opt.linkMeta.value("range").toBool() ? opt.insertKey.left(2) : opt.insertKey.left(4);
+                if (!opt.linkMeta.contains("max")) {
+                    for (auto sIt = activeStruct.begin(); sIt != activeStruct.end(); ++sIt) {
+                        if (sIt.value().toObject() == opt.linkMeta) { rawKey = sIt.key(); break; }
+                    }
+                }
                 applyVariablePostfix(defaultSubData, subStruct, opt.insertKey.mid(rawKey.length()));
 
-                QJsonObject singleSchema;
-                singleSchema.insert(opt.insertKey, opt.linkMeta);
-
-                QJsonObject singleData;
-                singleData.insert(opt.insertKey, defaultSubData);
+                QJsonObject singleSchema; singleSchema.insert(opt.insertKey, opt.linkMeta);
+                QJsonObject singleData; singleData.insert(opt.insertKey, defaultSubData);
 
                 parseSchemaNode(menuTargetItem, singleSchema, QJsonValue(singleData));
                 deviceTreeView->expand(menuTargetItem->index());
-
-                modified = true;
-                emit onChanged();
+                modified = true; emit onChanged();
             });
         }
     }
