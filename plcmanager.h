@@ -34,7 +34,7 @@ public:
     void scanDevice(const QString &ipv6, const QString &name);
     void requestConfig(const QString &ipv6, const QString &name);
     void startDiscover();
-    void startFirmware(const CommandContext &ctx, const QString &filePath,
+    bool startFirmware(const CommandContext &ctx, const QString &filePath,
                        const QString &checkMessage,
                        const QString &startMessage,
                        const QString &lbkey = "ota");
