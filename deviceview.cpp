@@ -103,6 +103,10 @@ void deviceView::parseSchemaNode(QStandardItem *parentNode, const QJsonObject &s
 
         // 1. Обработка паттерна "any" (для секции var, где ключи — это имена переменных)
         if (key == "any" || meta.contains("any")) {
+            if (!yamlObj.contains(key) || yamlObj.value(key).isUndefined() || yamlObj.value(key).isNull()) {
+                continue;
+            }
+
             QJsonObject anyMeta = meta.contains("any") ? meta.value("any").toObject() : meta;
             QJsonObject anyStruct = anyMeta.value("structure").toObject();
 
@@ -597,13 +601,23 @@ void deviceView::showContextMenu(const QPoint &pos)
                         defaultData.insert(blockKey, createDefaultData(subSchema));
                         parseSchemaNode(deviceModel->invisibleRootItem(), m_schemaRoot, QJsonValue(defaultData));
                     } else {
+                        QJsonObject singleWrapperSchema;
+                        singleWrapperSchema.insert(blockKey, blockMeta);
+
+                        QJsonObject generatedLeafData = createDefaultData(singleWrapperSchema, true);
+                        QString finalDefaultValue = generatedLeafData.value(blockKey).toString();
+
                         QStandardItem *pName = new QStandardItem(blockKey);
                         pName->setEditable(false);
-                        QStandardItem *pValue = new QStandardItem("");
+
+                        // Вместо жестких пустых кавычек "" подставляем вычитанное фабричное значение!
+                        QStandardItem *pValue = new QStandardItem(finalDefaultValue);
                         pValue->setEditable(true);
                         pValue->setData(blockMeta, deviceView::SchemaMetaRole);
+
                         QStandardItem *pDesc = new QStandardItem(blockDesc);
                         pDesc->setEditable(false);
+
                         deviceModel->invisibleRootItem()->appendRow({pName, pValue, pDesc});
                     }
                     modified = true;
@@ -686,7 +700,7 @@ void deviceView::showContextMenu(const QPoint &pos)
                     // Переиндексируем текстовые имена заголовков по порядку
                     reindexSlotsOfType(isBaseModule);
 
-                    QJsonObject defaultSlotData = createDefaultData(modStructure);
+                    QJsonObject defaultSlotData = createDefaultData(modStructure, false);
                     parseSchemaNode(slotNameItem, modStructure, QJsonValue(defaultSlotData));
                     deviceTreeView->expand(slotNameItem->index());
 
@@ -892,6 +906,8 @@ void deviceView::showContextMenu(const QPoint &pos)
 
 QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema, bool forceCreateAll)
 {
+    qDebug() << "forceCreateAll = " << forceCreateAll;
+    qDebug() << structureSchema;
     QJsonObject defaultObj;
 
     for (auto it = structureSchema.begin(); it != structureSchema.end(); ++it) {
@@ -899,15 +915,20 @@ QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema, bo
         QJsonObject paramMeta = it.value().toObject();
         QString type = paramMeta.value("type").toString();
 
+        qDebug() << it.key() << forceCreateAll << key << paramMeta.contains("default");
+        qDebug() << it.value();
+
         // СТРОГОЕ ПРАВИЛО: Если у узла схемы нет свойства "default", и мы НЕ находимся в режиме форсированного создания
         if (!forceCreateAll && key != "module" && !paramMeta.contains("default")) {
             if (type == "link" || type == "keynum" || paramMeta.contains("structure") || type == "sequence") {
+                qDebug() << "Пропускаем автоматическую генерацию крупных блоков";
                 continue; // Пропускаем автоматическую генерацию крупных блоков
             }
         }
 
         // 1. СЦЕНАРИЙ А: Универсальные динамические линки-диапазоны (линки каналов/регистров/клиентов)
         if ((type == "link" || type == "keynum") && paramMeta.contains("structure")) {
+            qDebug() << "1. СЦЕНАРИЙ А: Универсальные динамические линки-диапазоны";
             QJsonObject subStruct = paramMeta.value("structure").toObject();
 
             int maxChannels = paramMeta.contains("max") ? paramMeta.value("max").toInt() : 1;
@@ -926,9 +947,11 @@ QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema, bo
                 int channelsToCreate = paramMeta.contains("max") ? maxChannels : 1;
                 for (int c = 0; c < channelsToCreate; ++c) {
                     QString channelPostfix = QString::number(c);
-                    QString individualKey = key + channelPostfix;
+                    QString individualKey = key;
+                    if (!key.isEmpty() && !key.at(key.length() - 1).isDigit()) {
+                        individualKey = key + channelPostfix; // Для обычных chan, out прибавляем как раньше
+                    }
 
-                    // КРИТИЧЕСКИЙ ФИКС: При уходе в рекурсию для вложенных каналов сбрасываем флаг в false!
                     QJsonObject defaultSubData = createDefaultData(subStruct, false);
 
                     applyVariablePostfix(defaultSubData, subStruct, channelPostfix);
@@ -940,6 +963,7 @@ QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema, bo
 
         // 2. СЦЕНАРИЙ Б: Вложенная фиксированная структурная группа (clock, rs485...)
         if (paramMeta.contains("structure")) {
+            qDebug() << "2. СЦЕНАРИЙ Б: Вложенная фиксированная структурная группа (clock, rs485...)";
             QJsonObject subStruct = paramMeta.value("structure").toObject();
 
             // КРИТИЧЕСКИЙ ФИКС: При уходе в рекурсию для внутренних подгрупп сбрасываем флаг в false!
@@ -953,6 +977,7 @@ QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema, bo
 
         // 3. СЦЕНАРИЙ В: Списковые параметры ("type": "sequence", например natural)
         if (type == "sequence") {
+            qDebug() << "3. СЦЕНАРИЙ В: Списковые параметры sequence, например natural)";
             if (paramMeta.contains("default") || forceCreateAll) {
                 QJsonArray defaultArray;
                 QJsonValue defVal = paramMeta.value("default");
@@ -968,9 +993,11 @@ QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema, bo
         }
 
         // 4. СЦЕНАРИЙ Г: Обычный leaf-параметр (строка, число, enum)
+        qDebug() << "4. СЦЕНАРИЙ Г: Обычный leaf-параметр (строка, число, enum)";
         if (paramMeta.contains("default")) {
             defaultObj.insert(key, paramMeta.value("default"));
-        } else {
+        }
+        else {
             // Если дефолта нет, но мы находимся на разрешенном forceCreateAll уровне (например, rtu_addr, tcp_port) —
             // создаем пустое поле, чтобы его можно было заполнить в TreeView
             defaultObj.insert(key, "");
@@ -1060,11 +1087,11 @@ deviceView::ContextMenuContext deviceView::analyzeMenuContext(const QModelIndex 
         QJsonObject parentMeta = pValItem ? pValItem->data(deviceView::SchemaMetaRole).value<QJsonObject>() : QJsonObject();
 
         // Б.1. Папка встроенного массива Forte (var / var_out внутри блока forte)
-        if (ctx.isSequenceMode) {
+        if (ctx.isSequenceMode && parentItem->text() == "forte") {
             ctx.allowAddSequenceItem = true;
         }
         // Б.2. Элемент внутри массива Forte (например, конкретный тег)
-        else if (parentMeta.value("type").toString() == "sequence") {
+        else if (parentMeta.value("type").toString() == "sequence" && parentItem->text() != "forte") {
             ctx.isSequenceMode = true;
             ctx.allowDeleteSequenceItem = true;
         }
@@ -1202,10 +1229,16 @@ void deviceView::buildRestoreMenu(QMenu *parentMenu, QStandardItem *menuTargetIt
     };
     QList<MissingLinkOption> missingLinkOptions;
 
+    // Справочник для хранения метаданных динамически сгенерированных ключей (modbus_client0 -> оригинальная схема)
+    QJsonObject dynamicKeysMetaRegistry;
+
     for (auto it = activeStruct.begin(); it != activeStruct.end(); ++it) {
         QString schemaKey = it.key(); // Например, "modbus_client", "chan", "out"
         QJsonObject paramMeta = it.value().toObject();
         QString pType = paramMeta.value("type").toString();
+
+        // Читаем наше новое декларативное свойство из схемы!
+        bool isDynamicCollection = paramMeta.value("dynamic").toBool(false);
 
         if ((pType == "link" || pType == "keynum") && paramMeta.contains("structure")) {
             bool isRangeStyle = paramMeta.value("range").toBool(false);
@@ -1227,12 +1260,17 @@ void deviceView::buildRestoreMenu(QMenu *parentMenu, QStandardItem *menuTargetIt
                 // Вычисляем следующий свободный индекс (если клиентов еще нет - будет 0, если есть 0 - будет 1, и т.д.)
                 int nextFreeIdx = hasAnyClient ? (maxExistingIdx + 1) : 0;
                 QString nextClientKey = schemaKey + QString::number(nextFreeIdx); // "modbus_client1"
-
-                MissingLinkOption opt;
-                opt.menuLabel = nextClientKey;
-                opt.insertKey = nextClientKey;
-                opt.linkMeta = paramMeta;
-                missingLinkOptions.append(opt);
+                if (isDynamicCollection) {
+                    missingFixedParams.append(nextClientKey);
+                    dynamicKeysMetaRegistry.insert(nextClientKey, paramMeta);
+                } else {
+                    // Все остальные бесконечные keynum-регистры (holding, inreg) по-прежнему идут в Ветку Б
+                    MissingLinkOption opt;
+                    opt.menuLabel = nextClientKey;
+                    opt.insertKey = nextClientKey;
+                    opt.linkMeta = paramMeta;
+                    missingLinkOptions.append(opt);
+                }
             }
             // КАНАЛЫ С ФИКСИРОВАННЫМ ЛИМИТОМ ИЗ СХЕМЫ (chan0..3, out0..15)
             else {
@@ -1269,9 +1307,15 @@ void deviceView::buildRestoreMenu(QMenu *parentMenu, QStandardItem *menuTargetIt
         QMenu *addMissingMenu = parentMenu->addMenu(tr("Добавить..."));
         // А) Восстановление фиксированных свойств (init, holdtime, wires, modbus_server...)
         for (const QString &missingKey : missingFixedParams) {
-            addMissingMenu->addAction(missingKey, this, [this, menuTargetItem, missingKey, activeStruct]() {
-                QJsonObject singleSchema; singleSchema.insert(missingKey, activeStruct.value(missingKey).toObject());
-
+            addMissingMenu->addAction(missingKey, this, [this, menuTargetItem, missingKey, activeStruct, dynamicKeysMetaRegistry]() {
+                QJsonObject singleSchema;
+                // Проверяем, откуда брать метаданные схемы: из оригинальной структуры или из реестра динамических ключей
+                if (dynamicKeysMetaRegistry.contains(missingKey)) {
+                    singleSchema.insert(missingKey, dynamicKeysMetaRegistry.value(missingKey).toObject());
+                } else {
+                    singleSchema.insert(missingKey, activeStruct.value(missingKey).toObject());
+                }
+                qDebug() << "buildRestoreMenu" << "А) Восстановление фиксированных свойств (init, holdtime, wires, modbus_server...)";
                 // ИСПРАВЛЕНО: Передаем true в качестве второго аргумента forceCreateAll!
                 parseSchemaNode(menuTargetItem, singleSchema, QJsonValue(createDefaultData(singleSchema, true)));
 
@@ -1279,14 +1323,15 @@ void deviceView::buildRestoreMenu(QMenu *parentMenu, QStandardItem *menuTargetIt
                 modified = true; emit onChanged();
             });
         }
-        if (!missingFixedParams.isEmpty() && !missingLinkOptions.isEmpty()) addMissingMenu->addSeparator();
+        if (!missingFixedParams.isEmpty() && !missingLinkOptions.isEmpty())
+            addMissingMenu->addSeparator();
         // Б) Восстановление стертых динамических каналов (chan1, modbus_client1...)
         for (const MissingLinkOption &opt : missingLinkOptions) {
             addMissingMenu->addAction(opt.menuLabel, this, [this, menuTargetItem, opt, activeStruct]() {
                 QJsonObject subStruct = opt.linkMeta.value("structure").toObject();
-
+                qDebug() << "buildRestoreMenu" << "Б) Восстановление стертых динамических каналов (chan1, modbus_client1...)";
                 // ИСПРАВЛЕНО: Передаем true в качестве второго аргумента forceCreateAll!
-                QJsonObject defaultSubData = createDefaultData(subStruct, true);
+                QJsonObject defaultSubData = createDefaultData(subStruct, false);
 
                 QString rawKey = opt.linkMeta.value("range").toBool() ? opt.insertKey.left(2) : opt.insertKey.left(4);
                 if (!opt.linkMeta.contains("max")) {

@@ -1,12 +1,12 @@
 {
-    "hostname": {"type": "string", "description": "Имя хоста / идентификатор ПЛК"},
+    "hostname": {"type": "string", "description": "Имя хоста / идентификатор ПЛК", "default": "lb"},
     "clock": {
         "description": "Настройки синхронизации времени",
         "structure": {
-            "TZ": {"type": "string", "description": "Часовой пояс"},
-            "sntp_server": {"type": "string", "description": "NTP сервер 1"},
-            "sntp_server2": {"type": "string", "description": "NTP сервер 2"},
-            "sntp_smooth": {"type": "enum", "values": ["y", "n"], "description": "Способ коррекции времени"}
+            "TZ": {"type": "string", "description": "Часовой пояс", "default": "MSK"},
+            "sntp_server": {"type": "string", "description": "NTP сервер 1", "default": "pool.ntp.org"},
+            "sntp_server2": {"type": "string", "description": "NTP сервер 2", "default": "time.windows.com"},
+            "sntp_smooth": {"type": "enum", "values": ["y", "n"], "description": "Способ коррекции времени", "default": "y"}
         }
     },
     "var": {
@@ -27,8 +27,8 @@
             "var_out": {"type": "sequence", "description": "Переменные к Forte", "default": "var_out"}
         }
     },
-    "ipaddr": {"type": "string", "description": "IP адрес/маска"},
-    "gateway": {"type": "string", "description": "Шлюз"},
+    "ipaddr": {"type": "string", "description": "IP адрес/маска", "default": "192.168.1.11/24"},
+    "gateway": {"type": "string", "description": "Шлюз", "default": "192.168.1.1"},
     "slot": {
         "type": "link",
         "description": "Слот для модулей ввода/вывода",
@@ -66,7 +66,7 @@
                         }
                     },
                     "modbus_client": {
-                        "description": "ModBus клиент", "type": "link", "structure": {
+                        "description": "ModBus клиент", "type": "link", "dynamic": true, "structure": {
                             "addr": {"type": "int", "description": "Адрес ModBus сервера"},
                             "response_timeout": {"type": "time", "description": "Таймаут запроса к ModBus серверу"},
                             "holding": {
@@ -154,7 +154,7 @@
                         }
                     },
                     "modbus_client": {
-                        "description": "ModBus клиент", "type": "link", "structure": {
+                        "description": "ModBus клиент", "type": "link", "dynamic": true, "structure": {
                             "addr": {"type": "int", "description": "Адрес ModBus сервера"},
                             "response_timeout": {"type": "time", "description": "Таймаут запроса к ModBus серверу"},
                             "holding": {
@@ -231,13 +231,14 @@
                     "module": {"value": "bcai"},
                     "chan": {
                         "type": "link", "structure": {
-                            "mode": {"type": "enum", "values": ["Pt1000", "Pt100", "4-20mA", "0-10V", "K", "S", "T", "NTC"], "description": "Режим измерительного канала", "default": "Pt1000"},
-                            "wires": { "type": "int", "description": "Количество проводов для термосопротивления (2, 3)", "default": "2"},
+                            "mode": {"type": "enum", "values": ["Pt1000", "Pt100", "4-20mA", "0-10V", "K", "S", "T", "NTC"], "description": "Режим измерительного канала", "default": "0-10V"},
+                            "wires": { "type": "int", "description": "Количество проводов для термосопротивления (2, 3)"},
                             "resolution": { "type": "double", "description": "Разрешение или порог изменений", "default": "0.1"},
+                            "range": { "type": "double", "description": "???", "default": "0.001"},
                             "interval": { "type": "string", "description": "Минимальный интервал публикации изменений", "default": "1s"},
                             "period": { "type": "string", "description": "Период принудительной публикации", "default": "10s"},
-                            "scale": { "type": "double", "description": "Масштабирование результата" },
-                            "natural": { "type": "sequence", "description": "Диапазон естественного представления после нормирования" },
+                            "scale": { "type": "double", "description": "Масштабирование результата"},
+                            "natural": { "type": "sequence", "description": "Диапазон естественного представления после нормирования", "default": [0, 1000]},
                             "var": {"type": "string", "default": "new_ai"}
                         },
                         "max": 4
