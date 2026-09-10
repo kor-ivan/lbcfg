@@ -534,7 +534,10 @@ void ConfigDockWidget::onAddVariableToWatch(const QString &varName)
 
 bool ConfigDockWidget::replacePlcBlockInYaml(const QString &newPlcBlockText)
 {
-    QMap<int, QStringList> plcLineMap;
+    qDebug() << yamlParser << &yamlParser;
+    if (!yamlParser)
+        yamlParser = new lbyaml(QString(), lbyaml::data, this);
+    QMap<int, QStringList> plcLineMap;    
     QMultiMap<QString, lbyaml::lbhost> mmap = yamlParser->getallhostline();
 
     for (auto it = mmap.constBegin(); it != mmap.constEnd(); ++it) {
@@ -558,28 +561,38 @@ bool ConfigDockWidget::replacePlcBlockInYaml(const QString &newPlcBlockText)
         }
     }
 
-    if (targetIt == plcLineMap.end()) {
-        QMessageBox::warning(this, "Внимание",
-                             QString("Не удалось сопоставить ПЛК %1 (MAC: %2) со строками в файле.")
-                                 .arg(plcName, currentMac));
-        return false;
-    }
-
-    int startLine = targetIt.key();
+    int startLine = 0;
     int endLine = 0;
 
-    auto nextIt = std::next(targetIt);
-    // auto nextIt = targetIt + 1;
+    if (targetIt == plcLineMap.end()) {
+        auto reply = QMessageBox::question(this, "Конфигурация не найдена",
+                                           QString("ПЛК %1 (MAC: %2) не найден в файле.\n"
+                                                   "Хотите создать для него новую конфигурацию в начале файла?")
+                                               .arg(plcName, currentMac),
+                                           QMessageBox::Yes | QMessageBox::No);
 
-    if (nextIt != plcLineMap.end()) {
-        endLine = nextIt.key() - 1;
+        if (reply != QMessageBox::Yes) {
+            return false;
+        }
+
+        startLine = 0;
+        endLine = 0;
+    }
+    else {
+        startLine = targetIt.key();
+        auto nextIt = std::next(targetIt);
+
+        if (nextIt != plcLineMap.end()) {
+            endLine = nextIt.key() - 1;
+        } else {
+            endLine = -1;
+        }
     }
 
     yamlPage->replacePlcBlock(startLine, endLine, newPlcBlockText);
     yamlParser->setConfig(yamlPage->text(), lbyaml::data);
 
     return true;
-
 }
 
 int ConfigDockWidget::isModifiedPages(bool allowCancel)

@@ -36,7 +36,7 @@
             {
                 "name": "LB241CPU", "description": "Процессорный базовый модуль", "base": 4, "structure": {
                     "module": {"value": ["bcbase", "LB241CPU"]},
-                    "macaddr": {"type": "string", "description": "MAC адрес"},
+                    "macaddr": {"type": "string", "description": "MAC адрес", "default": "7c:df:a1:ff:ff:ff"},
                     "modbus_server": {
                         "description": "ModBus сервер", "structure": {
                             "tcp_port": {"type": "string", "description": "TCP порт", "default": "502"},
