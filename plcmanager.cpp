@@ -91,42 +91,62 @@ void plcManager::startDiscover()
     wgtdiscover -> execute();
 }
 
-void plcManager::startFirmware(const CommandContext &ctx, const QString &filePath, const QString &checkMessage, const QString &startMessage, const QString &lbkey)
+bool plcManager::startFirmware(const CommandContext &ctx, const QString &filePath, const QString &checkMessage, const QString &startMessage, const QString &lbkey)
 {
     debugApp() << "PLCManager: startFirmware slot=" << ctx.slot;
     if (activeOtaClient) {
         emit eventOccurred(checkMessage);
-        return;
+        return false;
     }
+
     emit firmwareStarted(ctx, startMessage);
     activeOtaClient = new LBclient(this, {lbkey});
+    QPointer<LBclient> otaClient(activeOtaClient);
     activeOtaClient->setTCPaddr(ctx.ipv6, port);
     activeOtaClient->setOtaFilename(filePath);
-    if (ctx.slot!=-1)
+    if (ctx.slot != -1)
         activeOtaClient->setSlot(ctx.slot);
+
     connect(activeOtaClient, &LBclient::ExecuteCompleted, this, &plcManager::prcOtaSender);
-    connect(activeOtaClient, &LBclient::lbDisconnect, this, [this]
-            (const QString &lbhost, const QString &message, const QModbusDevice::Error error){
-                emit eventOccurred(message);
+    connect(activeOtaClient, &LBclient::lbDisconnect, this,
+            [this, otaClient](const QString &, const QString &message, const QModbusDevice::Error) {
+                if (!message.isEmpty())
+                    emit eventOccurred(message);
                 emit firmwareFinished();
-                activeOtaClient->deleteLater();
-                activeOtaClient = nullptr;
+
+                if (otaClient)
+                    otaClient->deleteLater();
+                if (activeOtaClient == otaClient.data())
+                    activeOtaClient = nullptr;
             });
+
+    // Execute may fail synchronously (for example when a raw link-local address
+    // is ambiguous), but the operation is already accepted and its normal
+    // firmwareFinished path will run. The return value only means "accepted".
     activeOtaClient->Execute();
+    return true;
 }
 
 void plcManager::stopFirmware()
 {
-    if (!activeOtaClient) return;
-    activeOtaClient->disconnect();
-    emit firmwareFinished();
-    if (prcActiveOtaClient){
+    if (!activeOtaClient)
+        return;
+
+    QPointer<LBclient> client(activeOtaClient);
+    // We complete the manager state explicitly below, so suppress a later
+    // lbDisconnect callback from completing the same OTA a second time.
+    QObject::disconnect(client.data(), nullptr, this, nullptr);
+    client->lbDisconnectDevice();
+
+    if (prcActiveOtaClient) {
         prcActiveOtaClient->deleteLater();
         prcActiveOtaClient = nullptr;
-    }else
-        activeOtaClient->deleteLater();
-    activeOtaClient = nullptr;
+    }
+    if (client)
+        client->deleteLater();
 
+    activeOtaClient = nullptr;
+    emit firmwareFinished();
 }
 
 void plcManager::startConf(const QString &name, const QString &yamlFilePath)
@@ -160,6 +180,9 @@ void plcManager::startFirmwareAll(const CommandContext &ctx, const QString &file
     activeOtaClient->setTCPaddr(ctx.ipv6, port);
     prcActiveOtaClient = new lbprocess(this, activeOtaClient);
     prcActiveOtaClient->setOtaPath(filePath);
+    QPointer<LBclient> otaClient(activeOtaClient);
+    QPointer<lbprocess> otaProcess(prcActiveOtaClient);
+
     emit firmwareStarted(ctx, startMessage);
     connect(prcActiveOtaClient, &lbprocess::outMessage, this, [this]
             (const QString& lbstr, const QString& message, const QModbusDevice::Error error){
@@ -167,15 +190,21 @@ void plcManager::startFirmwareAll(const CommandContext &ctx, const QString &file
                 emit errorOccurred(lbstr);
             });
     connect(prcActiveOtaClient, &lbprocess::outOta, this, &plcManager::prcOtaSender);
-    connect(activeOtaClient, &LBclient::lbDisconnect, this, [this]
-            (const QString &lbhost, const QString &message, const QModbusDevice::Error error){
-                // qDebug()<<lbhost<<message<<error;
+    connect(activeOtaClient, &LBclient::lbDisconnect, this,
+            [this, otaClient, otaProcess]
+            (const QString &, const QString &message, const QModbusDevice::Error){
                 if (!message.isEmpty())
                     emit eventOccurred(message);
                 emit firmwareFinished();
-                prcActiveOtaClient->deleteLater();
-                activeOtaClient = nullptr;
-                prcActiveOtaClient = nullptr;
+
+                if (otaProcess)
+                    otaProcess->deleteLater();
+                if (otaClient)
+                    otaClient->deleteLater();
+                if (prcActiveOtaClient == otaProcess.data())
+                    prcActiveOtaClient = nullptr;
+                if (activeOtaClient == otaClient.data())
+                    activeOtaClient = nullptr;
             });
     prcActiveOtaClient->run(lbprocess::autoota);
 }
@@ -217,11 +246,15 @@ void plcManager::startLog(const CommandContext &ctx, const QString &flag)
                 else
                     emit errorOccurred(lbstr);
             });
-    connect(activeLogClient, &LBclient::lbDisconnect, this, [this]
-            (const QString& lbhost, const QString& message, const QModbusDevice::Error error){
+    QPointer<LBclient> logClient(activeLogClient);
+    connect(activeLogClient, &LBclient::lbDisconnect, this, [this, logClient]
+            (const QString& lbhost, const QString& message, const QModbusDevice::Error){
                 if (!message.isEmpty())
                     debugPLC()<<message;
-                activeLogClient->deleteLater();
+                if (logClient)
+                    logClient->deleteLater();
+                if (activeLogClient == logClient.data())
+                    activeLogClient = nullptr;
                 debugApp()<<"disconnect LogClient: "<<lbhost;
                 emit logFinished();
             });
@@ -232,8 +265,15 @@ void plcManager::startLog(const CommandContext &ctx, const QString &flag)
 void plcManager::stopLog()
 {
     debugApp()<<"into stopLog"<<activeLogClient.get();
-    if (!activeLogClient) return;
-    activeLogClient->deleteLater();
+    if (!activeLogClient)
+        return;
+
+    QPointer<LBclient> client(activeLogClient);
+    QObject::disconnect(client.data(), nullptr, this, nullptr);
+    activeLogClient = nullptr;
+    client->lbDisconnectDevice();
+    if (client)
+        client->deleteLater();
     emit logFinished();
 }
 
