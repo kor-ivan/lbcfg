@@ -90,6 +90,15 @@ void DiscoverDockWidget::onTableDoubleClicked(int row, int column)
     QTableWidgetItem *item = table->item(row, 6);
     if (!item) return;
     QString ipv6 = item->text();
+
+    QTableWidgetItem *ifItem = table->item(row, 5);
+    if (ifItem) {
+        QString ifIndex = ifItem->text().section(',', 0, 0).trimmed();
+
+        if (!ifIndex.isEmpty() && !ipv6.contains('%'))
+            ipv6 += "%" + ifIndex;
+    }
+
     item = table->item(row, 0);
     QString name = item->text();
     emit deviceSelected(ipv6,name);
@@ -101,8 +110,18 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
     if (!item) return;
     plcManager::CommandContext ctx;
 
-    ctx.ipv6 = table->item(item->row(), 6)->text();
+    QString rawIpv6 = table->item(item->row(), 6)->text();
+
+    ctx.ipv6 = rawIpv6;
     ctx.name = table->item(item->row(), 0)->text();
+
+    QTableWidgetItem *ifItem = table->item(item->row(), 5);
+    if (ifItem) {
+        QString ifIndex = ifItem->text().section(',', 0, 0).trimmed();
+
+        if (!ifIndex.isEmpty() && !ctx.ipv6.contains('%'))
+            ctx.ipv6 += "%" + ifIndex;
+    }
 
     QMenu menu(this);
     QAction *AddDivice = menu.addAction("Добавить");
@@ -125,7 +144,7 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
     if (selectedItem == AddDivice){
         emit deviceSelected(ctx.ipv6, ctx.name);
     }else if (selectedItem == copy) {
-        clipboard->setText(ldmap.value(ctx.ipv6).toString());
+        clipboard->setText(ldmap.value(rawIpv6).toString());
     }else if (selectedItem == Allcopy) {
         QStringList qstr;
         for (auto i : ldmap) {
@@ -138,7 +157,7 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
     }else if (selectedItem == newConf){
         emit newConfig(ctx.ipv6, ctx.name);
     }else if (selectedItem == MacCopy){
-        clipboard->setText(ldmap.value(ctx.ipv6).mac);
+        clipboard->setText(ldmap.value(rawIpv6).mac);
     }else if (selectedItem == ipv6Copy){
         clipboard->setText(ctx.ipv6);
     }
