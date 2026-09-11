@@ -3,7 +3,9 @@
     "clock": {
         "description": "Настройки синхронизации времени",
         "structure": {
-            "TZ": {"type": "string", "description": "Часовой пояс", "default": "MSK"},
+            "TZ": {"type": "enum",
+                "values": ["MSK", "KAZ", "EKB", "KRY", "IRK", "VLD", "UTC0","EET-2","SAMT-4","YEKT-5","OMST-6","NOVT-7","IRKT-8","YAKT-9","VLAT-10","MAGT-11","PETT-12","CST-8","JST-9","AWST-8","BRT3","ART3","CST6","WAT-1","CAT-2","EAT-3"],
+                "description": "Часовой пояс", "default": "MSK"},
             "sntp_server": {"type": "string", "description": "NTP сервер 1", "default": "pool.ntp.org"},
             "sntp_server2": {"type": "string", "description": "NTP сервер 2", "default": "time.windows.com"},
             "sntp_smooth": {"type": "enum", "values": ["y", "n"], "description": "Способ коррекции времени", "default": "y"}
@@ -231,8 +233,8 @@
                     "module": {"value": "bcai"},
                     "chan": {
                         "type": "link", "structure": {
-                            "mode": {"type": "enum", "values": ["Pt1000", "Pt100", "4-20mA", "0-10V", "K", "S", "T", "NTC"], "description": "Режим измерительного канала", "default": "0-10V"},
-                            "wires": { "type": "int", "description": "Количество проводов для термосопротивления (2, 3)"},
+                            "mode": {"type": "enum", "values": ["Pt1000", "Pt100", "4-20mA", "0-10V", "K", "S", "T", "NTC", "rawr"], "description": "Режим измерительного канала", "default": "0-10V"},
+                            "wires": { "type": "enum", "values": [2, 3],"description": "Количество проводов для термосопротивления"},
                             "resolution": { "type": "double", "description": "Разрешение или порог изменений", "default": "0.1"},
                             "range": { "type": "double", "description": "???", "default": "0.001"},
                             "interval": { "type": "string", "description": "Минимальный интервал публикации изменений", "default": "1s"},

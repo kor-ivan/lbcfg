@@ -6,6 +6,77 @@
 #include <QJsonArray>
 #include <QMenu>
 
+#include <QStyledItemDelegate>
+#include <QComboBox>
+
+class DeviceNodeDelegate : public QStyledItemDelegate
+{
+public:
+    explicit DeviceNodeDelegate(QObject *parent = nullptr) : QStyledItemDelegate(parent) {}
+
+    QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const override
+    {
+        // Работаем только со второй колонкой (Value)
+        if (index.column() != 1) {
+            return QStyledItemDelegate::createEditor(parent, option, index);
+        }
+
+        // Вытаскиваем метаданные, которые вы прикрепили к ячейке в parseSchemaNode
+        QJsonObject meta = index.data(deviceView::SchemaMetaRole).toJsonObject();
+        QString type = meta.value("type").toString();
+        qDebug() << type << meta;
+
+        // Если это enum — строим выпадающий список
+        if (type == "enum") {
+            QComboBox *comboBox = new QComboBox(parent);
+            comboBox->setFrame(false);
+
+            QJsonArray enumArray = meta.value("values").toArray();
+            qDebug() << enumArray;
+            for (const QJsonValue &val : enumArray) {
+                if (val.isDouble()) {
+                    comboBox->addItem(QString::number(val.toVariant().toLongLong()));
+                } else {
+                    comboBox->addItem(val.toString());
+                }
+            }
+            return comboBox;
+        }
+
+        return QStyledItemDelegate::createEditor(parent, option, index);
+    }
+
+    void setEditorData(QWidget *editor, const QModelIndex &index) const override
+    {
+        QComboBox *comboBox = qobject_cast<QComboBox *>(editor);
+        if (comboBox) {
+            QString currentText = index.data(Qt::EditRole).toString();
+            int cbIndex = comboBox->findText(currentText);
+            if (cbIndex != -1) {
+                comboBox->setCurrentIndex(cbIndex);
+            }
+            return;
+        }
+        QStyledItemDelegate::setEditorData(editor, index);
+    }
+
+    void setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const override
+    {
+        QComboBox *comboBox = qobject_cast<QComboBox *>(editor);
+        if (comboBox) {
+            model->setData(index, comboBox->currentText(), Qt::EditRole);
+            return;
+        }
+        QStyledItemDelegate::setModelData(editor, model, index);
+    }
+
+    void updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index) const override
+    {
+        Q_UNUSED(index);
+        editor->setGeometry(option.rect);
+    }
+};
+
 deviceView::deviceView(QWidget *parent)
     : QWidget{parent}
 {
@@ -20,6 +91,7 @@ deviceView::deviceView(QWidget *parent)
     QStringList headers = {"Parameter", "Value", "Description"};
     deviceModel->setHorizontalHeaderLabels(headers);
     deviceTreeView->setModel(deviceModel);
+    deviceTreeView->setItemDelegateForColumn(1, new DeviceNodeDelegate(this));
 
     deviceTreeView->header()->setSectionResizeMode(0, QHeaderView::Interactive);
     deviceTreeView->header()->setSectionResizeMode(1, QHeaderView::Interactive);
