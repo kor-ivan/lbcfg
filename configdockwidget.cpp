@@ -11,6 +11,7 @@
 #include <QScrollBar>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QStandardPaths>
 #include "logmanager.h"
 #include "mainwindow.h"
 
@@ -534,10 +535,9 @@ void ConfigDockWidget::onAddVariableToWatch(const QString &varName)
 
 bool ConfigDockWidget::replacePlcBlockInYaml(const QString &newPlcBlockText)
 {
-    qDebug() << yamlParser << &yamlParser;
     if (!yamlParser)
         yamlParser = new lbyaml(QString(), lbyaml::data, this);
-    QMap<int, QStringList> plcLineMap;    
+    QMap<int, QStringList> plcLineMap;
     QMultiMap<QString, lbyaml::lbhost> mmap = yamlParser->getallhostline();
 
     for (auto it = mmap.constBegin(); it != mmap.constEnd(); ++it) {
@@ -589,8 +589,52 @@ bool ConfigDockWidget::replacePlcBlockInYaml(const QString &newPlcBlockText)
         }
     }
 
-    yamlPage->replacePlcBlock(startLine, endLine, newPlcBlockText);
-    yamlParser->setConfig(yamlPage->text(), lbyaml::data);
+    const QString oldYamlText = yamlPage->text();
+
+    yamlPage->replacePlcBlock(
+        startLine,
+        endLine,
+        newPlcBlockText
+    );
+
+    const QString candidateYamlText = yamlPage->text();
+
+    try {
+        yamlParser->setConfig(
+            candidateYamlText,
+            lbyaml::data
+        );
+    }
+    catch (...) {
+        debugApp() << "replacePlcBlockInYaml: invalid YAML, rollback";
+
+// #ifndef NDEBUG
+//         // Keep the failed candidate only in debug builds and outside the
+//         // working directory. Production builds must not leave a copy of PLC
+//         // configuration next to the executable/project.
+//         const QString debugPath =
+//             QStandardPaths::writableLocation(QStandardPaths::TempLocation)
+//             + "/lbcfg-sync-candidate.yaml";
+//         QFile debugFile(debugPath);
+//         if (debugFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+//             QTextStream out(&debugFile);
+//             out << candidateYamlText;
+//             debugFile.close();
+//             debugApp() << "Invalid YAML candidate saved to" << debugPath;
+//         }
+// #endif
+
+        // Возвращаем пользователю заведомо валидный исходный текст.
+        yamlPage->setText(oldYamlText);
+
+        // И возвращаем parser в согласованное состояние.
+        yamlParser->setConfig(
+            oldYamlText,
+            lbyaml::data
+        );
+
+        throw;
+    }
 
     return true;
 }
@@ -621,23 +665,74 @@ int ConfigDockWidget::isModifiedPages(bool allowCancel)
         return reply;
     }
 
-    if (varPage->isModified()){
-        // Применяем изменения переменных в парсер
-        yamlParser->implementLbVarMap(varPage->getUpdatedData());
+    try {
+        debugApp() << "SYNC: begin";
+        if (varPage->isModified()){
+            debugApp() << "SYNC: getUpdatedData";
+            auto updatedData = varPage->getUpdatedData();
+            debugApp() << "SYNC: implementLbVarMap";
+            yamlParser->implementLbVarMap(updatedData);
+            debugApp() << "SYNC: getFormattedYaml";
+            QString plcYamlText = yamlParser->getFormattedYaml(lbyaml::retainY);
+            debugApp() << "SYNC: formatted YAML size" << plcYamlText.size();
+            debugApp() << "SYNC: replacePlcBlockInYaml";
+            if (!replacePlcBlockInYaml(plcYamlText)) {
+                debugApp() << "SYNC: replacePlcBlockInYaml returned false";
+                QMessageBox::critical(
+                    this,
+                    "Ошибка синхронизации",
+                    "Не удалось заменить блок ПЛК в YAML."
+                );
+                return QMessageBox::No;
+            }
+            debugApp() << "SYNC: Var View completed";
+        }
+        else if (devicePage->isModified()){
+            debugApp() << "SYNC: devicePage getUpdateData";
+            // Забираем измененную структуру в виде JSON
+            QJsonObject updatedJson = devicePage->getUpdateData();
+            debugApp() << "SYNC: devicePage getlbconf";
+            // Генерируем текст измененного блока модулей ПЛК
+            QString updatedYamlText = yamlParser->getlbconf(updatedJson);
+            debugApp() << "SYNC: devicePage replacePlcBlockInYaml";
+            if (!replacePlcBlockInYaml(updatedYamlText)) {
+                QMessageBox::critical(
+                    this,
+                    "Ошибка синхронизации",
+                    "Не удалось заменить блок ПЛК в YAML."
+                );
 
-        // Генерируем текст блока и вызываем наш метод
-        QString plcYamlText = yamlParser->getFormattedYaml(lbyaml::retainY);
-        replacePlcBlockInYaml(plcYamlText);
-    }else if (devicePage->isModified()){
-        // Забираем измененную структуру в виде JSON
-        QJsonObject updatedJson = devicePage->getUpdateData();
-        qDebug() << updatedJson;
+                return QMessageBox::No;
+            }
+            debugApp() << "SYNC: IO View completed";
+        }
+        debugApp() << "SYNC: end";
+    }
+    catch (const std::exception &e) {
+        QString errorText =
+            QString("Ошибка преобразования конфигурации: %1")
+                .arg(QString::fromUtf8(e.what()));
 
-        // Генерируем текст измененного блока модулей ПЛК
-        QString updatedYamlText = yamlParser->getlbconf(updatedJson);
+        debugApp() << "SYNC EXCEPTION:" << errorText;
 
-        // Вызываем тот же метод для точечной замены блока модулей в YAML
-        replacePlcBlockInYaml(updatedYamlText);
+        QMessageBox::critical(
+            this,
+            "Ошибка синхронизации YAML",
+            errorText
+        );
+
+        return QMessageBox::No;
+    }
+    catch (...) {
+        debugApp() << "SYNC: unknown exception";
+
+        QMessageBox::critical(
+            this,
+            "Ошибка синхронизации YAML",
+            "Возникло неизвестное исключение при обновлении YAML."
+        );
+
+        return QMessageBox::No;
     }
     return reply;
 }

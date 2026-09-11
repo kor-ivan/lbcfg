@@ -34,7 +34,7 @@ public:
     void scanDevice(const QString &ipv6, const QString &name);
     void requestConfig(const QString &ipv6, const QString &name);
     void startDiscover();
-    void startFirmware(const CommandContext &ctx, const QString &filePath,
+    bool startFirmware(const CommandContext &ctx, const QString &filePath,
                        const QString &checkMessage,
                        const QString &startMessage,
                        const QString &lbkey = "ota");
@@ -66,7 +66,7 @@ public:
         connect(lbc, &LBclient::lbDisconnect, this, [this]
                 (const QString &lbhost, const QString &message, const QModbusDevice::Error error){
                     if (!message.isEmpty())
-                        eventOccurred(message);
+                        emit eventOccurred(message);
                 });
         lbc->Execute();
     }

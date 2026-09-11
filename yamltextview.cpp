@@ -141,8 +141,46 @@ void yamlTextView::replacePlcBlock(int startLine, int endLine, const QString &ne
             );
         QString formattedText = customHeader + newText + customFooter;
 
+        // Начало заменяемого блока.
         cursor.setPosition(startBlock.position());
-        cursor.setPosition(endBlock.position() + endBlock.length(), QTextCursor::KeepAnchor);
+
+        // ВАЖНО:
+        // Для последнего QTextBlock выражение
+        // endBlock.position() + endBlock.length()
+        // может выйти за допустимую конечную позицию документа.
+        //
+        // Поэтому последний блок выделяем через QTextCursor::End.
+        // Для промежуточного блока выделяем строго до начала
+        // следующей строки/блока.
+        if (endIdx >= doc->blockCount() - 1) {
+            cursor.movePosition(
+                QTextCursor::End,
+                QTextCursor::KeepAnchor
+            );
+        } else {
+            QTextBlock blockAfterEnd =
+                doc->findBlockByLineNumber(endIdx + 1);
+
+            if (blockAfterEnd.isValid()) {
+                cursor.setPosition(
+                    blockAfterEnd.position(),
+                    QTextCursor::KeepAnchor
+                );
+            } else {
+                cursor.movePosition(
+                    QTextCursor::End,
+                    QTextCursor::KeepAnchor
+                );
+            }
+        }
+
+        qDebug() << "replacePlcBlock:"
+                 << "startIdx =" << startIdx
+                 << "endIdx =" << endIdx
+                 << "blocks =" << doc->blockCount()
+                 << "selectionStart =" << cursor.selectionStart()
+                 << "selectionEnd =" << cursor.selectionEnd();
+
         cursor.insertText(formattedText);
         editor->blockSignals(false);
         emit isReplaceComplete();
