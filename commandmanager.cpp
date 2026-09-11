@@ -83,6 +83,7 @@ void CommandManager::checkDockWidget(QDockWidget *dock)
     if (configDock) {
         debugApp() << "Выбран ConfigDockWidget: " << configDock;
         activeConfDockWidget = configDock;
+        confAction = configDock->getConfigureAction();
         emit activeConfDockWidgetChanged(configDock);
     }
     WatchDockWidget *watchDock = qobject_cast<WatchDockWidget*>(dock);

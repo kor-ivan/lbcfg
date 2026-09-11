@@ -123,7 +123,7 @@ ConfigDockWidget::ConfigDockWidget(const QString &name, MainWindow *parent)
     connect(plcSelector, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &ConfigDockWidget::scrollToSelectedPlc);
 
-    QAction *confAction = new QAction("Сконфигурировать", this);
+    confAction = new QAction("Сконфигурировать", this);
     connect(confAction, &QAction::triggered, this, [this](){
         onConfigureClicked();
     });
@@ -735,6 +735,11 @@ int ConfigDockWidget::isModifiedPages(bool allowCancel)
         return QMessageBox::No;
     }
     return reply;
+}
+
+QAction *ConfigDockWidget::getConfigureAction() const
+{
+    return confAction;
 }
 
 QString ConfigDockWidget::getCurrentFilePath() const

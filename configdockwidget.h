@@ -35,6 +35,8 @@ public:
     void onConfigureClicked();
     QList<QAction*> activeTextActions() const;
 
+    QAction *getConfigureAction() const;
+
 signals:
     // void getSaveFile();
     void updateScan(const QString& ipv6, const QString& name);
@@ -82,6 +84,8 @@ private:
 
     bool replacePlcBlockInYaml(const QString& newPlcBlockText);
     int isModifiedPages(bool allowCancel = false);
+
+    QAction *confAction = nullptr;
 };
 
 #endif // CONFIGDOCKWIDGET_H
