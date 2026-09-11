@@ -13,7 +13,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 enable_language(C)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets SerialBus)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 add_subdirectory(lbmbc)
 
 # Support official LogicBox firmware packages *.bin.xz.
@@ -87,18 +87,18 @@ target_link_libraries(lbcfg PRIVATE liblzma)
 target_link_libraries(lbcfg PRIVATE Qt${QT_VERSION_MAJOR}::Widgets
     lbmbc_lib)
 
-# Windows uses the stock QtSerialBus from the selected Qt installation.
-# This deliberately overwrites any stale patched Qt6SerialBus.dll left in the
-# build directory by older revisions, so runtime behaviour no longer depends
-# on PATH tricks or a special launcher.
-if(WIN32)
-    add_custom_command(TARGET lbcfg POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "$<TARGET_FILE:Qt${QT_VERSION_MAJOR}::SerialBus>"
-                "$<TARGET_FILE_DIR:lbcfg>"
-        COMMENT "Deploying stock Qt SerialBus runtime"
-    )
-endif()
+# # Windows uses the stock QtSerialBus from the selected Qt installation.
+# # This deliberately overwrites any stale patched Qt6SerialBus.dll left in the
+# # build directory by older revisions, so runtime behaviour no longer depends
+# # on PATH tricks or a special launcher.
+# if(WIN32)
+#     add_custom_command(TARGET lbcfg POST_BUILD
+#         COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#                 "$<TARGET_FILE:Qt${QT_VERSION_MAJOR}::SerialBus>"
+#                 "$<TARGET_FILE_DIR:lbcfg>"
+#         COMMENT "Deploying stock Qt SerialBus runtime"
+#     )
+# endif()
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an

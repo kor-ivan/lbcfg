@@ -66,7 +66,7 @@ public:
         connect(lbc, &LBclient::lbDisconnect, this, [this]
                 (const QString &lbhost, const QString &message, const QModbusDevice::Error error){
                     if (!message.isEmpty())
-                        eventOccurred(message);
+                        emit eventOccurred(message);
                 });
         lbc->Execute();
     }
