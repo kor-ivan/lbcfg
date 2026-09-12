@@ -1,5 +1,5 @@
 #include "configdockwidget.h"
-#include "commandmanager.h"
+// #include "commandmanager.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFile>
@@ -123,11 +123,11 @@ ConfigDockWidget::ConfigDockWidget(const QString &name, MainWindow *parent)
     connect(plcSelector, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &ConfigDockWidget::scrollToSelectedPlc);
 
-    confAction = new QAction("Сконфигурировать", this);
+    confAction = new QAction("", this);
     connect(confAction, &QAction::triggered, this, [this](){
         onConfigureClicked();
     });
-    CommandManager::instance()->setConfAction(confAction);
+    // CommandManager::instance()->setConfAction(confAction);
 
     connect(varPage, &varView::onChanged, this, [this]{
         modified = true;

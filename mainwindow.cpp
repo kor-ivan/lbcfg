@@ -201,10 +201,8 @@ ConfigDockWidget *MainWindow::CreateConfDockWidget(const QString &key, const QSt
             configDocks.remove(key);
             CommandManager::instance()->resetActiveConfDockWidget();
         });
-        connect(lbplc, &plcManager::confCompleted, this, [this](const QString &ipv6, const QString &name){
-            if(!(treeDock->containsName(name)))
-                lbplc->scanDevice(ipv6, name);
-        });
+        connect(lbplc, &plcManager::confCompleted, this, &MainWindow::checkTreeAndStartScan,
+                Qt::UniqueConnection);
     }
     return dock;
 }
@@ -428,4 +426,10 @@ void MainWindow::tabifyDockWidgetTo(QDockWidget *dock, Qt::DockWidgetArea area)
     } else {
         addDockWidget(area, dock);
     }
+}
+
+void MainWindow::checkTreeAndStartScan(const QString &ipv6, const QString &name)
+{
+    if(!(treeDock->containsName(name)))
+        lbplc->scanDevice(ipv6, name);
 }
