@@ -280,8 +280,8 @@ void MainMenu::onPlcMenuAboutToShow()
     ConfigDockWidget *active = CommandManager::instance()->getActiveConfDockWidget();
     if (confAction && active){
 
-        confAction->setText(QString("Сконфигурировать %1")
-                                .arg(active->getPlcName()));
+        // confAction->setText(QString("Сконфигурировать %1")
+        //                         .arg(active->getPlcName()));
         plcMenu->addAction(confAction);
     }
     else{

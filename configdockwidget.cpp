@@ -123,7 +123,8 @@ ConfigDockWidget::ConfigDockWidget(const QString &name, MainWindow *parent)
     connect(plcSelector, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &ConfigDockWidget::scrollToSelectedPlc);
 
-    confAction = new QAction("", this);
+    confAction = new QAction(QString("Сконфигурировать %1")
+                                 .arg(getPlcName()), this);
     connect(confAction, &QAction::triggered, this, [this](){
         onConfigureClicked();
     });
@@ -307,7 +308,8 @@ void ConfigDockWidget::onConfigureClicked()
         int result = msgBox.exec();
         if (result == QMessageBox::Ok) {
             // Код для сохранения файла
-            saveFile();
+            if (!saveFile())
+                return;
         } else if (result == QMessageBox::Cancel) {
             // Код для отмены действия
             return;
