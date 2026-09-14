@@ -121,6 +121,8 @@ MainWindow::MainWindow(QWidget *parent)
         lbplc->stopFirmware();
     });
 
+    connect(lbplc, &plcManager::logStarted, this, &MainWindow::createLogDockWidget);
+
 }
 
 void MainWindow::showEvent(QShowEvent *event)
@@ -343,6 +345,10 @@ LogDockWidget *MainWindow::createLogDockWidget()
     connect(lbplc, &plcManager::logStarted, logDock, &LogDockWidget::onLogStarted);
     connect(lbplc, &plcManager::logFinished, logDock, &LogDockWidget::onLogFinished);
     connect(logDock, &LogDockWidget::stopButtonPressed, lbplc, &plcManager::stopLog);
+    connect(logDock, &QObject::destroyed, lbplc, [this](){
+        disconnect(lbplc, &plcManager::logFinished, logDock, &LogDockWidget::onLogFinished);
+        lbplc->stopLog();
+    });
 
     return logDock.get();
 }

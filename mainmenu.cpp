@@ -299,6 +299,7 @@ void MainMenu::onPlcMenuAboutToShow()
             plcManager::CommandContext ctx;
             for (auto it = ldmap.begin(); it != ldmap.end(); ++it){
                 ctx.ipv6 = it.key();
+                ctx.name = it.value().name;
                 CommandManager::instance()->getLogMenu(ctx, logMenu, it.value().name);
             }
         }else

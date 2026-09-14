@@ -100,9 +100,9 @@ private:
     plcManager& operator=(const plcManager&) = delete;
     static constexpr int port = 502;
     bool discoverRunning = false;
-    LBclient *activeOtaClient = nullptr;
-    lbprocess * prcActiveOtaClient = nullptr;
-    QPointer<LBclient> activeLogClient = nullptr;
+    QPointer<LBclient> activeOtaClient;
+    QPointer<lbprocess> prcActiveOtaClient;
+    QPointer<LBclient> activeLogClient;
     void prcOtaSender(const QString &lbhost, const QStringList &result, const QString &message, const QModbusDevice::Error error);
 
     QMap<QString, WatchSession*> activeWatchSessions;

@@ -101,7 +101,7 @@ bool plcManager::startFirmware(const CommandContext &ctx, const QString &filePat
 
     emit firmwareStarted(ctx, startMessage);
     activeOtaClient = new LBclient(this, {lbkey});
-    QPointer<LBclient> otaClient(activeOtaClient);
+    // QPointer<LBclient> otaClient(activeOtaClient);
     activeOtaClient->setTCPaddr(ctx.ipv6, port);
     activeOtaClient->setOtaFilename(filePath);
     if (ctx.slot != -1)
@@ -109,20 +109,14 @@ bool plcManager::startFirmware(const CommandContext &ctx, const QString &filePat
 
     connect(activeOtaClient, &LBclient::ExecuteCompleted, this, &plcManager::prcOtaSender);
     connect(activeOtaClient, &LBclient::lbDisconnect, this,
-            [this, otaClient](const QString &, const QString &message, const QModbusDevice::Error) {
+            [this](const QString &, const QString &message, const QModbusDevice::Error) {
                 if (!message.isEmpty())
                     emit eventOccurred(message);
                 emit firmwareFinished();
-
-                if (otaClient)
-                    otaClient->deleteLater();
-                if (activeOtaClient == otaClient.data())
-                    activeOtaClient = nullptr;
+                if (activeOtaClient)
+                    activeOtaClient->deleteLater();
             });
 
-    // Execute may fail synchronously (for example when a raw link-local address
-    // is ambiguous), but the operation is already accepted and its normal
-    // firmwareFinished path will run. The return value only means "accepted".
     activeOtaClient->Execute();
     return true;
 }
@@ -132,20 +126,14 @@ void plcManager::stopFirmware()
     if (!activeOtaClient)
         return;
 
-    QPointer<LBclient> client(activeOtaClient);
-    // We complete the manager state explicitly below, so suppress a later
-    // lbDisconnect callback from completing the same OTA a second time.
-    QObject::disconnect(client.data(), nullptr, this, nullptr);
-    client->lbDisconnectDevice();
+    QObject::disconnect(activeOtaClient, nullptr, this, nullptr);
+    activeOtaClient->lbDisconnectDevice();
 
     if (prcActiveOtaClient) {
         prcActiveOtaClient->deleteLater();
-        prcActiveOtaClient = nullptr;
     }
-    if (client)
-        client->deleteLater();
-
-    activeOtaClient = nullptr;
+    if (activeOtaClient)
+        activeOtaClient->deleteLater();
     emit firmwareFinished();
 }
 
@@ -180,8 +168,6 @@ void plcManager::startFirmwareAll(const CommandContext &ctx, const QString &file
     activeOtaClient->setTCPaddr(ctx.ipv6, port);
     prcActiveOtaClient = new lbprocess(this, activeOtaClient);
     prcActiveOtaClient->setOtaPath(filePath);
-    QPointer<LBclient> otaClient(activeOtaClient);
-    QPointer<lbprocess> otaProcess(prcActiveOtaClient);
 
     emit firmwareStarted(ctx, startMessage);
     connect(prcActiveOtaClient, &lbprocess::outMessage, this, [this]
@@ -191,20 +177,16 @@ void plcManager::startFirmwareAll(const CommandContext &ctx, const QString &file
             });
     connect(prcActiveOtaClient, &lbprocess::outOta, this, &plcManager::prcOtaSender);
     connect(activeOtaClient, &LBclient::lbDisconnect, this,
-            [this, otaClient, otaProcess]
+            [this]
             (const QString &, const QString &message, const QModbusDevice::Error){
                 if (!message.isEmpty())
                     emit eventOccurred(message);
                 emit firmwareFinished();
 
-                if (otaProcess)
-                    otaProcess->deleteLater();
-                if (otaClient)
-                    otaClient->deleteLater();
-                if (prcActiveOtaClient == otaProcess.data())
-                    prcActiveOtaClient = nullptr;
-                if (activeOtaClient == otaClient.data())
-                    activeOtaClient = nullptr;
+                if (prcActiveOtaClient)
+                    prcActiveOtaClient->deleteLater();
+                if (activeOtaClient)
+                    activeOtaClient->deleteLater();
             });
     prcActiveOtaClient->run(lbprocess::autoota);
 }
@@ -230,10 +212,13 @@ void plcManager::startRestartAll(const CommandContext &ctx)
 
 void plcManager::startLog(const CommandContext &ctx, const QString &flag)
 {
+    if (activeLogClient){
+        debugApp() << "Log is already running, stop the current log one first";
+        return;
+    }
     debugApp()<<QString("plcManager::startLog for %1 slot %2")
                       .arg(ctx.ipv6).arg(ctx.slot)<<activeLogClient.get();
-    if (activeLogClient)
-        return;
+
     activeLogClient = new LBclient (this, {"log", flag});
     if (ctx.slot!=-1)
         activeLogClient->setSlot(ctx.slot);
@@ -246,34 +231,25 @@ void plcManager::startLog(const CommandContext &ctx, const QString &flag)
                 else
                     emit errorOccurred(lbstr);
             });
-    QPointer<LBclient> logClient(activeLogClient);
-    connect(activeLogClient, &LBclient::lbDisconnect, this, [this, logClient]
+    connect(activeLogClient, &LBclient::lbDisconnect, this, [this]
             (const QString& lbhost, const QString& message, const QModbusDevice::Error){
                 if (!message.isEmpty())
                     debugPLC()<<message;
-                if (logClient)
-                    logClient->deleteLater();
-                if (activeLogClient == logClient.data())
-                    activeLogClient = nullptr;
-                debugApp()<<"disconnect LogClient: "<<lbhost;
+                if (activeLogClient)
+                    activeLogClient->deleteLater();
                 emit logFinished();
             });
-    activeLogClient->Execute();
     emit logStarted();
+    activeLogClient->Execute();
 }
 
 void plcManager::stopLog()
 {
-    debugApp()<<"into stopLog"<<activeLogClient.get();
+    // qDebug()<<"into stopLog"<<activeLogClient.get() << activeLogClient.isNull();
     if (!activeLogClient)
         return;
-
-    QPointer<LBclient> client(activeLogClient);
-    QObject::disconnect(client.data(), nullptr, this, nullptr);
-    activeLogClient = nullptr;
-    client->lbDisconnectDevice();
-    if (client)
-        client->deleteLater();
+    if (activeLogClient)
+        activeLogClient->deleteLater();
     emit logFinished();
 }
 
