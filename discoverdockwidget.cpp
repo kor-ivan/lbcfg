@@ -116,7 +116,11 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
     QAction *Allcopy = menu.addAction("Копировать всё");
     QAction *MacCopy = menu.addAction("Копировать MAC");
     QAction *ipv6Copy = menu.addAction("Копировать IPv6");
-
+    menu.addSeparator();
+    CommandManager::instance()->getUptimeAction(ctx, &menu);
+    CommandManager::instance()->getRestartAction(ctx, &menu);
+    CommandManager::instance()->getFlashAction(ctx, &menu);
+    menu.addSeparator();
     CommandManager::instance()->getLogMenu(ctx, &menu);
 
     QAction *selectedItem = menu.exec(table->viewport()->mapToGlobal(pos));

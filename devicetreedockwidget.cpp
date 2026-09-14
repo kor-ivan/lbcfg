@@ -169,23 +169,29 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
         });
     }
     // --- Общие действия ---
-    QAction *getUptime = menu.addAction("Время работы");
-    connect(getUptime, &QAction::triggered, this, [this, ctx]() {
-        lbplc->lbc_executeCommand(ctx, {"get", "sys.uptime"}, "Время работы", [ctx, this](const QStringList& res) {
-            QString uptime = res.isEmpty() ? toBold("none") : toBold(res.at(0));
-            return QString("Время работы %1 %2 сек").arg(ctx.displayName(), uptime);
-        });
-    });
-    QAction *restart = menu.addAction("Перезагрузить");
-    connect(restart, &QAction::triggered, this, [this, ctx]() {
-        lbplc->lbc_executeCommand(ctx, {"set", "sys.restart=1"}, "Перезагрузка", [ctx](const QStringList&) {
-            return QString("Команда на перезагрузку %1 отправлена").arg(ctx.displayName());
-        });
-    });
-    QAction *flash = menu.addAction("Загрузить прошивку ...");
-    connect(flash, &QAction::triggered, this, [this, ctx](){
-        emit requestFlash(ctx);
-    });
+    // QAction *getUptime = menu.addAction("Время работы");
+    // connect(getUptime, &QAction::triggered, this, [this, ctx]() {
+    //     lbplc->lbc_executeCommand(ctx, {"get", "sys.uptime"}, "Время работы", [ctx, this](const QStringList& res) {
+    //         QString uptime = res.isEmpty() ? toBold("none") : toBold(res.at(0));
+    //         return QString("Время работы %1 %2 сек").arg(ctx.displayName(), uptime);
+    //     });
+    // });
+    menu.addSeparator();
+    CommandManager::instance()->getUptimeAction(ctx, &menu);
+    CommandManager::instance()->getRestartAction(ctx, &menu);
+    CommandManager::instance()->getFlashAction(ctx, &menu);
+    menu.addSeparator();
+
+    // QAction *restart = menu.addAction("Перезагрузить");
+    // connect(restart, &QAction::triggered, this, [this, ctx]() {
+    //     lbplc->lbc_executeCommand(ctx, {"set", "sys.restart=1"}, "Перезагрузка", [ctx](const QStringList&) {
+    //         return QString("Команда на перезагрузку %1 отправлена").arg(ctx.displayName());
+    //     });
+    // });
+    // QAction *flash = menu.addAction("Загрузить прошивку ...");
+    // connect(flash, &QAction::triggered, this, [this, ctx](){
+    //     emit requestFlash(ctx);
+    // });
 
     CommandManager::instance()->getLogMenu(ctx, &menu);
 
@@ -220,7 +226,7 @@ QStandardItem *DeviceTreeDockWidget::findPlcRoot(const QString &ipv6)
     return nullptr;
 }
 
-QString DeviceTreeDockWidget::toBold(const QString &text)
-{
-    return QString("<b>%1</b>").arg(text);
-}
+// QString DeviceTreeDockWidget::toBold(const QString &text)
+// {
+//     return QString("<b>%1</b>").arg(text);
+// }

@@ -18,7 +18,7 @@ public:
 signals:
     void requestConfig(const QString& ipv6, const QString& name);
     void requestUpdate(const QString& ipv6, const QString& name);
-    void requestFlash(const plcManager::CommandContext &ctx);
+    // void requestFlash(const plcManager::CommandContext &ctx);
     void requestFlashAll(const plcManager::CommandContext &ctx);
     void requestFboot(const plcManager::CommandContext &ctx);
 
@@ -32,7 +32,7 @@ private:
 
     QStandardItem *findPlcRoot(const QString& ipv6);
 
-    inline QString toBold(const QString &text);
+    // inline QString toBold(const QString &text);
 };
 
 #endif // DEVICETREEDOCKWIDGET_H

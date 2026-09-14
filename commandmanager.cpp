@@ -23,9 +23,44 @@ CommandManager::CommandManager() :
     });
 }
 
+QString CommandManager::toBold(const QString &text)
+{
+    return QString("<b>%1</b>").arg(text);
+}
+
 WatchDockWidget *CommandManager::getActiveWatchDockWidget() const
 {
     return activeWatchDockWidget.get();
+}
+
+void CommandManager::getUptimeAction(const plcManager::CommandContext &ctx, QMenu *menu)
+{
+    qDebug() << "into getUptimeAction";
+    QAction *getUptime = menu->addAction("Время работы");
+    connect(getUptime, &QAction::triggered, this, [this, ctx]() {
+        lbplc->lbc_executeCommand(ctx, {"get", "sys.uptime"}, "Время работы", [ctx, this](const QStringList& res) {
+            QString uptime = res.isEmpty() ? toBold("none") : toBold(res.at(0));
+            return QString("Время работы %1 %2 сек").arg(ctx.displayName(), uptime);
+        });
+    });
+}
+
+void CommandManager::getRestartAction(const plcManager::CommandContext &ctx, QMenu *menu)
+{
+    QAction *restart = menu->addAction("Перезагрузить");
+    connect(restart, &QAction::triggered, this, [this, ctx]() {
+        lbplc->lbc_executeCommand(ctx, {"set", "sys.restart=1"}, "Перезагрузка", [ctx](const QStringList&) {
+            return QString("Команда на перезагрузку %1 отправлена").arg(ctx.displayName());
+        });
+    });
+}
+
+void CommandManager::getFlashAction(const plcManager::CommandContext &ctx, QMenu *menu)
+{
+    QAction *flash = menu->addAction("Загрузить прошивку ...");
+    connect(flash, &QAction::triggered, this, [this, ctx](){
+        emit requestFlash(ctx);
+    });
 }
 
 QAction *CommandManager::getConfAction() const

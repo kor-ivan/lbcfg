@@ -36,8 +36,13 @@ public:
 
     WatchDockWidget* getActiveWatchDockWidget() const;
 
+    void getUptimeAction (const plcManager::CommandContext &ctx, QMenu *menu);
+    void getRestartAction (const plcManager::CommandContext &ctx, QMenu *menu);
+    void getFlashAction (const plcManager::CommandContext &ctx, QMenu *menu);
+
 signals:
     void activeConfDockWidgetChanged(ConfigDockWidget *newWidget);
+    void requestFlash(const plcManager::CommandContext &ctx);
 
 private:
     CommandManager();
@@ -52,6 +57,7 @@ private:
     QAction *saveAsAction = nullptr;
     QPointer<QAction> confAction = nullptr;
 
+    inline QString toBold(const QString &text);
 };
 
 #endif // COMMANDMANAGER_H

@@ -218,7 +218,7 @@ DeviceTreeDockWidget *MainWindow::createTreeDockWidget()
     treeDock->setWindowTitle("Device Tree");
     treeDock->setAllowedAreas(Qt::AllDockWidgetAreas);
 
-    connect(treeDock, &DeviceTreeDockWidget::requestFlash, this, [this]
+    connect(CommandManager::instance(), &CommandManager::requestFlash, this, [this]
             (const plcManager::CommandContext &ctx){
                 QString filePath = QFileDialog::getOpenFileName(
                     this,
