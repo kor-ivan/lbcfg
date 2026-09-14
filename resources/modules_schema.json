@@ -236,7 +236,7 @@
                             "mode": {"type": "enum", "values": ["Pt1000", "Pt100", "4-20mA", "0-10V", "K", "S", "T", "NTC", "rawr"], "description": "Режим измерительного канала", "default": "0-10V"},
                             "wires": { "type": "enum", "values": [2, 3],"description": "Количество проводов для термосопротивления"},
                             "resolution": { "type": "double", "description": "Разрешение или порог изменений", "default": "0.1"},
-                            "range": { "type": "double", "description": "???", "default": "0.001"},
+                            "range": { "type": "double", "description": "Устаревшее resolution", "default": "0.001"},
                             "rmax": {"type": "double", "description": "Тестовый ток для rmax 0,2 мА при Rmax <= 200 Ом, иначе 1 мА"},
                             "interval": { "type": "string", "description": "Минимальный интервал публикации изменений", "default": "1s"},
                             "period": { "type": "string", "description": "Период принудительной публикации", "default": "10s"},
