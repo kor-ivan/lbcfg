@@ -33,6 +33,8 @@ public:
     QList<ConfigDockWidget*> getConfigDocks() const;
     QList<WatchDockWidget*> getWatchDocks() const;
 
+    void editFirmwareRepositorySettings();
+
 private:
     plcManager *lbplc = nullptr;
     QPointer<DeviceTreeDockWidget> treeDock = nullptr;
