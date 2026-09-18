@@ -35,7 +35,6 @@ WatchDockWidget *CommandManager::getActiveWatchDockWidget() const
 
 void CommandManager::getUptimeAction(const plcManager::CommandContext &ctx, QMenu *menu)
 {
-    qDebug() << "into getUptimeAction";
     QAction *getUptime = menu->addAction("Время работы");
     connect(getUptime, &QAction::triggered, this, [this, ctx]() {
         lbplc->lbc_executeCommand(ctx, {"get", "sys.uptime"}, "Время работы", [ctx, this](const QStringList& res) {

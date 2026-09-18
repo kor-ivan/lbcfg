@@ -18,9 +18,9 @@ public:
     QMap<QString, discover::lbinfo> getLdmap() const;
 
 signals:
-    void deviceSelected(const QString& ipv6, const QString& name);
-    void requestConfig(const QString& ipv6, const QString& name);
-    void newConfig(const QString& ipv6, const QString& name);
+    void deviceSelected(const plcManager::CommandContext &ctx);
+    void requestConfig(const plcManager::CommandContext &ctx);
+    void newConfig(const plcManager::CommandContext &ctx);
 
 private slots:
     void cleanRow();

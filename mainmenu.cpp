@@ -128,8 +128,9 @@ void MainMenu::initViewMenu(QMenuBar *menuBar)
     watchMenu->addAction(createWatch);
     connect(createWatch, &QAction::triggered, this, [this](){
         static QAtomicInt counter(0);
-        QString str = QString("new %1").arg(counter.fetchAndAddRelaxed(1) + 1);
-        WatchDockWidget* watch = p_mainWindow->createWatchDockWidget(str);
+        plcManager::CommandContext ctx;
+        ctx.name = QString("new %1").arg(counter.fetchAndAddRelaxed(1) + 1);
+        WatchDockWidget* watch = p_mainWindow->createWatchDockWidget(ctx);
         watch->show();
         watch->raise();
         watch->setFocus();
@@ -298,7 +299,8 @@ void MainMenu::onPlcMenuAboutToShow()
             logMenu->setEnabled(true);
             plcManager::CommandContext ctx;
             for (auto it = ldmap.begin(); it != ldmap.end(); ++it){
-                ctx.ipv6 = it.key();
+                ctx.ipv6 = QHostAddress(it.key());
+                ctx.ipv6.setScopeId(plcManager::instanse()->getFastIfce(it.value()));
                 ctx.name = it.value().name;
                 CommandManager::instance()->getLogMenu(ctx, logMenu, it.value().name);
             }

@@ -9,7 +9,7 @@ WatchSession::WatchSession(const plcManager::CommandContext &ctx, const QStringL
     QStringList m_arg = {"get"};
     m_arg.append(arg);
     lbc = new LBclient(this, m_arg);
-    lbc->setTCPaddr(ctx.ipv6, 502);
+    lbc->setTCPaddr(ctx.ipv6str(), 502, ctx.ipv6.scopeId());
     lbc->setTimeOut(t);
 
     connect(lbc, &LBclient::ExecuteCompletedJson, this, [this]

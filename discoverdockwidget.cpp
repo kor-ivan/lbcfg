@@ -89,10 +89,11 @@ void DiscoverDockWidget::onTableDoubleClicked(int row, int column)
     }
     QTableWidgetItem *item = table->item(row, 6);
     if (!item) return;
-    QString ipv6 = item->text();
-    item = table->item(row, 0);
-    QString name = item->text();
-    emit deviceSelected(ipv6,name);
+    plcManager::CommandContext ctx;
+    ctx.ipv6 = QHostAddress(item->text());
+    ctx.ipv6.setScopeId(table->item(item->row(), 5)->text());
+    ctx.name = table->item(item->row(), 0)->text();
+    emit deviceSelected(ctx);
 }
 
 void DiscoverDockWidget::showContextMenu(const QPoint &pos)
@@ -101,7 +102,8 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
     if (!item) return;
     plcManager::CommandContext ctx;
 
-    ctx.ipv6 = table->item(item->row(), 6)->text();
+    ctx.ipv6 = QHostAddress(table->item(item->row(), 6)->text());
+    ctx.ipv6.setScopeId(table->item(item->row(), 5)->text());
     ctx.name = table->item(item->row(), 0)->text();
 
     QMenu menu(this);
@@ -127,9 +129,9 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
     QClipboard *clipboard = QGuiApplication::clipboard();
 
     if (selectedItem == AddDivice){
-        emit deviceSelected(ctx.ipv6, ctx.name);
+        emit deviceSelected(ctx);
     }else if (selectedItem == copy) {
-        clipboard->setText(ldmap.value(ctx.ipv6).toString());
+        clipboard->setText(ldmap.value(ctx.ipv6str()).toString());
     }else if (selectedItem == Allcopy) {
         QStringList qstr;
         for (auto i : ldmap) {
@@ -137,14 +139,14 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
         }
         clipboard->setText(qstr.join("\n"));
     }else if (selectedItem == getConf) {
-        emit deviceSelected(ctx.ipv6, ctx.name);
-        emit requestConfig(ctx.ipv6, ctx.name);
+        emit deviceSelected(ctx);
+        emit requestConfig(ctx);
     }else if (selectedItem == newConf){
-        emit newConfig(ctx.ipv6, ctx.name);
+        emit newConfig(ctx);
     }else if (selectedItem == MacCopy){
-        clipboard->setText(ldmap.value(ctx.ipv6).mac);
+        clipboard->setText(ldmap.value(ctx.ipv6str()).mac);
     }else if (selectedItem == ipv6Copy){
-        clipboard->setText(ctx.ipv6);
+        clipboard->setText(ctx.ipv6str());
     }
 }
 

@@ -11,8 +11,8 @@
 
 
 
-WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
-    : QDockWidget{QString("Watch: %1").arg(name), parent}, plcname(name)
+WatchDockWidget::WatchDockWidget(const plcManager::CommandContext &ctx, QWidget *parent)
+    : QDockWidget{QString("Watch: %1").arg(ctx.name), parent}, m_ctx(ctx)
 {
     QWidget *container = new QWidget(this);
     QVBoxLayout *layout = new QVBoxLayout(container);
@@ -187,13 +187,13 @@ WatchDockWidget::WatchDockWidget(const QString &name, QWidget *parent)
 
 QString WatchDockWidget::getPlcName() const
 {
-    return plcname;
+    return m_ctx.name;
 }
 
 void WatchDockWidget::setIpv6(const QString &newIpv6)
 {
-    ipv6 = newIpv6;
-    debugApp()<<"WatchDockWidget set IP:"<<ipv6;
+    m_ctx.ipv6 = QHostAddress(newIpv6);
+    debugApp()<<"WatchDockWidget set IP:"<<m_ctx.ipv6str();
 }
 
 void WatchDockWidget::showIpEditDialog(QPushButton *anchorButton)
@@ -201,7 +201,7 @@ void WatchDockWidget::showIpEditDialog(QPushButton *anchorButton)
     QLineEdit *ipEdit = new QLineEdit(this);
     ipEdit->setWindowFlags(Qt::Popup | Qt::FramelessWindowHint);
     ipEdit->setAttribute(Qt::WA_DeleteOnClose);
-    ipEdit->setText(this->ipv6);
+    ipEdit->setText(m_ctx.ipv6str());
     ipEdit->setPlaceholderText("Enter IP...");
     ipEdit->setMinimumWidth(150);
 
@@ -231,15 +231,15 @@ void WatchDockWidget::toggleConnection()
         return;
     }
 
-    plcManager::CommandContext ctx;
-    ctx.ipv6 = ipv6;
-    ctx.name = plcname;
+    // plcManager::CommandContext ctx;
+    // ctx.ipv6 = ipv6;
+    // ctx.name = plcname;
 
     QStringList param = collectVariables();
 
     WatchSession *old_session = session;
 
-    session = plcManager::instanse()->startWatch(ctx, param, this);
+    session = plcManager::instanse()->startWatch(m_ctx, param, this);
     if (session != old_session){
         connect(session, &WatchSession::watchExeComleted, this, &WatchDockWidget::receiveData);
         connect(session, &WatchSession::connected, this, [this](){
@@ -302,7 +302,7 @@ bool WatchDockWidget::eventFilter(QObject *watched, QEvent *event)
 
 void WatchDockWidget::receiveData(const QStringList &data)
 {
-    debugApp()<<"data receive from:"<< plcname << data;
+    debugApp()<<"data receive from:"<< m_ctx.name << data;
     for (int i = 0; i < data.size(); ++i) {
         if (i < watchModel->rowCount()) {
             QStandardItem *valueItem = watchModel->item(i, 1);

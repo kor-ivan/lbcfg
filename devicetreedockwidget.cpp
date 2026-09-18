@@ -23,9 +23,12 @@ DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent)
     connect(treeView, &QTreeView::doubleClicked, this,
             [this](const QModelIndex &index){
                 if (!index.isValid()) return;
-                if (!index.parent().isValid())
-                    emit requestConfig(index.data(Qt::UserRole).toString(),
-                                       index.data().toString());
+                if (!index.parent().isValid()){
+                    plcManager::CommandContext ctx;
+                    ctx.ipv6 = index.data(Qt::UserRole).value<QHostAddress>();
+                    ctx.name = index.data().toString();
+                    emit requestConfig(ctx);
+                }
             }
             );
     connect(lbplc, &plcManager::showMessage, this, [this](const QString &title, const QString &message){
@@ -36,17 +39,18 @@ DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent)
                 QMessageBox::information(this, "Перезагрузить все",
                                          QString("Команда на перезагрузку всех модулей %1 отправлена").arg(ctx.name));
             });
+    // qRegisterMetaType<QHostAddress>("QHostAddress");
 }
 
-void DeviceTreeDockWidget::updateDevice(const QString &ipv6, const QString &name, const QMap<qsizetype, lbprocess::scaninfo> &scan)
+void DeviceTreeDockWidget::updateDevice(const plcManager::CommandContext &ctx, const QMap<qsizetype, lbprocess::scaninfo> &scan)
 {
-    QStandardItem* plcRoot = findPlcRoot(ipv6);
+    QStandardItem* plcRoot = findPlcRoot(ctx.ipv6);
     QModelIndex rootIndex;
 
     // Если не нашли, создаем новый корень
     if (!plcRoot) {
-        plcRoot = new QStandardItem(name);
-        plcRoot->setData(ipv6, Qt::UserRole); // Прячем ID для поиска в будущем
+        plcRoot = new QStandardItem(ctx.name);
+        plcRoot->setData(QVariant::fromValue(ctx.ipv6), Qt::UserRole); // Прячем ID для поиска в будущем
         QFont rootFont = plcRoot->font();
         rootFont.setBold(true);
         rootFont.setPointSize(rootFont.pointSize());
@@ -55,7 +59,7 @@ void DeviceTreeDockWidget::updateDevice(const QString &ipv6, const QString &name
         rootIndex = treeModel->index(treeModel->rowCount() - 1, 0);
     }else{
         plcRoot->removeRows(0, plcRoot->rowCount());
-        plcRoot->setText(name);
+        plcRoot->setText(ctx.name);
         rootIndex = plcRoot->index();
     }
 
@@ -84,7 +88,6 @@ void DeviceTreeDockWidget::updateDevice(const QString &ipv6, const QString &name
 
 bool DeviceTreeDockWidget::containsName(const QString &name)
 {
-    // qDebug()<<"into DeviceTreeDockWidget::contains "<<name;
     for (int i = 0; i < treeModel->rowCount(); ++i) {
         auto *item = treeModel->item(i);
         if (item->text() == name)
@@ -102,10 +105,10 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
     plcManager::CommandContext ctx;
     if (isRoot) {
         ctx.name = index.data().toString();
-        ctx.ipv6 = index.data(Qt::UserRole).toString();
+        ctx.ipv6 = index.data(Qt::UserRole).value<QHostAddress>();
     } else {
         ctx.name = index.parent().data().toString();
-        ctx.ipv6 = index.parent().data(Qt::UserRole).toString();
+        ctx.ipv6 = index.parent().data(Qt::UserRole).value<QHostAddress>();
         ctx.slot = index.data(Qt::UserRole).toInt();
     }
 
@@ -117,12 +120,12 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
         font.setBold(true);
         getConfigAction->setFont(font);
         connect(getConfigAction, &QAction::triggered, this, [this, ctx]() {
-            emit requestConfig(ctx.ipv6, ctx.name);
+            emit requestConfig(ctx);
         });
 
         QAction *update = menu.addAction("Обновить");
         connect(update, &QAction::triggered, this, [this, ctx](){
-            emit requestUpdate(ctx.ipv6, ctx.name);
+            emit requestUpdate(ctx);
         });
 
         QAction *removeAction = menu.addAction(QString("Удалить %1").arg(ctx.name));
@@ -216,11 +219,11 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
 
 }
 
-QStandardItem *DeviceTreeDockWidget::findPlcRoot(const QString &ipv6)
+QStandardItem *DeviceTreeDockWidget::findPlcRoot(const QHostAddress& ipv6)
 {
     for (int i = 0; i < treeModel->rowCount(); ++i) {
         auto *item = treeModel->item(i);
-        if (item->data(Qt::UserRole).toString() == ipv6)
+        if (item->data(Qt::UserRole).value<QHostAddress>() == ipv6)
             return item;
     }
     return nullptr;

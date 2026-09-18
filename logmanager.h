@@ -68,12 +68,12 @@ public:
     void setLoglevel(const Level &newLoglevel);
 
 private:
-    Source m_source;
-    Level m_level;
-    Wrapped m_wrap;
+    Source m_source = LogCatcher::App;
+    Level m_level = LogCatcher::Debug;
+    Wrapped m_wrap = LogCatcher::wrapNo;
     QDateTime m_timestamp;
     QString m_buffer;
-    TimeType m_timetype;
+    TimeType m_timetype = LogCatcher::TimeReal;
     bool m_parse = false;
     Level loglevel = LogCatcher::Debug;
     plcManager::CommandContext m_ctx;

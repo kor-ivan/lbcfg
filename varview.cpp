@@ -234,7 +234,7 @@ bool varView::isModified() const
 
 void varView::resetModified()
 {
-    qDebug()<< "varView::resetModified modified = false";
+    // qDebug()<< "varView::resetModified modified = false";
     modified = false;
 }
 

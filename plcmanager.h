@@ -22,24 +22,27 @@ public:
     }
     struct CommandContext {
         QString name;
-        QString ipv6;
+        QHostAddress ipv6;
         int slot = -1;
 
         bool isSlot() const { return slot != -1; }
         QString displayName() const {
             return isSlot() ? QString("%1/slot %2").arg(name).arg(slot) : name;
         }
+        QString ipv6str() const {
+            return QHostAddress(ipv6.toIPv6Address()).toString();
+        }
     };
 
-    void scanDevice(const QString &ipv6, const QString &name);
-    void requestConfig(const QString &ipv6, const QString &name);
+    void scanDevice(const CommandContext &ctx);
+    void requestConfig(const CommandContext &ctx);
     void startDiscover();
     bool startFirmware(const CommandContext &ctx, const QString &filePath,
                        const QString &checkMessage,
                        const QString &startMessage,
                        const QString &lbkey = "ota");
     void stopFirmware();
-    void startConf(const QString &name, const QString &yamlFilePath);
+    void startConf(const CommandContext &ctx, const QString &yamlFilePath);
     void startFirmwareAll(const CommandContext &ctx, const QString &filePath,
                           const QString &checkMessage,
                           const QString &startMessage);
@@ -54,7 +57,7 @@ public:
                             const QString &boxTitle,
                             F messageBuilder){
         LBclient *lbc = new LBclient(this, args);
-        lbc->setTCPaddr(ctx.ipv6, port);
+        lbc->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
         if (ctx.isSlot()) lbc->setSlot(ctx.slot);
         connect(lbc, &LBclient::ExecuteCompleted, this,
                 [this, lbc, ctx, boxTitle, messageBuilder]
@@ -73,10 +76,12 @@ public:
 
     WatchSession* startWatch(const CommandContext &ctx, const QStringList &arg, QObject *p_watchDock = nullptr);
     QStringList activeWatchKeys() const;
+    QString getFastIfce(const discover::lbinfo &val);
+    QString getIf(const CommandContext &ctx);
 
 signals:
-    void scanCompleted(const QString &ipv6, const QString &name, const QMap<qsizetype, lbprocess::scaninfo> &scanData);
-    void configReceived(const QString &ipv6, const QString &name, const QString &yamlContent);
+    void scanCompleted(const CommandContext &ctx, const QMap<qsizetype, lbprocess::scaninfo> &scanData);
+    void configReceived(const CommandContext &ctx, const QString &yamlContent);
     void errorOccurred(const QString &message);
     void eventOccurred(const QString &message);
     void discoverStarting();
@@ -87,11 +92,10 @@ signals:
     void firmwareFinished();
     void logStarted();
     void logFinished();
-    void confCompleted(const QString &ipv6, const QString &name);
+    void confCompleted(const CommandContext &ctx);
     void showMessage(const QString &title, const QString &message);
     void restartAllCompleted(const CommandContext &ctx);
     void activeWatchChanged(const QStringList &keys);
-
 
 private:
     plcManager();
@@ -106,6 +110,8 @@ private:
     void prcOtaSender(const QString &lbhost, const QStringList &result, const QString &message, const QModbusDevice::Error error);
 
     QMap<QString, WatchSession*> activeWatchSessions;
+    QMap<QString, discover::lbinfo> last_ldmap;
+    bool SearchDiscoverRuning = false;
 };
 
 #endif // PLCMANAGER_H

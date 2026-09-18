@@ -174,12 +174,12 @@ void yamlTextView::replacePlcBlock(int startLine, int endLine, const QString &ne
             }
         }
 
-        qDebug() << "replacePlcBlock:"
-                 << "startIdx =" << startIdx
-                 << "endIdx =" << endIdx
-                 << "blocks =" << doc->blockCount()
-                 << "selectionStart =" << cursor.selectionStart()
-                 << "selectionEnd =" << cursor.selectionEnd();
+        // qDebug() << "replacePlcBlock:"
+        //          << "startIdx =" << startIdx
+        //          << "endIdx =" << endIdx
+        //          << "blocks =" << doc->blockCount()
+        //          << "selectionStart =" << cursor.selectionStart()
+        //          << "selectionEnd =" << cursor.selectionEnd();
 
         cursor.insertText(formattedText);
         editor->blockSignals(false);

@@ -29,7 +29,7 @@ public:
     DeviceTreeDockWidget *createTreeDockWidget();
     DiscoverDockWidget* createDiscoverDockWidget();
     LogDockWidget* createLogDockWidget();
-    WatchDockWidget* createWatchDockWidget(const QString &name, const QString &ipv6 = {});
+    WatchDockWidget* createWatchDockWidget(const plcManager::CommandContext &ctx);
     QList<ConfigDockWidget*> getConfigDocks() const;
     QList<WatchDockWidget*> getWatchDocks() const;
 
@@ -46,12 +46,12 @@ private:
     MainMenu *menu = nullptr;
 
     FirmwareWidget *fwWidget = nullptr;
-    void CreateConfig(const QString &ipv6, const QString &name, const QString &content = {});
+    void CreateConfig(const plcManager::CommandContext &ctx, const QString &content = {});
 
     QList<QDockWidget*> getDocksInArea(Qt::DockWidgetArea area) const;
     void tabifyDockWidgetTo(QDockWidget *dock, Qt::DockWidgetArea area);
 
-    void checkTreeAndStartScan(const QString &ipv6, const QString &name);
+    void checkTreeAndStartScan(const plcManager::CommandContext &ctx);
 
 protected:
     void showEvent(QShowEvent *event) override;
