@@ -192,16 +192,24 @@ QString WatchDockWidget::getPlcName() const
 
 void WatchDockWidget::setIpv6(const QString &newIpv6)
 {
-    auto h = QHostAddress(newIpv6);
+    QStringList splitstr = newIpv6.split('/');
+    auto h = QHostAddress(splitstr.value(0));
     if (h.isNull()) return;
     auto m_plcm = plcManager::instanse();
     if (h.protocol() == QAbstractSocket::IPv6Protocol){
-        m_ctx = m_plcm->getctx(newIpv6, m_ctx.name, m_plcm->getIf(newIpv6));
+        m_ctx = m_plcm->getctx(splitstr.value(0), m_ctx.name, m_plcm->getIf(splitstr.value(0)));
     }else if(h.protocol() == QAbstractSocket::IPv4Protocol){
-        m_ctx = m_plcm->getctx(newIpv6, m_ctx.name);
+        m_ctx = m_plcm->getctx(splitstr.value(0), m_ctx.name);
     }
-    ipBtn->setToolTip(QString("Указать IP адрес\n%1").arg(m_ctx.ipv6.toString()));
-    debugApp()<<"WatchDockWidget set IP:"<<m_ctx.ipv6str();
+    if (!splitstr.value(1).isEmpty()){
+        bool ok;
+        int slot = splitstr.value(1).toInt(&ok);
+        if (ok) m_ctx.slot = slot;
+    }
+    ipBtn->setToolTip("Указать IP адрес" +
+                      (m_ctx.ipv6str().isEmpty() ? "" : "\n" + m_ctx.ipv6str()) +
+                      (m_ctx.isSlot() ? "\nslot " + QString::number(m_ctx.slot) : ""));
+    debugApp()<<"WatchDockWidget set IP:"<<m_ctx.ipv6str()<<"slot"<<m_ctx.slot;
 }
 
 void WatchDockWidget::showIpEditDialog(QPushButton *anchorButton)
