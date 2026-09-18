@@ -76,6 +76,12 @@ endif()
 target_sources(lbcfg PRIVATE
     firmwarepackage.cpp
     firmwarepackage.h
+    firmwareanalyzer.cpp
+    firmwareanalyzer.h
+    appsettings.cpp
+    appsettings.h
+    firmwarerepositorydialog.cpp
+    firmwarerepositorydialog.h
 )
 
 target_include_directories(lbcfg PRIVATE
