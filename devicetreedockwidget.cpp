@@ -24,10 +24,10 @@ DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent)
             [this](const QModelIndex &index){
                 if (!index.isValid()) return;
                 if (!index.parent().isValid()){
-                    plcManager::CommandContext ctx;
-                    ctx.ipv6 = index.data(Qt::UserRole).value<QHostAddress>();
-                    ctx.name = index.data().toString();
-                    emit requestConfig(ctx);
+                    // plcManager::CommandContext ctx;
+                    // ctx.ipv6 = index.data(Qt::UserRole).value<QHostAddress>();
+                    // ctx.name = index.data().toString();
+                    emit requestConfig(lbplc->getctx(index.data(Qt::UserRole).value<QHostAddress>(), index.data().toString()));
                 }
             }
             );

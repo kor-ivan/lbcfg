@@ -293,15 +293,13 @@ void MainMenu::onPlcMenuAboutToShow()
     plcMenu->addMenu(logMenu);
     if (p_mainWindow->getDiscoverDock().get())
     {
-        QMap<QString, discover::lbinfo> ldmap = p_mainWindow->getDiscoverDock()->getLdmap();
+        const auto &ldmap = plcManager::instanse()->getldmap();
         if (!ldmap.isEmpty())
         {
             logMenu->setEnabled(true);
-            plcManager::CommandContext ctx;
             for (auto it = ldmap.begin(); it != ldmap.end(); ++it){
-                ctx.ipv6 = QHostAddress(it.key());
-                ctx.ipv6.setScopeId(plcManager::instanse()->getFastIfce(it.value()));
-                ctx.name = it.value().name;
+                auto ctx = plcManager::instanse()->getctx(it.key(), it.value().name,
+                                                          plcManager::instanse()->getIf(it.key()));
                 CommandManager::instance()->getLogMenu(ctx, logMenu, it.value().name);
             }
         }else

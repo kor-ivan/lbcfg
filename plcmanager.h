@@ -30,7 +30,11 @@ public:
             return isSlot() ? QString("%1/slot %2").arg(name).arg(slot) : name;
         }
         QString ipv6str() const {
-            return QHostAddress(ipv6.toIPv6Address()).toString();
+            if (ipv6.protocol() == QAbstractSocket::IPv6Protocol)
+                return QHostAddress(ipv6.toIPv6Address()).toString();
+            else if (ipv6.protocol() == QAbstractSocket::IPv4Protocol)
+                return ipv6.toString();
+            return QString();
         }
     };
 
@@ -76,8 +80,11 @@ public:
 
     WatchSession* startWatch(const CommandContext &ctx, const QStringList &arg, QObject *p_watchDock = nullptr);
     QStringList activeWatchKeys() const;
-    QString getFastIfce(const discover::lbinfo &val);
-    QString getIf(const CommandContext &ctx);
+
+    QString getIf(const QString &ipv6);
+    CommandContext getctx(const QString &ipv6, const QString &name = {}, const QString &ifce = {});
+    CommandContext getctx(const QHostAddress &host, const QString &name = {});
+    const QMap<QString, discover::lbinfo>& getldmap() const;
 
 signals:
     void scanCompleted(const CommandContext &ctx, const QMap<qsizetype, lbprocess::scaninfo> &scanData);
@@ -112,6 +119,7 @@ private:
     QMap<QString, WatchSession*> activeWatchSessions;
     QMap<QString, discover::lbinfo> last_ldmap;
     bool SearchDiscoverRuning = false;
+    QString getFastIfce(const discover::lbinfo &val);
 };
 
 #endif // PLCMANAGER_H

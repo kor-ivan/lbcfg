@@ -143,7 +143,7 @@ void plcManager::startConf(const CommandContext &ctx, const QString &yamlFilePat
 {
     debugApp()<<"plcManager::startConf for "<<ctx.name;
     LBclient *lbc = new LBclient(this, {"conf"});
-    QString ifce = getIf(ctx);
+    QString ifce = getIf(ctx.ipv6str());
     lbc->setlbHost(ctx.name, yamlFilePath, ifce);
     connect(lbc, &LBclient::ExecuteCompletedStr, this, [this]
             (const QString& lbstr, const QString& message, const QModbusDevice::Error error){
@@ -305,13 +305,18 @@ void plcManager::prcOtaSender(const QString &lbhost, const QStringList &result, 
         emit errorOccurred(message);
 }
 
-QString plcManager::getIf(const CommandContext &ctx)
+const QMap<QString, discover::lbinfo>& plcManager::getldmap() const
+{
+    return last_ldmap;
+}
+
+QString plcManager::getIf(const QString &ipv6)
 {
     if (!last_ldmap.isEmpty()){
-        if (last_ldmap.contains(ctx.ipv6str())){
+        if (last_ldmap.contains(ipv6)){
             //Ищем индекс интерфейса с минимальным временем отклика
             if (SearchDiscoverRuning) SearchDiscoverRuning = false;
-            return getFastIfce(last_ldmap.value(ctx.ipv6str()));
+            return getFastIfce(last_ldmap.value(ipv6));
         }
     }else if (!SearchDiscoverRuning){
         //Если discover ни разу не запускали или ничего не нашли
@@ -322,10 +327,27 @@ QString plcManager::getIf(const CommandContext &ctx)
         connect(this, &plcManager::discoverCompleted, &loop, &QEventLoop::quit);
         QTimer::singleShot(5000, &loop, &QEventLoop::quit);
         loop.exec();
-        return getIf(ctx);
+        return getIf(ipv6);
     }else{
         SearchDiscoverRuning = false;
         debugApp() << "The interface was not found";
     }
     return QString();
+}
+
+plcManager::CommandContext plcManager::getctx(const QString &ipv6, const QString &name, const QString &ifce)
+{
+    plcManager::CommandContext ctx;
+    ctx.ipv6 = QHostAddress(ipv6);
+    if (!ifce.isEmpty()) ctx.ipv6.setScopeId(ifce);
+    if (!name.isEmpty()) ctx.name = name;
+    return ctx;
+}
+
+plcManager::CommandContext plcManager::getctx(const QHostAddress &host, const QString &name)
+{
+    plcManager::CommandContext ctx;
+    ctx.ipv6 = host;
+    if (!name.isEmpty()) ctx.name = name;
+    return ctx;
 }

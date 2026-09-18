@@ -47,6 +47,7 @@ private:
     void updateTableColors();
 
     QPushButton *connBtn = nullptr;
+    QPushButton *ipBtn = nullptr;
 
 
 

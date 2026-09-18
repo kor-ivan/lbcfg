@@ -30,9 +30,9 @@ WatchDockWidget::WatchDockWidget(const plcManager::CommandContext &ctx, QWidget 
     remBtn->setToolTip("Удалить выбранную переменную");
     remBtn->setText("-");
 
-    QPushButton *ipBtn = new QPushButton(this);
+    ipBtn = new QPushButton(this);
     ipBtn->setFixedSize(elementHeight, elementHeight);
-    ipBtn->setToolTip("Указать IP адрес");
+    ipBtn->setToolTip(QString("Указать IP адрес\n%1").arg(ctx.ipv6.toString()));
     ipBtn->setText("IP");
 
     intervalSpin = new QDoubleSpinBox(this);
@@ -97,7 +97,7 @@ WatchDockWidget::WatchDockWidget(const plcManager::CommandContext &ctx, QWidget 
         addVar();
     });
 
-    connect(ipBtn, &QPushButton::clicked, this, [this, ipBtn](){
+    connect(ipBtn, &QPushButton::clicked, this, [this](){
         showIpEditDialog(ipBtn);
     });
 
@@ -192,7 +192,15 @@ QString WatchDockWidget::getPlcName() const
 
 void WatchDockWidget::setIpv6(const QString &newIpv6)
 {
-    m_ctx.ipv6 = QHostAddress(newIpv6);
+    auto h = QHostAddress(newIpv6);
+    if (h.isNull()) return;
+    auto m_plcm = plcManager::instanse();
+    if (h.protocol() == QAbstractSocket::IPv6Protocol){
+        m_ctx = m_plcm->getctx(newIpv6, m_ctx.name, m_plcm->getIf(newIpv6));
+    }else if(h.protocol() == QAbstractSocket::IPv4Protocol){
+        m_ctx = m_plcm->getctx(newIpv6, m_ctx.name);
+    }
+    ipBtn->setToolTip(QString("Указать IP адрес\n%1").arg(m_ctx.ipv6.toString()));
     debugApp()<<"WatchDockWidget set IP:"<<m_ctx.ipv6str();
 }
 

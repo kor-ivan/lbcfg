@@ -89,22 +89,27 @@ void DiscoverDockWidget::onTableDoubleClicked(int row, int column)
     }
     QTableWidgetItem *item = table->item(row, 6);
     if (!item) return;
-    plcManager::CommandContext ctx;
-    ctx.ipv6 = QHostAddress(item->text());
-    ctx.ipv6.setScopeId(table->item(item->row(), 5)->text());
-    ctx.name = table->item(item->row(), 0)->text();
-    emit deviceSelected(ctx);
+    // plcManager::CommandContext ctx;
+    // ctx.ipv6 = QHostAddress(item->text());
+    // ctx.ipv6.setScopeId(table->item(item->row(), 5)->text());
+    // ctx.name = table->item(item->row(), 0)->text();
+    emit deviceSelected(lbplc->getctx(item->text(),
+                                      table->item(item->row(), 0)->text(),
+                                      table->item(item->row(), 5)->text()));
 }
 
 void DiscoverDockWidget::showContextMenu(const QPoint &pos)
 {
     QTableWidgetItem *item = table->itemAt(pos);
     if (!item) return;
-    plcManager::CommandContext ctx;
+    // plcManager::CommandContext ctx;
 
-    ctx.ipv6 = QHostAddress(table->item(item->row(), 6)->text());
-    ctx.ipv6.setScopeId(table->item(item->row(), 5)->text());
-    ctx.name = table->item(item->row(), 0)->text();
+    // ctx.ipv6 = QHostAddress(table->item(item->row(), 6)->text());
+    // ctx.ipv6.setScopeId(table->item(item->row(), 5)->text());
+    // ctx.name = table->item(item->row(), 0)->text();
+    auto ctx = lbplc->getctx(table->item(item->row(), 6)->text(),
+                             table->item(item->row(), 0)->text(),
+                             table->item(item->row(), 5)->text());
 
     QMenu menu(this);
     QAction *AddDivice = menu.addAction("Добавить");
@@ -128,6 +133,7 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
     QAction *selectedItem = menu.exec(table->viewport()->mapToGlobal(pos));
     QClipboard *clipboard = QGuiApplication::clipboard();
 
+    const auto &ldmap = plcManager::instanse()->getldmap();
     if (selectedItem == AddDivice){
         emit deviceSelected(ctx);
     }else if (selectedItem == copy) {
@@ -157,7 +163,7 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
 
 void DiscoverDockWidget::discoverReceived(const QMap<QString, discover::lbinfo> &DiscoverMap)
 {
-    ldmap = DiscoverMap;
+    const auto &ldmap = DiscoverMap;
     table->setSortingEnabled(false); // Отключаем сортировку на время вставки для скорости
     int row = 0;
     for (auto it = ldmap.begin(); it != ldmap.end(); ++it) {
@@ -194,7 +200,7 @@ void DiscoverDockWidget::discoverReceived(const QMap<QString, discover::lbinfo> 
     table->setSortingEnabled(true); // Возвращаем возможность сортировки
 }
 
-QMap<QString, discover::lbinfo> DiscoverDockWidget::getLdmap() const
-{
-    return ldmap;
-}
+// QMap<QString, discover::lbinfo> DiscoverDockWidget::getLdmap() const
+// {
+//     return ldmap;
+// }

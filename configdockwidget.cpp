@@ -316,10 +316,10 @@ void ConfigDockWidget::onConfigureClicked()
         }
     }
     plcManager::CommandContext ctx;
-    ctx.name = currentSelected;
-    ctx.ipv6 = QHostAddress(lbyaml::MacToIPv6(mac));
+    // ctx.name = currentSelected;
+    // ctx.ipv6 = QHostAddress(lbyaml::MacToIPv6(mac));
     if (lbplc)
-        lbplc->startConf(ctx, currentFilePath);
+        lbplc->startConf(lbplc->getctx(lbyaml::MacToIPv6(mac), currentSelected), currentFilePath);
 }
 
 QList<QAction *> ConfigDockWidget::activeTextActions() const
@@ -525,11 +525,12 @@ void ConfigDockWidget::onAddVariableToWatch(const QString &varName)
     }
     if (!watch){
         debugApp() << "onAddVariableToWatch: New Watch" << ipv6 << plcName << varName;
-        plcManager::CommandContext ctx;
-        ctx.ipv6 = QHostAddress(ipv6);
-        ctx.ipv6.setScopeId(plcManager::instanse()->getIf(ctx));
-        ctx.name = plcName;
-        watch = p_mainWindow->createWatchDockWidget(ctx);
+        // plcManager::CommandContext ctx;
+        // ctx.ipv6 = QHostAddress(ipv6);
+        // ctx.ipv6.setScopeId(plcManager::instanse()->getIf(ipv6));
+        // ctx.name = plcName;
+        watch = p_mainWindow->createWatchDockWidget(lbplc->getctx(ipv6, plcName,
+                                                                  lbplc->getIf(ipv6)));
         watch->addVar(varName);
         watch->toggleConnection();
     }else{

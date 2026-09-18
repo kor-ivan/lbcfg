@@ -15,7 +15,7 @@ class DiscoverDockWidget : public QDockWidget
 public:
     explicit DiscoverDockWidget(QWidget *parent = nullptr);
 
-    QMap<QString, discover::lbinfo> getLdmap() const;
+    // QMap<QString, discover::lbinfo> getLdmap() const;
 
 signals:
     void deviceSelected(const plcManager::CommandContext &ctx);
@@ -33,7 +33,7 @@ private:
     QPushButton* btnDiscover = nullptr;
     QTableWidget* table = nullptr;
     discover* wgtdiscover = nullptr;
-    QMap<QString, discover::lbinfo> ldmap;
+    // QMap<QString, discover::lbinfo> ldmap;
 
     bool discoverRunning = false;
 
