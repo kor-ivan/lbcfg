@@ -28,7 +28,7 @@ WatchSession::WatchSession(const plcManager::CommandContext &ctx, const QStringL
             for (auto var : strl) {
                 QJsonValue v = m_qjo.value(var);
                 if (v.isDouble())
-                    result.append(QString::number(v.toDouble()));
+                    result.append(QString::number(v.toDouble(), 'g', 15));
                 else if (v.isString())
                     result.append(v.toString());
             }
