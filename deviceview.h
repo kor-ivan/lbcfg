@@ -57,12 +57,13 @@ private:
     struct ContextMenuContext {
         bool isValidClick = false;
         bool isBlankSpace = false;
-        // bool allowDuplicateItem = false;  // Разрешить дублирование текущей строки
+        bool allowDuplicateSlot = false; // Разрешить дублирование текущего модуля/слота
 
         QStandardItem *targetSectionItem = nullptr; // Элемент, по которому кликнули
         QStandardItem *parentContainer = nullptr;   // Физический родитель для операций вставки/удаления
         QJsonObject anyStruct;                      // Активная структура схемы для поиска стёртых полей
         QString varDescription;
+        QJsonObject moduleObjMeta;       // Метаданные конкретного модуля из JSON-схемы
 
         // Декларативные флаги-команды для сборки UI
         bool showSlotManagement = false;  // Показать перемещение и удаление всего слота железа
@@ -89,6 +90,10 @@ private:
     {
         insertAndEditNewRow(parentItem, description, [](QStandardItem*) {});
     }
+
+    void duplicateSlot(QStandardItem *sourceSlotItem, const QJsonObject &modObjMeta);
+    QList<QStandardItem*> duplicateTreeViewNode(QStandardItem *sourceItem);
+    // void postProcessVariablesPostfix(QStandardItem *item, const QString &oldPostfix, const QString &newPostfix);
 
     template <typename Callable>
     void insertAndEditNewRow(QStandardItem *parentItem,

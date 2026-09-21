@@ -908,6 +908,17 @@ void deviceView::showContextMenu(const QPoint &pos)
                 menu.addSeparator();
                 buildRestoreMenu(&menu, ctx.targetSectionItem, ctx.anyStruct);
             }
+            // ДОБАВЛЯЕМ КНОПКУ ДУБЛИРОВАНИЯ:
+            QAction *actDuplicate = menu.addAction(tr("Дублировать модуль"));
+            if (!ctx.allowDuplicateSlot) {
+                actDuplicate->setEnabled(false);
+                actDuplicate->setText(QString("%1 [%2]").arg(actDuplicate->text(), tr("лимит шасси")));
+            }
+            connect(actDuplicate, &QAction::triggered, this, [this, ctx]() {
+                duplicateSlot(ctx.targetSectionItem, ctx.moduleObjMeta);
+            });
+
+            menu.addSeparator();
         }
         // -------------------------------------------------------------------------
         // СЦЕНАРИЙ 2: Кликнули по КОРНЮ глобальной секции "var" (Переменные проекта)
@@ -1172,13 +1183,37 @@ deviceView::ContextMenuContext deviceView::analyzeMenuContext(const QModelIndex 
         // 1. Если это слот шасси железа (slot-1, slot1...)
         if (slotKey.startsWith("slot")) {
             ctx.showSlotManagement = true;
+
+            // Определяем тип модуля для поиска его метаданных (лимитов) в схеме
+            QString modType = nameItem->data(deviceView::ModuleTypeRole).toString();
+            ctx.moduleObjMeta = findModuleSchema(modType);
+
             if (meta.contains("structure")) {
                 ctx.anyStruct = meta.value("structure").toObject();
             } else {
-                QString modType = nameItem->data(deviceView::ModuleTypeRole).toString();
-                ctx.anyStruct = findModuleSchema(modType).value("structure").toObject();
+                ctx.anyStruct = ctx.moduleObjMeta.value("structure").toObject();
             }
             ctx.allowRestoreSchemaParams = true;
+
+            // --- ЛОГИКА ПРОВЕРКИ ЛИМИТОВ ДЛЯ ДУБЛИРОВАНИЯ ---
+            int slotNum = QStringView(slotKey).mid(4).toInt();
+            bool isBaseModule = (slotNum < 0);
+
+            int currentBaseCount = 0;
+            int currentIoCount = 0;
+            for (int i = 0; i < deviceModel->rowCount(); ++i) {
+                QStandardItem *rootItem = deviceModel->item(i, 0);
+                if (rootItem && rootItem->data(deviceView::SlotKeyRole).toString().startsWith("slot")) {
+                    if (QStringView(rootItem->data(deviceView::SlotKeyRole).toString()).mid(4).toInt() < 0) currentBaseCount++;
+                    else currentIoCount++;
+                }
+            }
+
+            int maxAllowed = isBaseModule ? ctx.moduleObjMeta.value("base").toInt() : ctx.moduleObjMeta.value("io").toInt();
+            int currentCount = isBaseModule ? currentBaseCount : currentIoCount;
+
+            // Разрешаем дублирование, только если не превышен жесткий лимит шасси
+            ctx.allowDuplicateSlot = (currentCount < maxAllowed);
         }
         // 2. Если это обычный статический корневой блок (forte, clock)
         else {
@@ -1365,42 +1400,6 @@ void deviceView::buildRestoreMenu(QMenu *parentMenu, QStandardItem *menuTargetIt
         QJsonObject paramMeta = it.value().toObject();
         QString pType = paramMeta.value("type").toString();
 
-        // Читаем наше новое декларативное свойство из схемы!
-        bool isDynamicCollection = paramMeta.value("dynamic").toBool(false);
-
-        // if ((pType == "link" || pType == "keynum") && paramMeta.contains("structure")) {
-        //     bool isRangeStyle = paramMeta.value("range").toBool(false);
-
-        //     // ПРОВЕРКА НА БЕСКОНЕЧНЫЙ ЛИНК (У которого в схеме отсутствует "max", например modbus_client)
-        //     if (!paramMeta.contains("max")) {
-        //         int maxExistingIdx = -1;
-        //         bool hasAnyClient = false;
-
-        //         // Пробегаем по UI и ищем максимальный занятый индекс для этого префикса
-        //         for (const QString &uiKey : existingItems) {
-        //             if (uiKey.startsWith(schemaKey)) {
-        //                 hasAnyClient = true;
-        //                 int num = QStringView(uiKey).mid(schemaKey.length()).toInt();
-        //                 if (num > maxExistingIdx) maxExistingIdx = num;
-        //             }
-        //         }
-
-        //         // Вычисляем следующий свободный индекс (если клиентов еще нет - будет 0, если есть 0 - будет 1, и т.д.)
-        //         int nextFreeIdx = hasAnyClient ? (maxExistingIdx + 1) : 0;
-        //         QString nextClientKey = schemaKey + QString::number(nextFreeIdx); // "modbus_client1"
-        //         if (isDynamicCollection) {
-        //             missingFixedParams.append(nextClientKey);
-        //             dynamicKeysMetaRegistry.insert(nextClientKey, paramMeta);
-        //         } else {
-        //             // Все остальные бесконечные keynum-регистры (holding, inreg) по-прежнему идут в Ветку Б
-        //             MissingLinkOption opt;
-        //             opt.menuLabel = nextClientKey;
-        //             opt.insertKey = nextClientKey;
-        //             opt.linkMeta = paramMeta;
-        //             missingLinkOptions.append(opt);
-        //         }
-        //     }
-        // ПРОВЕРКА НА БЕСКОНЕЧНЫЙ ЛИНК (У которого в схеме отсутствует "max", например modbus_client, holding)
         // ПРОВЕРКА НА БЕСКОНЕЧНЫЙ ЛИНК ИЛИ ДИНАМИЧЕСКУЮ КОЛЛЕКЦИЮ (без "max" или с "dynamic": true)
         if ((pType == "link" || pType == "keynum") && paramMeta.contains("structure")) {
             bool isRangeStyle = paramMeta.value("range").toBool(false);
@@ -1516,31 +1515,7 @@ void deviceView::buildRestoreMenu(QMenu *parentMenu, QStandardItem *menuTargetIt
         }
         if (!missingFixedParams.isEmpty() && !missingLinkOptions.isEmpty())
             addMissingMenu->addSeparator();
-        // // Б) Восстановление стертых динамических каналов (chan1, modbus_client1...)
-        // for (const MissingLinkOption &opt : missingLinkOptions) {
-        //     addMissingMenu->addAction(opt.menuLabel, this, [this, menuTargetItem, opt, activeStruct]() {
-        //         QJsonObject subStruct = opt.linkMeta.value("structure").toObject();
-        //         qDebug() << "buildRestoreMenu" << "Б) Восстановление стертых динамических каналов (chan1, modbus_client1...)";
-        //         // ИСПРАВЛЕНО: Передаем true в качестве второго аргумента forceCreateAll!
-        //         QJsonObject defaultSubData = createDefaultData(subStruct, false);
 
-        //         QString rawKey = opt.linkMeta.value("range").toBool() ? opt.insertKey.left(2) : opt.insertKey.left(4);
-        //         if (!opt.linkMeta.contains("max")) {
-        //             for (auto sIt = activeStruct.begin(); sIt != activeStruct.end(); ++sIt) {
-        //                 if (sIt.value().toObject() == opt.linkMeta) { rawKey = sIt.key(); break; }
-        //             }
-        //         }
-        //         applyVariablePostfix(defaultSubData, subStruct, opt.insertKey.mid(rawKey.length()));
-
-        //         QJsonObject singleSchema; singleSchema.insert(opt.insertKey, opt.linkMeta);
-        //         QJsonObject singleData; singleData.insert(opt.insertKey, defaultSubData);
-
-        //         parseSchemaNode(menuTargetItem, singleSchema, QJsonValue(singleData));
-        //         deviceTreeView->expand(menuTargetItem->index());
-        //         modified = true; emit onChanged();
-        //     });
-        // }
-        // Б) Восстановление стертых динамических каналов (chan1, holding...)
         // Б) Восстановление стертых динамических каналов (chan1, holding...)
         for (const MissingLinkOption &opt : missingLinkOptions) {
             addMissingMenu->addAction(opt.menuLabel, this, [this, menuTargetItem, opt, activeStruct]() {
@@ -1620,3 +1595,108 @@ void deviceView::buildRestoreMenu(QMenu *parentMenu, QStandardItem *menuTargetIt
         }
     }
 }
+
+void deviceView::duplicateSlot(QStandardItem *sourceSlotItem, const QJsonObject &modObjMeta)
+{
+    if (!sourceSlotItem || !deviceModel) return;
+
+    QString oldSlotKey = sourceSlotItem->data(deviceView::SlotKeyRole).toString();
+    int oldSlotNum = QStringView(oldSlotKey).mid(4).toInt();
+    bool isBaseModule = (oldSlotNum < 0);
+
+    // 1. Глубокое копирование иерархии элементов UI со всеми ролями
+    QList<QStandardItem*> clonedRow = duplicateTreeViewNode(sourceSlotItem);
+    if (clonedRow.isEmpty()) return;
+
+    QStandardItem *newSlotNameItem = clonedRow.at(0);
+
+    // 2. Умное позиционирование на шасси (вставляем сразу под исходный модуль)
+    int sourceRowIdx = sourceSlotItem->row();
+    deviceModel->invisibleRootItem()->insertRow(sourceRowIdx + 1, clonedRow);
+
+    // 3. Переиндексируем слоты этого типа, чтобы восстановить сквозной порядок (slot1, slot2...)
+    reindexSlotsOfType(isBaseModule);
+
+    // 4. Постобработка внутренних переменных: меняем старый суффикс на новый во всех полях ввода
+    // QString newSlotKey = newSlotNameItem->data(deviceView::SlotKeyRole).toString();
+    // postProcessVariablesPostfix(newSlotNameItem, oldSlotKey, newSlotKey);
+
+    // Раскрываем сдублированный модуль в TreeView
+    if (deviceTreeView) {
+        deviceTreeView->expand(newSlotNameItem->index());
+    }
+
+    modified = true;
+    emit onChanged();
+}
+
+// Рекурсивный метод глубокого копирования ветки дерева
+QList<QStandardItem*> deviceView::duplicateTreeViewNode(QStandardItem *sourceItem)
+{
+    QList<QStandardItem*> newRow;
+    if (!sourceItem) return newRow;
+
+    QStandardItemModel *model = sourceItem->model();
+    int row = sourceItem->row();
+    QStandardItem *parentItem = sourceItem->parent() ? sourceItem->parent() : model->invisibleRootItem();
+
+    // Копируем всю строку (Parameter, Value, Description)
+    for (int col = 0; col < 3; ++col) {
+        QStandardItem *sourceColItem = parentItem->child(row, col);
+        QStandardItem *clonedColItem = new QStandardItem();
+
+        if (sourceColItem) {
+            clonedColItem->setText(sourceColItem->text());
+            clonedColItem->setEditable(sourceColItem->isEditable());
+
+            // Важнейший шаг: Переносим абсолютно все пользовательские роли данных
+            clonedColItem->setData(sourceColItem->data(deviceView::SchemaMetaRole), deviceView::SchemaMetaRole);
+            clonedColItem->setData(sourceColItem->data(deviceView::OriginalKeyRole), deviceView::OriginalKeyRole);
+            clonedColItem->setData(sourceColItem->data(deviceView::SlotKeyRole), deviceView::SlotKeyRole);
+            clonedColItem->setData(sourceColItem->data(deviceView::ModuleTypeRole), deviceView::ModuleTypeRole);
+        }
+        newRow.append(clonedColItem);
+    }
+
+    // Рекурсивно спускаемся и копируем всех дочерних детей
+    QStandardItem *clonedNameItem = newRow.at(0);
+    for (int r = 0; r < sourceItem->rowCount(); ++r) {
+        QList<QStandardItem*> clonedChildRow = duplicateTreeViewNode(sourceItem->child(r, 0));
+        if (!clonedChildRow.isEmpty()) {
+            clonedNameItem->appendRow(clonedChildRow);
+        }
+    }
+
+    return newRow;
+}
+
+// Автоматически находит внутри нового модуля дефолтные имена переменных (например, 'new_di_slot1')
+// и обновляет их под актуальное имя нового слота (например, 'new_di_slot2')
+// void deviceView::postProcessVariablesPostfix(QStandardItem *item, const QString &oldPostfix, const QString &newPostfix)
+// {
+//     if (!item) return;
+
+//     // Обходим всех детей текущего узла параметров
+//     for (int r = 0; r < item->rowCount(); ++r) {
+//         QStandardItem *nameItem = item->child(r, 0);
+//         QStandardItem *valueItem = item->child(r, 1);
+
+//         if (nameItem && valueItem) {
+//             QString paramKey = nameItem->text();
+//             QString currentVal = valueItem->text();
+
+//             // Если это текстовое поле ввода переменной (var или var_out) и оно содержит старый суффикс слота
+//             if ((paramKey == "var" || paramKey == "var_out") && currentVal.contains(oldPostfix)) {
+//                 QString updatedVal = currentVal;
+//                 updatedVal.replace(oldPostfix, newPostfix);
+//                 valueItem->setText(updatedVal);
+//             }
+//         }
+
+//         // Рекурсивный спуск по дереву параметров модуля (вглубь каналов chan/out/holding)
+//         if (nameItem && nameItem->hasChildren()) {
+//             postProcessVariablesPostfix(nameItem, oldPostfix, newPostfix);
+//         }
+//     }
+// }
+
