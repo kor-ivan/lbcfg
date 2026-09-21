@@ -31,6 +31,20 @@
     },
     "ipaddr": {"type": "string", "description": "IP адрес/маска", "default": "192.168.1.11/24"},
     "gateway": {"type": "string", "description": "Шлюз", "default": "192.168.1.1"},
+    "task":{
+        "type": "link",
+        "description": "Цикл выполнения программ plcprog",
+        "dynamic": true,
+        "structure":{
+            "period": {"type": "time", "description": "Период выполнения", "default": "100ms"},
+            "maxrun": {"type": "time", "description": "Максимальное время выполнения", "default": "50ms"},
+            "prog": {"type": "keynum", "description": "Прикладная программа", "structure":{
+                    "enable": {"type": "enum", "values": ["y", "n"], "description": "Активировать программу", "default": "y"},
+                    "file": {"type": "string", "default": "examples/prog"}
+                }
+            }
+        }
+    },
     "slot": {
         "type": "link",
         "description": "Слот для модулей ввода/вывода",

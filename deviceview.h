@@ -57,6 +57,7 @@ private:
     struct ContextMenuContext {
         bool isValidClick = false;
         bool isBlankSpace = false;
+        // bool allowDuplicateItem = false;  // Разрешить дублирование текущей строки
 
         QStandardItem *targetSectionItem = nullptr; // Элемент, по которому кликнули
         QStandardItem *parentContainer = nullptr;   // Физический родитель для операций вставки/удаления
