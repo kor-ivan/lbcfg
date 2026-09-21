@@ -979,8 +979,6 @@ void deviceView::showContextMenu(const QPoint &pos)
 
 QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema, bool forceCreateAll)
 {
-    qDebug() << "forceCreateAll = " << forceCreateAll;
-    qDebug() << structureSchema;
     QJsonObject defaultObj;
 
     for (auto it = structureSchema.begin(); it != structureSchema.end(); ++it) {
@@ -988,22 +986,15 @@ QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema, bo
         QJsonObject paramMeta = it.value().toObject();
         QString type = paramMeta.value("type").toString();
 
-        qDebug() << it.key() << forceCreateAll << key << paramMeta.contains("default");
-        qDebug() << it.value();
-
-        // СТРОГОЕ ПРАВИЛО: Если у узла схемы нет свойства "default", и мы НЕ находимся в режиме форсированного создания
-        if (!forceCreateAll && key != "module" && !paramMeta.contains("default")) {
-            if (type == "link" || type == "keynum" || paramMeta.contains("structure") || type == "sequence") {
-                qDebug() << "Пропускаем автоматическую генерацию крупных блоков";
-                continue; // Пропускаем автоматическую генерацию крупных блоков
-            }
-        }
-
-        // 1. СЦЕНАРИЙ А: Универсальные динамические линки-диапазоны (линки каналов/регистров/клиентов)
+        // 1. СЦЕНАРИЙ А: Универсальные динамические линки-диапазоны (chan, out и т.д.)
         if ((type == "link" || type == "keynum") && paramMeta.contains("structure")) {
-            qDebug() << "1. СЦЕНАРИЙ А: Универсальные динамические линки-диапазоны";
-            QJsonObject subStruct = paramMeta.value("structure").toObject();
+            // Если мы просто генерируем базовое шасси/модуль, не создаем вложенные бесконечные коллекции/регистры автоматически,
+            // кроме тех случаев, когда это форсировано из меню восстановления
+            if (!forceCreateAll && !paramMeta.contains("default")) {
+                continue;
+            }
 
+            QJsonObject subStruct = paramMeta.value("structure").toObject();
             int maxChannels = paramMeta.contains("max") ? paramMeta.value("max").toInt() : 1;
             bool isRangeStyle = paramMeta.value("range").toBool(false);
 
@@ -1011,9 +1002,8 @@ QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema, bo
                 QString channelPostfix = QString("0..%1").arg(maxChannels - 1);
                 QString rangeKey = key + channelPostfix;
 
-                // КРИТИЧЕСКИЙ ФИКС: При уходе в рекурсию для вложенных регистров сбрасываем флаг в false!
+                // Передаем forceCreateAll = false, чтобы внутренние параметры фильтровались по наличию "default"
                 QJsonObject defaultSubData = createDefaultData(subStruct, false);
-
                 applyVariablePostfix(defaultSubData, subStruct, channelPostfix);
                 defaultObj.insert(rangeKey, defaultSubData);
             } else {
@@ -1022,11 +1012,10 @@ QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema, bo
                     QString channelPostfix = QString::number(c);
                     QString individualKey = key;
                     if (!key.isEmpty() && !key.at(key.length() - 1).isDigit()) {
-                        individualKey = key + channelPostfix; // Для обычных chan, out прибавляем как раньше
+                        individualKey = key + channelPostfix;
                     }
 
                     QJsonObject defaultSubData = createDefaultData(subStruct, false);
-
                     applyVariablePostfix(defaultSubData, subStruct, channelPostfix);
                     defaultObj.insert(individualKey, defaultSubData);
                 }
@@ -1034,12 +1023,11 @@ QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema, bo
             continue;
         }
 
-        // 2. СЦЕНАРИЙ Б: Вложенная фиксированная структурная группа (clock, rs485...)
+        // 2. СЦЕНАРИЙ Б: Вложенная фиксированная структурная группа (clock, rs485, modbus_server...)
         if (paramMeta.contains("structure")) {
-            qDebug() << "2. СЦЕНАРИЙ Б: Вложенная фиксированная структурная группа (clock, rs485...)";
             QJsonObject subStruct = paramMeta.value("structure").toObject();
 
-            // КРИТИЧЕСКИЙ ФИКС: При уходе в рекурсию для внутренних подгрупп сбрасываем флаг в false!
+            // При уходе вглубь фиксированной структуры, мы собираем только дефолтные параметры (forceCreateAll = false)
             QJsonObject subData = createDefaultData(subStruct, false);
 
             if (!subData.isEmpty() || forceCreateAll) {
@@ -1048,9 +1036,8 @@ QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema, bo
             continue;
         }
 
-        // 3. СЦЕНАРИЙ В: Списковые параметры ("type": "sequence", например natural)
+        // 3. СЦЕНАРИЙ В: Списковые параметры ("type": "sequence")
         if (type == "sequence") {
-            qDebug() << "3. СЦЕНАРИЙ В: Списковые параметры sequence, например natural)";
             if (paramMeta.contains("default") || forceCreateAll) {
                 QJsonArray defaultArray;
                 QJsonValue defVal = paramMeta.value("default");
@@ -1065,20 +1052,22 @@ QJsonObject deviceView::createDefaultData(const QJsonObject &structureSchema, bo
             continue;
         }
 
-        // 4. СЦЕНАРИЙ Г: Обычный leaf-параметр (строка, число, enum)
-        qDebug() << "4. СЦЕНАРИЙ Г: Обычный leaf-параметр (строка, число, enum)";
+        // 4. СЦЕНАРИЙ Г: Обычный конечный leaf-параметр (строка, число, enum)
+        // ГЛАВНОЕ ИЗМЕНЕНИЕ: Если флага forceCreateAll нет, мы добавляем параметр ТОЛЬКО при наличии "default" в схеме.
+        // Это предотвратит автоматическое создание var_out, order, var_trigger и т.д.
         if (paramMeta.contains("default")) {
             defaultObj.insert(key, paramMeta.value("default"));
         }
-        else {
-            // Если дефолта нет, но мы находимся на разрешенном forceCreateAll уровне (например, rtu_addr, tcp_port) —
-            // создаем пустое поле, чтобы его можно было заполнить в TreeView
+        else if (forceCreateAll) {
+            // Этот блок сработает исключительно тогда, когда пользователь ОСОЗНАННО
+            // выбрал пункт конкретного параметра в контекстном подменю "Добавить..."
             defaultObj.insert(key, "");
         }
     }
 
     return defaultObj;
 }
+
 
 
 deviceView::ContextMenuContext deviceView::analyzeMenuContext(const QModelIndex &index)
@@ -1313,37 +1302,109 @@ void deviceView::buildRestoreMenu(QMenu *parentMenu, QStandardItem *menuTargetIt
         // Читаем наше новое декларативное свойство из схемы!
         bool isDynamicCollection = paramMeta.value("dynamic").toBool(false);
 
+        // if ((pType == "link" || pType == "keynum") && paramMeta.contains("structure")) {
+        //     bool isRangeStyle = paramMeta.value("range").toBool(false);
+
+        //     // ПРОВЕРКА НА БЕСКОНЕЧНЫЙ ЛИНК (У которого в схеме отсутствует "max", например modbus_client)
+        //     if (!paramMeta.contains("max")) {
+        //         int maxExistingIdx = -1;
+        //         bool hasAnyClient = false;
+
+        //         // Пробегаем по UI и ищем максимальный занятый индекс для этого префикса
+        //         for (const QString &uiKey : existingItems) {
+        //             if (uiKey.startsWith(schemaKey)) {
+        //                 hasAnyClient = true;
+        //                 int num = QStringView(uiKey).mid(schemaKey.length()).toInt();
+        //                 if (num > maxExistingIdx) maxExistingIdx = num;
+        //             }
+        //         }
+
+        //         // Вычисляем следующий свободный индекс (если клиентов еще нет - будет 0, если есть 0 - будет 1, и т.д.)
+        //         int nextFreeIdx = hasAnyClient ? (maxExistingIdx + 1) : 0;
+        //         QString nextClientKey = schemaKey + QString::number(nextFreeIdx); // "modbus_client1"
+        //         if (isDynamicCollection) {
+        //             missingFixedParams.append(nextClientKey);
+        //             dynamicKeysMetaRegistry.insert(nextClientKey, paramMeta);
+        //         } else {
+        //             // Все остальные бесконечные keynum-регистры (holding, inreg) по-прежнему идут в Ветку Б
+        //             MissingLinkOption opt;
+        //             opt.menuLabel = nextClientKey;
+        //             opt.insertKey = nextClientKey;
+        //             opt.linkMeta = paramMeta;
+        //             missingLinkOptions.append(opt);
+        //         }
+        //     }
+        // ПРОВЕРКА НА БЕСКОНЕЧНЫЙ ЛИНК (У которого в схеме отсутствует "max", например modbus_client, holding)
         if ((pType == "link" || pType == "keynum") && paramMeta.contains("structure")) {
             bool isRangeStyle = paramMeta.value("range").toBool(false);
 
-            // ПРОВЕРКА НА БЕСКОНЕЧНЫЙ ЛИНК (У которого в схеме отсутствует "max", например modbus_client)
             if (!paramMeta.contains("max")) {
                 int maxExistingIdx = -1;
-                bool hasAnyClient = false;
+                bool hasAnyItems = false;
 
-                // Пробегаем по UI и ищем максимальный занятый индекс для этого префикса
-                for (const QString &uiKey : existingItems) {
-                    if (uiKey.startsWith(schemaKey)) {
-                        hasAnyClient = true;
+                // Пробегаем по UI элементам текущего уровня, чтобы найти максимальный занятый индекс.
+                // Учитываем особенности хранения: у keynum индекс лежит в Value (вторая колонка),
+                // а в Parameter лежит чистый префикс ("holding").
+                for (int r = 0; r < menuTargetItem->rowCount(); ++r) {
+                    QStandardItem *uiNameItem = menuTargetItem->child(r, 0);
+                    QStandardItem *uiValueItem = menuTargetItem->child(r, 1);
+                    if (!uiNameItem) continue;
+
+                    QString uiKey = uiNameItem->text();
+
+                    // Сценарий 1: это существующий keynum (в Parameter имя типа "holding")
+                    if (pType == "keynum" && uiKey == schemaKey && uiValueItem) {
+                        hasAnyItems = true;
+                        QString valStr = uiValueItem->text(); // Там может быть "1" или диапазон "10..15"
+
+                        int dotIdx = valStr.indexOf("..");
+                        if (dotIdx != -1) {
+                            valStr = valStr.mid(dotIdx + 2); // Берем правую границу диапазона (например, "15")
+                        }
+
+                        int num = valStr.toInt();
+                        if (num > maxExistingIdx) maxExistingIdx = num;
+                    }
+                    // Сценарий 2: это стандартный link (в Parameter имя типа "modbus_client1")
+                    else if (pType != "keynum" && uiKey.startsWith(schemaKey)) {
+                        hasAnyItems = true;
                         int num = QStringView(uiKey).mid(schemaKey.length()).toInt();
                         if (num > maxExistingIdx) maxExistingIdx = num;
                     }
                 }
 
-                // Вычисляем следующий свободный индекс (если клиентов еще нет - будет 0, если есть 0 - будет 1, и т.д.)
-                int nextFreeIdx = hasAnyClient ? (maxExistingIdx + 1) : 0;
-                QString nextClientKey = schemaKey + QString::number(nextFreeIdx); // "modbus_client1"
-                if (isDynamicCollection) {
-                    missingFixedParams.append(nextClientKey);
-                    dynamicKeysMetaRegistry.insert(nextClientKey, paramMeta);
-                } else {
-                    // Все остальные бесконечные keynum-регистры (holding, inreg) по-прежнему идут в Ветку Б
+                // Вычисляем следующий свободный индекс
+                int nextFreeIdx = hasAnyItems ? (maxExistingIdx + 1) : 0;
+
+                if (pType == "keynum") {
+                    // КРИТИЧЕСКИЙ ФИКС ДЛЯ HOLDING:
+                    // Для keynum ключ в JSON схеме должен оставаться чистым базовым префиксом ("holding").
+                    // А вычисленный номер мы передаем как отображаемый лейбл и суффикс для постобработки.
                     MissingLinkOption opt;
-                    opt.menuLabel = nextClientKey;
-                    opt.insertKey = nextClientKey;
+                    opt.menuLabel = QString("%1 [%2]").arg(schemaKey).arg(nextFreeIdx); // В меню будет: holding [16]
+                    opt.insertKey = schemaKey; // Важно! Оставляем "holding", чтобы parseSchemaNode распознал тип keynum
                     opt.linkMeta = paramMeta;
+
+                    // Чтобы передать вычисленный номер в логику генерации дефолтов, временно сохраним его
+                    // внутри структуры через кастомное поле (метод parseSchemaNode это проигнорирует)
+                    opt.linkMeta.insert("_calculated_idx", QString::number(nextFreeIdx));
                     missingLinkOptions.append(opt);
                 }
+                else {
+                    // Стандартное поведение для динамических коллекций типа "modbus_client"
+                    QString nextClientKey = schemaKey + QString::number(nextFreeIdx);
+                    if (isDynamicCollection) {
+                        missingFixedParams.append(nextClientKey);
+                        dynamicKeysMetaRegistry.insert(nextClientKey, paramMeta);
+                    } else {
+                        MissingLinkOption opt;
+                        opt.menuLabel = nextClientKey;
+                        opt.insertKey = nextClientKey;
+                        opt.linkMeta = paramMeta;
+                        missingLinkOptions.append(opt);
+                    }
+                }
+                continue; // Переходим к следующему элементу схемы, этот уже обработан
             }
             // КАНАЛЫ С ФИКСИРОВАННЫМ ЛИМИТОМ ИЗ СХЕМЫ (chan0..3, out0..15)
             else {
@@ -1398,28 +1459,106 @@ void deviceView::buildRestoreMenu(QMenu *parentMenu, QStandardItem *menuTargetIt
         }
         if (!missingFixedParams.isEmpty() && !missingLinkOptions.isEmpty())
             addMissingMenu->addSeparator();
-        // Б) Восстановление стертых динамических каналов (chan1, modbus_client1...)
+        // // Б) Восстановление стертых динамических каналов (chan1, modbus_client1...)
+        // for (const MissingLinkOption &opt : missingLinkOptions) {
+        //     addMissingMenu->addAction(opt.menuLabel, this, [this, menuTargetItem, opt, activeStruct]() {
+        //         QJsonObject subStruct = opt.linkMeta.value("structure").toObject();
+        //         qDebug() << "buildRestoreMenu" << "Б) Восстановление стертых динамических каналов (chan1, modbus_client1...)";
+        //         // ИСПРАВЛЕНО: Передаем true в качестве второго аргумента forceCreateAll!
+        //         QJsonObject defaultSubData = createDefaultData(subStruct, false);
+
+        //         QString rawKey = opt.linkMeta.value("range").toBool() ? opt.insertKey.left(2) : opt.insertKey.left(4);
+        //         if (!opt.linkMeta.contains("max")) {
+        //             for (auto sIt = activeStruct.begin(); sIt != activeStruct.end(); ++sIt) {
+        //                 if (sIt.value().toObject() == opt.linkMeta) { rawKey = sIt.key(); break; }
+        //             }
+        //         }
+        //         applyVariablePostfix(defaultSubData, subStruct, opt.insertKey.mid(rawKey.length()));
+
+        //         QJsonObject singleSchema; singleSchema.insert(opt.insertKey, opt.linkMeta);
+        //         QJsonObject singleData; singleData.insert(opt.insertKey, defaultSubData);
+
+        //         parseSchemaNode(menuTargetItem, singleSchema, QJsonValue(singleData));
+        //         deviceTreeView->expand(menuTargetItem->index());
+        //         modified = true; emit onChanged();
+        //     });
+        // }
+        // Б) Восстановление стертых динамических каналов (chan1, holding...)
+        // Б) Восстановление стертых динамических каналов (chan1, holding...)
         for (const MissingLinkOption &opt : missingLinkOptions) {
             addMissingMenu->addAction(opt.menuLabel, this, [this, menuTargetItem, opt, activeStruct]() {
                 QJsonObject subStruct = opt.linkMeta.value("structure").toObject();
-                qDebug() << "buildRestoreMenu" << "Б) Восстановление стертых динамических каналов (chan1, modbus_client1...)";
-                // ИСПРАВЛЕНО: Передаем true в качестве второго аргумента forceCreateAll!
+                qDebug() << "buildRestoreMenu" << "Б) Восстановление стертых динамических каналов";
+
                 QJsonObject defaultSubData = createDefaultData(subStruct, false);
 
+                // Извлекаем строку индекса
+                QString calculatedIdxStr = opt.linkMeta.value("_calculated_idx").toString();
+
                 QString rawKey = opt.linkMeta.value("range").toBool() ? opt.insertKey.left(2) : opt.insertKey.left(4);
-                if (!opt.linkMeta.contains("max")) {
+                if (!opt.linkMeta.contains("max") && calculatedIdxStr.isEmpty()) {
                     for (auto sIt = activeStruct.begin(); sIt != activeStruct.end(); ++sIt) {
                         if (sIt.value().toObject() == opt.linkMeta) { rawKey = sIt.key(); break; }
                     }
                 }
-                applyVariablePostfix(defaultSubData, subStruct, opt.insertKey.mid(rawKey.length()));
 
-                QJsonObject singleSchema; singleSchema.insert(opt.insertKey, opt.linkMeta);
-                QJsonObject singleData; singleData.insert(opt.insertKey, defaultSubData);
+                QString postfix = !calculatedIdxStr.isEmpty() ? calculatedIdxStr : opt.insertKey.mid(rawKey.length());
+                applyVariablePostfix(defaultSubData, subStruct, postfix);
+
+                bool isKeynum = (opt.linkMeta.value("type").toString() == "keynum");
+
+                // Формируем структуры для парсера дерева
+                QJsonObject singleSchema;
+                singleSchema.insert(opt.insertKey, opt.linkMeta);
+
+                QJsonObject singleData;
+                if (isKeynum) {
+                    // Передаем вычисленный номер как строку, чтобы parseSchemaNode записал его в OriginalKeyRole
+                    singleData.insert(opt.insertKey, postfix);
+                } else {
+                    singleData.insert(opt.insertKey, defaultSubData);
+                }
+
+                // Запоминаем количество строк ДО добавления, чтобы найти индекс новой строки
+                int rowCountBefore = menuTargetItem->rowCount();
 
                 parseSchemaNode(menuTargetItem, singleSchema, QJsonValue(singleData));
-                deviceTreeView->expand(menuTargetItem->index());
-                modified = true; emit onChanged();
+
+                // Находим созданные элементы
+                QStandardItem *createdRowNameItem = nullptr;
+                QStandardItem *createdRowValueItem = nullptr;
+
+                // parseSchemaNode обычно добавляет строки в конец (appendRow)
+                if (menuTargetItem->rowCount() > rowCountBefore) {
+                    int newRowIdx = menuTargetItem->rowCount() - 1;
+                    createdRowNameItem = menuTargetItem->child(newRowIdx, 0);
+                    createdRowValueItem = menuTargetItem->child(newRowIdx, 1);
+                }
+
+                if (isKeynum && createdRowNameItem) {
+                    // 1. Наполняем внутреннюю подструктуру регистра (var, var_out, order)
+                    parseSchemaNode(createdRowNameItem, subStruct, QJsonValue(defaultSubData));
+
+                    // 2. ЯВНО записываем рассчитанный номер в текстовое поле колонки Value
+                    if (createdRowValueItem) {
+                        createdRowValueItem->setText(postfix);
+                        createdRowValueItem->setEditable(true); // Разрешаем редактирование номера
+
+                        // 3. ФОКУС И АВТО-РЕДАКТИРОВАНИЕ: Переводим фокус ввода на ячейку Value
+                        QModelIndex valueIndexModel = createdRowValueItem->index();
+                        deviceTreeView->expand(menuTargetItem->index());
+                        deviceTreeView->scrollTo(valueIndexModel);
+                        deviceTreeView->setCurrentIndex(valueIndexModel);
+
+                        // Запускаем режим редактирования ячейки с номером (курсор встанет туда автоматически)
+                        deviceTreeView->edit(valueIndexModel);
+                    }
+                } else {
+                    deviceTreeView->expand(menuTargetItem->index());
+                }
+
+                modified = true;
+                emit onChanged();
             });
         }
     }

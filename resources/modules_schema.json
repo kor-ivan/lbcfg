@@ -45,62 +45,75 @@
                             "rtu_addr": {"type": "int", "description": "Адрес в режиме RTU (если не указывать, то отключает RS-485)", "default": "1"},
                             "holding": {
                                 "type": "keynum", "description": "holding регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "var": {"type": "string"},
+                                    "var_out": {"type": "string", "default": "new_var"},
+                                    "type": {"type": "enum", "values": ["BYTE", "WORD", "DWORD", "LWORD", "REAL", "LREAL", "INT", "DINT", "UINT", "UDINT"]},
                                     "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]}
                                 }
                             },
                             "inreg": {
                                 "type": "keynum", "description": "inreg регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "var": {"type": "string"},
+                                    "var_out": {"type": "string", "default": "new_var"},
+                                    "type": {"type": "enum", "values": ["BYTE", "WORD", "DWORD", "LWORD", "REAL", "LREAL", "INT", "DINT", "UINT", "UDINT"]},
                                     "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]}
                                 }
                             },
                             "coil": {
                                 "type": "keynum", "description": "coil регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"}
+                                    "var": {"type": "string"},
+                                    "var_out": {"type": "string", "default": "new_var"}
                                 }
                             },
                             "inbit": {
                                 "type": "keynum", "description": "inbit регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"}
+                                    "var": {"type": "string"},
+                                    "var_out": {"type": "string", "default": "new_var"}
                                 }
-                            }
+                            },
+                            "interframe_gap": {"type": "string", "description": "Межсимвольный интервал"}
                         }
                     },
                     "modbus_client": {
                         "description": "ModBus клиент", "type": "link", "dynamic": true, "structure": {
-                            "addr": {"type": "int", "description": "Адрес ModBus сервера"},
-                            "response_timeout": {"type": "time", "description": "Таймаут запроса к ModBus серверу"},
+                            "addr": {"type": "int", "description": "Адрес ModBus сервера", "default": "1"},
+                            "response_timeout": {"type": "time", "description": "Таймаут запроса к ModBus серверу", "default": "100ms"},
                             "holding": {
                                 "type": "keynum", "description": "holding регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "var": {"type": "string", "default": "new_var"},
+                                    "var_out": {"type": "string"},
+                                    "type": {"type": "enum", "values": ["BYTE", "WORD", "DWORD", "LWORD", "REAL", "LREAL", "INT", "DINT", "UINT", "UDINT"]},
                                     "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]},
-                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "period": {"type": "time", "description": "Период опроса", "default": "100ms"},
                                     "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
                                     "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
                                 }
                             },
                             "inreg": {
                                 "type": "keynum", "description": "inreg регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "var": {"type": "string", "default": "new_var"},
+                                    "var_out": {"type": "string"},
+                                    "type": {"type": "enum", "values": ["BYTE", "WORD", "DWORD", "LWORD", "REAL", "LREAL", "INT", "DINT", "UINT", "UDINT"]},
                                     "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]},
-                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "period": {"type": "time", "description": "Период опроса", "default": "100ms"},
                                     "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
                                     "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
                                 }
                             },
                             "coil": {
                                 "type": "keynum", "description": "coil регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"},
-                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "var": {"type": "string", "default": "new_var"},
+                                    "var_out": {"type": "string"},
+                                    "period": {"type": "time", "description": "Период опроса", "default": "100ms"},
                                     "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
                                     "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
                                 }
                             },
                             "inbit": {
                                 "type": "keynum", "description": "inbit регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"},
-                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "var": {"type": "string", "default": "new_var"},
+                                    "var_out": {"type": "string"},
+                                    "period": {"type": "time", "description": "Период опроса", "default": "100ms"},
                                     "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
                                     "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
                                 }
@@ -133,62 +146,75 @@
                             "rtu_addr": {"type": "int", "description": "Адрес в режиме RTU (если не указывать, то отключает RS-485)", "default": "1"},
                             "holding": {
                                 "type": "keynum", "description": "holding регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "var": {"type": "string"},
+                                    "var_out": {"type": "string", "default": "new_var"},
+                                    "type": {"type": "enum", "values": ["BYTE", "WORD", "DWORD", "LWORD", "REAL", "LREAL", "INT", "DINT", "UINT", "UDINT"]},
                                     "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]}
                                 }
                             },
                             "inreg": {
                                 "type": "keynum", "description": "inreg регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "var": {"type": "string"},
+                                    "var_out": {"type": "string", "default": "new_var"},
+                                    "type": {"type": "enum", "values": ["BYTE", "WORD", "DWORD", "LWORD", "REAL", "LREAL", "INT", "DINT", "UINT", "UDINT"]},
                                     "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]}
                                 }
                             },
                             "coil": {
                                 "type": "keynum", "description": "coil регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"}
+                                    "var": {"type": "string"},
+                                    "var_out": {"type": "string", "default": "new_var"}
                                 }
                             },
                             "inbit": {
                                 "type": "keynum", "description": "inbit регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"}
+                                    "var": {"type": "string"},
+                                    "var_out": {"type": "string", "default": "new_var"}
                                 }
-                            }
+                            },
+                            "interframe_gap": {"type": "string", "description": "Межсимвольный интервал"}
                         }
                     },
                     "modbus_client": {
                         "description": "ModBus клиент", "type": "link", "dynamic": true, "structure": {
-                            "addr": {"type": "int", "description": "Адрес ModBus сервера"},
-                            "response_timeout": {"type": "time", "description": "Таймаут запроса к ModBus серверу"},
+                            "addr": {"type": "int", "description": "Адрес ModBus сервера", "default": "1"},
+                            "response_timeout": {"type": "time", "description": "Таймаут запроса к ModBus серверу", "default": "100ms"},
                             "holding": {
                                 "type": "keynum", "description": "holding регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "var": {"type": "string", "default": "new_var"},
+                                    "var_out": {"type": "string"},
+                                    "type": {"type": "enum", "values": ["BYTE", "WORD", "DWORD", "LWORD", "REAL", "LREAL", "INT", "DINT", "UINT", "UDINT"]},
                                     "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]},
-                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "period": {"type": "time", "description": "Период опроса", "default": "100ms"},
                                     "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
                                     "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
                                 }
                             },
                             "inreg": {
                                 "type": "keynum", "description": "inreg регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "var": {"type": "string", "default": "new_var"},
+                                    "var_out": {"type": "string"},
+                                    "type": {"type": "enum", "values": ["BYTE", "WORD", "DWORD", "LWORD", "REAL", "LREAL", "INT", "DINT", "UINT", "UDINT"]},
                                     "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]},
-                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "period": {"type": "time", "description": "Период опроса", "default": "100ms"},
                                     "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
                                     "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
                                 }
                             },
                             "coil": {
                                 "type": "keynum", "description": "coil регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"},
-                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "var": {"type": "string", "default": "new_var"},
+                                    "var_out": {"type": "string"},
+                                    "period": {"type": "time", "description": "Период опроса", "default": "100ms"},
                                     "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
                                     "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
                                 }
                             },
                             "inbit": {
                                 "type": "keynum", "description": "inbit регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"},
-                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "var": {"type": "string", "default": "new_var"},
+                                    "var_out": {"type": "string"},
+                                    "period": {"type": "time", "description": "Период опроса", "default": "100ms"},
                                     "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
                                     "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
                                 }
@@ -279,66 +305,87 @@
                             "rtu_addr": {"type": "int", "description": "Адрес в режиме RTU (если не указывать, то отключает RS-485)", "default": "1"},
                             "holding": {
                                 "type": "keynum", "description": "holding регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "var": {"type": "string"},
+                                    "var_out": {"type": "string", "default": "new_var"},
+                                    "type": {"type": "enum", "values": ["BYTE", "WORD", "DWORD", "LWORD", "REAL", "LREAL", "INT", "DINT", "UINT", "UDINT"]},
                                     "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]}
                                 }
                             },
                             "inreg": {
                                 "type": "keynum", "description": "inreg регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "var": {"type": "string"},
+                                    "var_out": {"type": "string", "default": "new_var"},
+                                    "type": {"type": "enum", "values": ["BYTE", "WORD", "DWORD", "LWORD", "REAL", "LREAL", "INT", "DINT", "UINT", "UDINT"]},
                                     "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]}
                                 }
                             },
                             "coil": {
                                 "type": "keynum", "description": "coil регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"}
+                                    "var": {"type": "string"},
+                                    "var_out": {"type": "string", "default": "new_var"}
                                 }
                             },
                             "inbit": {
                                 "type": "keynum", "description": "inbit регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"}
+                                    "var": {"type": "string"},
+                                    "var_out": {"type": "string", "default": "new_var"}
                                 }
-                            }
+                            },
+                            "interframe_gap": {"type": "string", "description": "Межсимвольный интервал"}
                         }
                     },
                     "modbus_client": {
                         "description": "ModBus клиент", "type": "link", "dynamic": true, "structure": {
-                            "addr": {"type": "int", "description": "Адрес ModBus сервера"},
-                            "response_timeout": {"type": "time", "description": "Таймаут запроса к ModBus серверу"},
+                            "addr": {"type": "int", "description": "Адрес ModBus сервера", "default": "1"},
+                            "response_timeout": {"type": "time", "description": "Таймаут запроса к ModBus серверу", "default": "100ms"},
                             "holding": {
                                 "type": "keynum", "description": "holding регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "var": {"type": "string", "default": "new_var"},
+                                    "var_out": {"type": "string"},
+                                    "type": {"type": "enum", "values": ["BYTE", "WORD", "DWORD", "LWORD", "REAL", "LREAL", "INT", "DINT", "UINT", "UDINT"]},
                                     "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]},
-                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "period": {"type": "time", "description": "Период опроса", "default": "100ms"},
                                     "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
                                     "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
                                 }
                             },
                             "inreg": {
                                 "type": "keynum", "description": "inreg регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"}, "type": {"type": "string"},
+                                    "var": {"type": "string", "default": "new_var"},
+                                    "var_out": {"type": "string"},
+                                    "type": {"type": "enum", "values": ["BYTE", "WORD", "DWORD", "LWORD", "REAL", "LREAL", "INT", "DINT", "UINT", "UDINT"]},
                                     "order": {"type": "enum", "values": ["abcd", "badc", "cdab", "dcba"]},
-                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "period": {"type": "time", "description": "Период опроса", "default": "100ms"},
                                     "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
                                     "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
                                 }
                             },
                             "coil": {
                                 "type": "keynum", "description": "coil регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"},
-                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "var": {"type": "string", "default": "new_var"},
+                                    "var_out": {"type": "string"},
+                                    "period": {"type": "time", "description": "Период опроса", "default": "100ms"},
                                     "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
                                     "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
                                 }
                             },
                             "inbit": {
                                 "type": "keynum", "description": "inbit регистр", "structure": {
-                                    "var": {"type": "string"}, "var_out": {"type": "string"},
-                                    "period": {"type": "time", "description": "Период опроса"},
+                                    "var": {"type": "string", "default": "new_var"},
+                                    "var_out": {"type": "string"},
+                                    "period": {"type": "time", "description": "Период опроса", "default": "100ms"},
                                     "var_trigger": {"type": "string", "description": "Переменная-тригер для отправки запроса"},
                                     "var_err": {"type": "string", "description": "Переменная с ошибкой запроса"}
                                 }
                             }
+                        }
+                    },
+                    "rs485": {
+                        "description": "Параметры RS-485 порта", "structure": {
+                            "speed": {"type": "enum", "values": [9600, 19200, 38400, 57600, 115200], "description": "Скорость", "default": "9600"},
+                            "parity": {"type": "enum", "values": ["N", "Y"], "description": "Чётность", "default": "N"},
+                            "bits": {"type": "enum", "values": [8, 7], "description": "Количество бит", "default": "8"},
+                            "stop_bits": {"type": "enum", "values": [1, 2], "description": "Стоповые биты", "default": "1"}
                         }
                     }
                 }
