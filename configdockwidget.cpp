@@ -148,6 +148,7 @@ ConfigDockWidget::ConfigDockWidget(const QString &name, MainWindow *parent)
 
     // Устанавливаем дефолтную страницу (YAML) при запуске
     sidebarMenu->setCurrentRow(0);
+    yamlParser = new lbyaml(QString(), lbyaml::data, this);
 }
 
 void ConfigDockWidget::setConfig(const QString &yaml)
@@ -480,8 +481,7 @@ void ConfigDockWidget::onSidebarRowChanged(int index)
     // Логика синхронизации данных между представлениями
     if (index == 1) {
         isModifiedPages();
-        if (modified)
-            yamlParser->setConfig(yamlPage->text(), lbyaml::data);
+        yamlParser->setConfig(yamlPage->text(), lbyaml::data);
         if (varPage)
             varPage->updateData(yamlParser);
     }
@@ -489,8 +489,7 @@ void ConfigDockWidget::onSidebarRowChanged(int index)
         // Пользователь перешел во вкладку "Модули I/O" (DeviceView)
         // Аналогично парсим YAML под нужды конфигуратора модулей
         isModifiedPages();
-        if (modified)
-            yamlParser->setConfig(yamlPage->text(), lbyaml::data);
+        yamlParser->setConfig(yamlPage->text(), lbyaml::data);
         if (devicePage)
             devicePage->updateData(yamlParser);
     }
