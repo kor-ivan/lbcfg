@@ -665,7 +665,9 @@ int ConfigDockWidget::isModifiedPages(bool allowCancel)
     // Показываем диалог
     QMessageBox::StandardButton reply = QMessageBox::question(
         this, "Изменение конфигурации",
-        "Данные в визуальных вкладках были изменены. Обновить исходный YAML?",
+        "Данные в визуальных вкладках были изменены.\n"
+        "Пользовательские комментарии будут удалены.\n"
+        "Обновить исходный YAML?",
         buttons
         );
 
