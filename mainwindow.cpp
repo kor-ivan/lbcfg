@@ -9,7 +9,6 @@
 #include <QHBoxLayout>
 #include <QMessageBox>
 #include "commandmanager.h"
-#include "firmwarepackage.h"
 
 
 
@@ -118,6 +117,7 @@ MainWindow::MainWindow(QWidget *parent)
             this, &MainWindow::CreateConfig);
 
     connect(fwWidget, &FirmwareWidget::stopButtonPressed, this, [this](){
+        debugApp() << "Stop firmware button pressed";
         lbplc->stopFirmware();
     });
 
@@ -225,50 +225,10 @@ DeviceTreeDockWidget *MainWindow::createTreeDockWidget()
                     "Загрузить прошивку ...",
                     "",
                     "LogicBox Firmware (*.bin *.bin.xz *.xz);;BIN Files (*.bin);;XZ compressed (*.xz);;All Files (*)");
-
-                if (filePath.isEmpty())
-                    return;
-
-                const FirmwarePackage::Result firmware = FirmwarePackage::prepare(filePath);
-
-                if (!firmware.isOk()) {
-                    QMessageBox::critical(
-                        this,
-                        "Ошибка подготовки прошивки",
-                        firmware.error);
-                    return;
-                }
-
-                QMetaObject::Connection cleanupConnection;
-                if (firmware.temporary) {
-                    statusBar()->showMessage(
-                        QString("XZ распакован: %1")
-                            .arg(QFileInfo(firmware.path).fileName()),
-                        5000);
-
-                    // Install cleanup before starting: an address/configuration
-                    // error can complete synchronously inside startFirmware().
-                    cleanupConnection = connect(
-                        lbplc,
-                        &plcManager::firmwareFinished,
-                        this,
-                        [firmware]() { FirmwarePackage::cleanup(firmware); },
-                        Qt::SingleShotConnection);
-                }
-
-                const bool accepted = lbplc->startFirmware(
-                    ctx,
-                    firmware.path,
-                    "Загрузка уже выполняется, дождитесь окончания",
-                    QString("Загрузка прошивки в %1 ...").arg(ctx.displayName()));
-
-                // If another OTA was already active, no firmwareFinished signal
-                // belongs to this package. Disconnect the cleanup handler and
-                // remove the temporary BIN immediately instead of deleting it
-                // on somebody else's future OTA completion.
-                if (!accepted && firmware.temporary) {
-                    QObject::disconnect(cleanupConnection);
-                    FirmwarePackage::cleanup(firmware);
+                if (!filePath.isEmpty()) {
+                    lbplc->startFirmware(ctx, filePath,
+                                         "Загрузка уже выполняется, дождитесь окончания",
+                                         QString("Загрузка прошивки в %1 ...").arg(ctx.displayName()));
                 }
             });
     connect(treeDock, &DeviceTreeDockWidget::requestFlashAll, this, [this]

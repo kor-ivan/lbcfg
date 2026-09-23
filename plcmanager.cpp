@@ -95,7 +95,6 @@ void plcManager::startDiscover()
 
 bool plcManager::startFirmware(const CommandContext &ctx, const QString &filePath, const QString &checkMessage, const QString &startMessage, const QString &lbkey)
 {
-    debugApp() << "PLCManager: startFirmware slot=" << ctx.slot << ctx.ipv6str() << ctx.ipv6.scopeId();
     if (activeOtaClient) {
         emit eventOccurred(checkMessage);
         return false;
@@ -165,7 +164,6 @@ void plcManager::startConf(const CommandContext &ctx, const QString &yamlFilePat
 
 void plcManager::startFirmwareAll(const CommandContext &ctx, const QString &filePath, const QString &checkMessage, const QString &startMessage)
 {
-    debugApp() << "plcManager::startFirmwareAll " << ctx.slot << ctx.ipv6str() << ctx.ipv6.scopeId();
     if (activeOtaClient) {
         emit eventOccurred(checkMessage);
         return;
@@ -178,7 +176,7 @@ void plcManager::startFirmwareAll(const CommandContext &ctx, const QString &file
     emit firmwareStarted(ctx, startMessage);
     connect(prcActiveOtaClient, &lbprocess::outMessage, this, [this]
             (const QString& lbstr, const QString& message, const QModbusDevice::Error error){
-                // qDebug()<<lbstr<<message<<error;
+                debugApp()<<lbstr<<message<<error;
                 emit errorOccurred(lbstr);
             });
     connect(prcActiveOtaClient, &lbprocess::outOta, this, &plcManager::prcOtaSender);

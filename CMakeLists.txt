@@ -16,18 +16,6 @@ find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 add_subdirectory(lbmbc)
 
-# Support official LogicBox firmware packages *.bin.xz.
-# liblzma is fetched at configure time and linked statically into lbcfg.
-include(FetchContent)
-set(XZ_NLS OFF CACHE BOOL "Disable XZ translations" FORCE)
-FetchContent_Declare(
-    xz
-    GIT_REPOSITORY https://github.com/tukaani-project/xz.git
-    GIT_TAG v5.8.3
-    GIT_SHALLOW TRUE
-)
-FetchContent_MakeAvailable(xz)
-
 set(PROJECT_SOURCES
         main.cpp
         mainwindow.cpp
@@ -71,18 +59,6 @@ else()
         )
     endif()
 endif()
-
-# XZ firmware package support.
-target_sources(lbcfg PRIVATE
-    firmwarepackage.cpp
-    firmwarepackage.h
-)
-
-target_include_directories(lbcfg PRIVATE
-    "${xz_SOURCE_DIR}/src/liblzma/api"
-)
-
-target_link_libraries(lbcfg PRIVATE liblzma)
 
 target_link_libraries(lbcfg PRIVATE Qt${QT_VERSION_MAJOR}::Widgets
     lbmbc_lib)
