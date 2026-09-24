@@ -188,6 +188,11 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
             emit requestFlashAll(ctx);
         });
 
+        QAction *flashAllNeed = menu.addAction(QString("Прошить только необходимые модули %1").arg(ctx.name));
+        connect(flashAllNeed, &QAction::triggered, this, [this, ctx, index](){
+            qDebug() << getMismatchedSlots(index);
+        });
+
         QAction *fboot = menu.addAction(QString("Загрузить fboot в %1").arg(ctx.name));
         connect(fboot, &QAction::triggered, this, [this, ctx](){
             emit requestFboot(ctx);
@@ -263,6 +268,63 @@ void DeviceTreeDockWidget::onTreeExpanded(const QModelIndex &index)
     updateFirmwareStatus(moduleItem);
 }
 
+QStringList DeviceTreeDockWidget::getMismatchedSlots(const QModelIndex &plcIndex) const
+{
+    QStringList mismatchedSlots;
+
+    // Базовые проверки: репозиторий должен быть загружен, индекс должен быть валидным корневым элементом
+    if (!m_firmwareLoaded || !m_firmwareAnalyzer || !plcIndex.isValid())
+        return mismatchedSlots;
+
+    QStandardItem *plcRoot = treeModel->itemFromIndex(plcIndex);
+    if (!plcRoot)
+        return mismatchedSlots;
+
+    const QMap<QString, firmwareAnalyzer::fwinfo> firmwareMap = m_firmwareAnalyzer->getFirmwareMap();
+
+    // Обходим только дочерние модули (слоты) выбранного ПЛК
+    for (int row = 0; row < plcRoot->rowCount(); ++row) {
+        QStandardItem *moduleItem = plcRoot->child(row);
+
+        // Проверяем, что это элемент модуля
+        if (!moduleItem || !moduleItem->data(ModuleItemRole).toBool())
+            continue;
+
+        const QString moduleType = moduleItem->data(ModuleTypeRole).toString().trimmed();
+        const QString installedVersion = moduleItem->data(InstalledVersionRole).toString().trimmed();
+
+        // Пропускаем неизвестные типы модулей
+        if (moduleType.isEmpty() || moduleType.compare(QStringLiteral("unknown"), Qt::CaseInsensitive) == 0)
+            continue;
+
+        // Ищем прошивку в репозитории
+        auto it = firmwareMap.constFind(moduleType);
+        if (it == firmwareMap.constEnd())
+            continue;
+
+        const firmwareAnalyzer::fwinfo &repositoryFirmware = it.value();
+        const QString repositoryVersion = repositoryFirmware.version.trimmed();
+
+        // Пропускаем, если версия в репозитории не определена
+        if (repositoryVersion.isEmpty() || repositoryVersion.compare(QStringLiteral("unknown"), Qt::CaseInsensitive) == 0)
+            continue;
+
+        // Проверяем совпадение версий
+        const bool matches = firmwareAnalyzer::versionsMatch(installedVersion, repositoryVersion);
+
+        // Если не совпадают — забираем номер слота
+        if (!matches) {
+            QString slotNumber = moduleItem->data(Qt::UserRole).toString();
+            if (!mismatchedSlots.contains(slotNumber)) {
+                mismatchedSlots.append(slotNumber);
+            }
+        }
+    }
+
+    return mismatchedSlots;
+}
+
+
 
 QStandardItem *
 DeviceTreeDockWidget::versionInfoItem(
@@ -334,6 +396,7 @@ reloadFirmwareRepositoryFromSettings()
 
 void DeviceTreeDockWidget::clearFirmwareRepository()
 {
+    // m_mismatchedSlots.clear();
     AppSettings::clearFirmwareRepositoryRoot();
     m_repositoryRoot.clear();
     m_firmwareLoaded = false;
@@ -379,8 +442,8 @@ bool DeviceTreeDockWidget::loadFirmwareRepository(const QString &repositoryRoot)
 
     m_firmwareLoaded = true;
 
-    AppSettings::setFirmwareRepositoryRoot(
-        m_repositoryRoot);
+    // AppSettings::setFirmwareRepositoryRoot(
+    //     m_repositoryRoot);
 
     const QList<firmwareAnalyzer::fwinfo> rejected =
         m_firmwareAnalyzer->getRejectedFirmware();
@@ -550,6 +613,8 @@ void DeviceTreeDockWidget::updateAllFirmwareStatuses()
 {
     if (!m_firmwareLoaded)
         return;
+
+    // m_mismatchedSlots.clear();
 
     for (int rootRow = 0;
          rootRow < treeModel->rowCount();
