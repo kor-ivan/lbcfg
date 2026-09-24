@@ -8,7 +8,10 @@
 #include <QToolTip>
 #include <QHBoxLayout>
 #include <QMessageBox>
+#include <QDir>
 #include "commandmanager.h"
+#include "firmwarerepositorydialog.h"
+
 
 
 
@@ -333,6 +336,38 @@ WatchDockWidget *MainWindow::createWatchDockWidget(const plcManager::CommandCont
         });
     }
     return dock;
+}
+
+void MainWindow::editFirmwareRepositorySettings()
+{
+    FirmwareRepositoryDialog dialog(this);
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    const QString repositoryRoot =
+        dialog.repositoryPath();
+
+    if (repositoryRoot.isEmpty()) {
+        if (treeDock) {
+            treeDock->reloadFirmwareRepositoryFromSettings();
+        }
+
+        statusBar()->showMessage(
+            QStringLiteral("Путь к репозиторию прошивок сброшен"),
+            5000);
+
+        return;
+    }
+
+    if (treeDock) {
+        treeDock->reloadFirmwareRepositoryFromSettings();
+    }
+
+    statusBar()->showMessage(
+        QStringLiteral("Репозиторий прошивок: %1")
+            .arg(QDir::toNativeSeparators(repositoryRoot)),
+        5000);
 }
 
 QList<ConfigDockWidget *> MainWindow::getConfigDocks() const

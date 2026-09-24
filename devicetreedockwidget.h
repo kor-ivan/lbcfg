@@ -4,7 +4,9 @@
 #include <QDockWidget>
 #include <QTreeView>
 #include <QStandardItemModel>
+#include <QString>
 #include "plcmanager.h"
+#include "firmwareanalyzer.h"
 
 class DeviceTreeDockWidget : public QDockWidget
 {
@@ -15,6 +17,9 @@ public:
                       const QMap<qsizetype,lbprocess::scaninfo>& scan);
     bool containsName(const QString& name);
 
+    // void editFirmwareRepository();
+    void reloadFirmwareRepositoryFromSettings();
+
 signals:
     void requestConfig(const plcManager::CommandContext &ctx);
     void requestUpdate(const plcManager::CommandContext &ctx);
@@ -24,15 +29,34 @@ signals:
 
 private slots:
     void showContextMenu(const QPoint& pos);
+    void onTreeExpanded(const QModelIndex &index);
 
 private:
+    enum ItemRole {
+        ModuleTypeRole = Qt::UserRole + 1,
+        InstalledVersionRole,
+        ModuleItemRole,
+        VersionInfoRole
+    };
+
     plcManager *lbplc = nullptr;
     QTreeView *treeView = nullptr;
     QStandardItemModel *treeModel = nullptr;
+    firmwareAnalyzer *m_firmwareAnalyzer = nullptr;
+
+    bool m_firmwareLoaded = false;
+    QString m_repositoryRoot;
 
     QStandardItem *findPlcRoot(const QHostAddress& ipv6);
+    QStandardItem *versionInfoItem(QStandardItem *moduleItem) const;
 
-    // inline QString toBold(const QString &text);
+    bool ensureFirmwareRepository();
+    bool loadFirmwareRepository(const QString &repositoryRoot);
+    void clearFirmwareRepository();
+
+    void updateFirmwareStatus(QStandardItem *moduleItem);
+    void updateAllFirmwareStatuses();
+    void clearAllFirmwareStatuses();
 };
 
 #endif // DEVICETREEDOCKWIDGET_H

@@ -149,6 +149,7 @@ void MainMenu::initPlcMenu(QMenuBar *menuBar)
     connect(plcMenu, &QMenu::aboutToShow, this, &MainMenu::onPlcMenuAboutToShow);
 }
 
+
 void MainMenu::initHelpMenu(QMenuBar *menuBar)
 {
 QMenu *helpMenu = menuBar->addMenu("&Справка");
@@ -186,12 +187,31 @@ void MainMenu::onEditMenuAboutToShow()
     if (actions.isEmpty()) {
         QAction *emptyAct = editMenu->addAction("Нет активного редактора");
         emptyAct->setEnabled(false);
-        return;
+        // return;
+    }
+    else
+    {
+        for (QAction *act : actions)
+            editMenu->addAction(act);
     }
 
-    for (QAction *act : actions) {
-        editMenu->addAction(act);
-    }
+    editMenu->addSeparator();
+
+    QAction *firmwareRepositoryAction =
+        editMenu->addAction(
+            "Репозиторий прошивок...");
+
+    firmwareRepositoryAction->setStatusTip(
+        "Изменить корневой каталог репозитория LogicBox с папкой firmware");
+
+    connect(
+        firmwareRepositoryAction,
+        &QAction::triggered,
+        this,
+        [this]() {
+            p_mainWindow->editFirmwareRepositorySettings();
+        });
+
 }
 
 void MainMenu::onViewMenuAboutToShow()

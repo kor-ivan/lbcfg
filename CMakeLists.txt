@@ -26,11 +26,14 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(lbcfg
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
+        appsettings.h appsettings.cpp
         discoverdockwidget.h discoverdockwidget.cpp
         devicetreedockwidget.h devicetreedockwidget.cpp
         configdockwidget.h configdockwidget.cpp
         plcmanager.h plcmanager.cpp
         firmwarewidget.h firmwarewidget.cpp
+        firmwarerepositorydialog.h firmwarerepositorydialog.cpp
+        firmwareanalyzer.h firmwareanalyzer.cpp
         commandmanager.h commandmanager.cpp
         mainmenu.h mainmenu.cpp
         logmanager.h logmanager.cpp
