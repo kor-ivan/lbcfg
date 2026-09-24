@@ -17,8 +17,8 @@ public:
                       const QMap<qsizetype,lbprocess::scaninfo>& scan);
     bool containsName(const QString& name);
 
-    void editFirmwareRepository();
-    void reloadFirmwareRepositoryFromSettings(bool showErrors = true);
+    // void editFirmwareRepository();
+    void reloadFirmwareRepositoryFromSettings();
 
 signals:
     void requestConfig(const plcManager::CommandContext &ctx);
@@ -45,22 +45,18 @@ private:
     firmwareAnalyzer *m_firmwareAnalyzer = nullptr;
 
     bool m_firmwareLoaded = false;
-    bool m_repositoryPromptDeclined = false;
     QString m_repositoryRoot;
 
     QStandardItem *findPlcRoot(const QHostAddress& ipv6);
     QStandardItem *versionInfoItem(QStandardItem *moduleItem) const;
 
     bool ensureFirmwareRepository();
-    bool chooseFirmwareRepository(bool allowClear = false);
-    bool loadFirmwareRepository(const QString &repositoryRoot, bool showErrors);
+    bool loadFirmwareRepository(const QString &repositoryRoot);
     void clearFirmwareRepository();
 
     void updateFirmwareStatus(QStandardItem *moduleItem);
     void updateAllFirmwareStatuses();
     void clearAllFirmwareStatuses();
-
-    // inline QString toBold(const QString &text);
 };
 
 #endif // DEVICETREEDOCKWIDGET_H

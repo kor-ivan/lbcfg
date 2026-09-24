@@ -28,7 +28,6 @@ private:
     void initEditMenu(QMenuBar *menuBar);
     void initViewMenu(QMenuBar *menuBar);
     void initPlcMenu(QMenuBar *menuBar);
-    void initSettingsMenu(QMenuBar *menuBar);
     void initHelpMenu(QMenuBar *menuBar);
 
     QAction *saveAction = nullptr;

@@ -9,9 +9,7 @@ class FirmwareRepositoryDialog : public QDialog
 {
     Q_OBJECT
 public:
-    explicit FirmwareRepositoryDialog(const QString &initialPath,
-                                      bool allowEmpty,
-                                      QWidget *parent = nullptr);
+    explicit FirmwareRepositoryDialog(QWidget *parent = nullptr);
 
     QString repositoryPath() const;
 
@@ -21,7 +19,7 @@ private slots:
 
 private:
     QLineEdit *m_pathEdit = nullptr;
-    bool m_allowEmpty = false;
+    // bool m_allowEmpty = false;
 };
 
 #endif // FIRMWAREREPOSITORYDIALOG_H

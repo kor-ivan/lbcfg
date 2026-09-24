@@ -11,7 +11,7 @@
 #include <QDir>
 #include "commandmanager.h"
 #include "firmwarepackage.h"
-#include "appsettings.h"
+// #include "appsettings.h"
 #include "firmwarerepositorydialog.h"
 
 
@@ -380,10 +380,7 @@ WatchDockWidget *MainWindow::createWatchDockWidget(const plcManager::CommandCont
 
 void MainWindow::editFirmwareRepositorySettings()
 {
-    FirmwareRepositoryDialog dialog(
-        AppSettings::firmwareRepositoryRoot(),
-        true,
-        this);
+    FirmwareRepositoryDialog dialog(this);
 
     if (dialog.exec() != QDialog::Accepted)
         return;
@@ -392,10 +389,8 @@ void MainWindow::editFirmwareRepositorySettings()
         dialog.repositoryPath();
 
     if (repositoryRoot.isEmpty()) {
-        AppSettings::clearFirmwareRepositoryRoot();
-
         if (treeDock) {
-            treeDock->reloadFirmwareRepositoryFromSettings(false);
+            treeDock->reloadFirmwareRepositoryFromSettings();
         }
 
         statusBar()->showMessage(
@@ -405,10 +400,8 @@ void MainWindow::editFirmwareRepositorySettings()
         return;
     }
 
-    AppSettings::setFirmwareRepositoryRoot(repositoryRoot);
-
     if (treeDock) {
-        treeDock->reloadFirmwareRepositoryFromSettings(true);
+        treeDock->reloadFirmwareRepositoryFromSettings();
     }
 
     statusBar()->showMessage(

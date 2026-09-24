@@ -10,11 +10,10 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include "appsettings.h"
 
-FirmwareRepositoryDialog::FirmwareRepositoryDialog(const QString &initialPath,
-                                                     bool allowEmpty,
-                                                     QWidget *parent)
-    : QDialog(parent), m_allowEmpty(allowEmpty)
+FirmwareRepositoryDialog::FirmwareRepositoryDialog(QWidget *parent)
+    : QDialog(parent)
 {
     setWindowTitle(QStringLiteral("Репозиторий прошивок LogicBox"));
     setModal(true);
@@ -32,7 +31,7 @@ FirmwareRepositoryDialog::FirmwareRepositoryDialog(const QString &initialPath,
 
     auto *pathLayout = new QHBoxLayout;
     m_pathEdit = new QLineEdit(this);
-    m_pathEdit->setText(QDir::toNativeSeparators(initialPath));
+    m_pathEdit->setText(QDir::toNativeSeparators(AppSettings::firmwareRepositoryRoot()));
     m_pathEdit->setPlaceholderText(QStringLiteral("Например: C:\\git\\logicbox"));
     m_pathEdit->setClearButtonEnabled(true);
     pathLayout->addWidget(m_pathEdit, 1);
@@ -43,13 +42,13 @@ FirmwareRepositoryDialog::FirmwareRepositoryDialog(const QString &initialPath,
     pathLayout->addWidget(browseButton);
     layout->addLayout(pathLayout);
 
-    if (m_allowEmpty) {
+    // if (m_allowEmpty) {
         auto *hint = new QLabel(
             QStringLiteral("Чтобы сбросить сохранённый путь, очистите поле и нажмите «Сохранить»."),
             this);
         hint->setWordWrap(true);
         layout->addWidget(hint);
-    }
+    // }
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel,
                                          Qt::Horizontal,
@@ -96,15 +95,16 @@ void FirmwareRepositoryDialog::validateAndAccept()
     const QString selected = repositoryPath();
 
     if (selected.isEmpty()) {
-        if (m_allowEmpty) {
+        // if (m_allowEmpty) {
+        AppSettings::clearFirmwareRepositoryRoot();
             QDialog::accept();
             return;
-        }
+        // }
 
-        QMessageBox::warning(this,
-                             QStringLiteral("Репозиторий прошивок"),
-                             QStringLiteral("Укажите путь к репозиторию LogicBox."));
-        return;
+        // QMessageBox::warning(this,
+        //                      QStringLiteral("Репозиторий прошивок"),
+        //                      QStringLiteral("Укажите путь к репозиторию LogicBox."));
+        // return;
     }
 
     const QFileInfo repositoryInfo(selected);
@@ -127,6 +127,6 @@ void FirmwareRepositoryDialog::validateAndAccept()
                 .arg(QDir::toNativeSeparators(firmwarePath)));
         return;
     }
-
+    AppSettings::setFirmwareRepositoryRoot(firmwarePath);
     QDialog::accept();
 }

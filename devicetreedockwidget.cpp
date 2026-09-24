@@ -9,7 +9,7 @@
 #include "logmanager.h"
 #include "commandmanager.h"
 #include "appsettings.h"
-#include "firmwarerepositorydialog.h"
+
 
 DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent)
     : QDockWidget("Tree View", parent), lbplc(plcManager::instanse())
@@ -199,82 +199,15 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
                 return QString("Команда на удаление fboot %1 отправлена").arg(ctx.displayName());
             });
         });
-
-        menu.addSeparator();
-
-        QAction *repositoryAction =
-            menu.addAction("Репозиторий прошивок...");
-
-        connect(repositoryAction, &QAction::triggered,
-                this, [this]() {
-            editFirmwareRepository();
-        });
-
-        QAction *refreshRepositoryAction =
-            menu.addAction("Обновить версии из репозитория");
-
-        connect(refreshRepositoryAction, &QAction::triggered,
-                this, [this]() {
-            m_repositoryPromptDeclined = false;
-
-            QString repositoryRoot = m_repositoryRoot;
-
-            if (repositoryRoot.isEmpty())
-                repositoryRoot =
-                    AppSettings::firmwareRepositoryRoot();
-
-            if (repositoryRoot.isEmpty()) {
-                editFirmwareRepository();
-                return;
-            }
-
-            if (loadFirmwareRepository(repositoryRoot, true))
-                updateAllFirmwareStatuses();
-        });
     }
-    // --- Общие действия ---
-    // QAction *getUptime = menu.addAction("Время работы");
-    // connect(getUptime, &QAction::triggered, this, [this, ctx]() {
-    //     lbplc->lbc_executeCommand(ctx, {"get", "sys.uptime"}, "Время работы", [ctx, this](const QStringList& res) {
-    //         QString uptime = res.isEmpty() ? toBold("none") : toBold(res.at(0));
-    //         return QString("Время работы %1 %2 сек").arg(ctx.displayName(), uptime);
-    //     });
-    // });
+
     menu.addSeparator();
     CommandManager::instance()->getUptimeAction(ctx, &menu);
     CommandManager::instance()->getRestartAction(ctx, &menu);
     CommandManager::instance()->getFlashAction(ctx, &menu);
     menu.addSeparator();
 
-    // QAction *restart = menu.addAction("Перезагрузить");
-    // connect(restart, &QAction::triggered, this, [this, ctx]() {
-    //     lbplc->lbc_executeCommand(ctx, {"set", "sys.restart=1"}, "Перезагрузка", [ctx](const QStringList&) {
-    //         return QString("Команда на перезагрузку %1 отправлена").arg(ctx.displayName());
-    //     });
-    // });
-    // QAction *flash = menu.addAction("Загрузить прошивку ...");
-    // connect(flash, &QAction::triggered, this, [this, ctx](){
-    //     emit requestFlash(ctx);
-    // });
-
     CommandManager::instance()->getLogMenu(ctx, &menu);
-
-    // QMenu *logMenu = menu.addMenu("Запросить лог");
-
-    // QAction *logAll = logMenu->addAction("Запросить весь лог");
-    // connect(logAll, &QAction::triggered, this, [this, ctx](){
-    //     lbplc->startLog(ctx, "a");
-    // });
-
-    // QAction *logLast100 = logMenu->addAction("Запросить 100 сообщений");
-    // connect(logLast100, &QAction::triggered, this, [this, ctx](){
-    //     lbplc->startLog(ctx, "a100");
-    // });
-
-    // QAction *logLast100f = logMenu->addAction("Запросить 100 и следовать");
-    // connect(logLast100f, &QAction::triggered, this, [this, ctx](){
-    //     lbplc->startLog(ctx, "a100f");
-    // });
 
     menu.exec(treeView->viewport()->mapToGlobal(pos));
 
@@ -324,7 +257,6 @@ void DeviceTreeDockWidget::onTreeExpanded(const QModelIndex &index)
                 QStringLiteral(
                     "Репозиторий прошивок не настроен"));
         }
-
         return;
     }
 
@@ -369,79 +301,18 @@ bool DeviceTreeDockWidget::ensureFirmwareRepository()
 
     if (!repositoryRoot.isEmpty()
         && loadFirmwareRepository(
-            repositoryRoot,
-            false)) {
+            repositoryRoot)) {
         return true;
     }
-
-    if (m_repositoryPromptDeclined)
-        return false;
-
-    // Expansion opens the settings dialog first.
-    // Explorer opens only after an explicit Browse action.
-    return chooseFirmwareRepository(false);
+    return false;
 }
 
-
-bool DeviceTreeDockWidget::chooseFirmwareRepository(
-    bool allowClear)
-{
-    QString initialPath = m_repositoryRoot;
-
-    if (initialPath.isEmpty()) {
-        initialPath =
-            AppSettings::firmwareRepositoryRoot();
-    }
-
-    while (true) {
-        FirmwareRepositoryDialog dialog(
-            initialPath,
-            allowClear,
-            this);
-
-        if (dialog.exec() != QDialog::Accepted) {
-            m_repositoryPromptDeclined = true;
-            return false;
-        }
-
-        const QString selected =
-            dialog.repositoryPath();
-
-        if (selected.isEmpty() && allowClear) {
-            clearFirmwareRepository();
-            m_repositoryPromptDeclined = false;
-            return true;
-        }
-
-        if (loadFirmwareRepository(
-                selected,
-                true)) {
-
-            m_repositoryPromptDeclined = false;
-            return true;
-        }
-
-        initialPath = selected;
-    }
-}
-
-
-void DeviceTreeDockWidget::editFirmwareRepository()
-{
-    m_repositoryPromptDeclined = false;
-
-    if (chooseFirmwareRepository(true)
-        && m_firmwareLoaded) {
-        updateAllFirmwareStatuses();
-    }
-}
 
 
 void DeviceTreeDockWidget::
-reloadFirmwareRepositoryFromSettings(
-    bool showErrors)
+reloadFirmwareRepositoryFromSettings()
 {
-    m_repositoryPromptDeclined = false;
+    // m_repositoryPromptDeclined = false;
     m_firmwareLoaded = false;
     m_repositoryRoot.clear();
 
@@ -454,8 +325,7 @@ reloadFirmwareRepositoryFromSettings(
         return;
 
     if (loadFirmwareRepository(
-            repositoryRoot,
-            showErrors)) {
+            repositoryRoot)) {
 
         updateAllFirmwareStatuses();
     }
@@ -465,72 +335,25 @@ reloadFirmwareRepositoryFromSettings(
 void DeviceTreeDockWidget::clearFirmwareRepository()
 {
     AppSettings::clearFirmwareRepositoryRoot();
-
     m_repositoryRoot.clear();
     m_firmwareLoaded = false;
-
     clearAllFirmwareStatuses();
 }
 
 
-bool DeviceTreeDockWidget::loadFirmwareRepository(
-    const QString &repositoryRoot,
-    bool showErrors)
+bool DeviceTreeDockWidget::loadFirmwareRepository(const QString &repositoryRoot)
 {
-    const QFileInfo repositoryInfo(repositoryRoot);
-
-    if (!repositoryInfo.exists()
-        || !repositoryInfo.isDir()) {
-
-        if (showErrors) {
-            QMessageBox::warning(
-                this,
-                "Репозиторий прошивок",
-                QString(
-                    "Каталог репозитория не найден:\n%1")
-                    .arg(repositoryRoot));
-        }
-
-        return false;
-    }
-
-    const QString firmwarePath =
-        QDir(repositoryInfo.absoluteFilePath())
-            .filePath(QStringLiteral("firmware"));
-
-    const QFileInfo firmwareInfo(firmwarePath);
-
-    if (!firmwareInfo.exists()
-        || !firmwareInfo.isDir()) {
-
-        if (showErrors) {
-            QMessageBox::warning(
-                this,
-                "Репозиторий прошивок",
-                QString(
-                    "В выбранном каталоге "
-                    "не найдена папка firmware:\n%1")
-                    .arg(firmwarePath));
-        }
-
-        return false;
-    }
-
     m_firmwareAnalyzer->setPath(
-        firmwareInfo.absoluteFilePath());
+        repositoryRoot);
 
     m_firmwareAnalyzer->update();
 
     if (m_firmwareAnalyzer->error()
         != firmwareAnalyzer::ok) {
-
-        if (showErrors) {
-            QMessageBox::warning(
-                this,
-                "Репозиторий прошивок",
-                m_firmwareAnalyzer->errorString());
-        }
-
+        QMessageBox::warning(
+            this,
+            "Репозиторий прошивок",
+            m_firmwareAnalyzer->errorString());
         return false;
     }
 
@@ -539,23 +362,20 @@ bool DeviceTreeDockWidget::loadFirmwareRepository(
             m_firmwareAnalyzer->getFirmwareMap();
 
     if (firmwareMap.isEmpty()) {
-        if (showErrors) {
-            QMessageBox::warning(
-                this,
-                "Репозиторий прошивок",
-                QString(
-                    "В каталоге firmware "
-                    "не найдено ни одной "
-                    "распознанной прошивки:\n%1")
-                    .arg(
-                        firmwareInfo.absoluteFilePath()));
-        }
+        QMessageBox::warning(
+            this,
+            "Репозиторий прошивок",
+            QString(
+                "В каталоге firmware "
+                "не найдено ни одной "
+                "распознанной прошивки:\n%1")
+                .arg(repositoryRoot));
 
         return false;
     }
 
     m_repositoryRoot =
-        repositoryInfo.absoluteFilePath();
+        repositoryRoot;
 
     m_firmwareLoaded = true;
 
@@ -622,7 +442,6 @@ void DeviceTreeDockWidget::updateFirmwareStatus(
                 .arg(
                     installedVersion,
                     moduleType));
-
         return;
     }
 
