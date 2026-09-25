@@ -74,6 +74,8 @@ void DeviceTreeDockWidget::updateDevice(const plcManager::CommandContext &ctx, c
         rootIndex = plcRoot->index();
     }
 
+    bool allModulesMatch = true;
+
     // Итерируем по результатам сканирования
     for (auto it = scan.begin(); it != scan.end(); ++it) {
         const auto &info = it.value();
@@ -101,9 +103,18 @@ void DeviceTreeDockWidget::updateDevice(const plcManager::CommandContext &ctx, c
 
         col1->appendRow(new QStandardItem("Serial: " + info.data.value(0)));
 
-        if (m_firmwareLoaded)
-            updateFirmwareStatus(col1);
+        if (m_firmwareLoaded || ensureFirmwareRepository())
+        {
+            if (!updateFirmwareStatus(col1)){
+                allModulesMatch = false;
+            }
+        }else{
+            allModulesMatch = false;
+        }
     }
+
+    // Красим корень ПЛК и сохраняем состояние во флаг
+    updatePlcRootStatus(plcRoot, allModulesMatch);
     // Раскрываем дерево
     treeView->expand(rootIndex);
 }
@@ -188,9 +199,14 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
             emit requestFlashAll(ctx);
         });
 
-        QAction *flashAllNeed = menu.addAction(QString("Прошить только необходимые модули %1").arg(ctx.name));
+        QAction *flashAllNeed = menu.addAction(QString("Прошить необходимые модули %1").arg(ctx.name));
+        if (index.data(PlcUpToDateRole).toBool()) {
+            flashAllNeed->setEnabled(false);
+        }
         connect(flashAllNeed, &QAction::triggered, this, [this, ctx, index](){
-            qDebug() << getMismatchedSlots(index);
+            QStringList need = getMismatchedSlots(index);
+            qDebug() << need;
+            emit requestFlashAll(ctx, need);
         });
 
         QAction *fboot = menu.addAction(QString("Загрузить fboot в %1").arg(ctx.name));
@@ -462,17 +478,18 @@ bool DeviceTreeDockWidget::loadFirmwareRepository(const QString &repositoryRoot)
 }
 
 
-void DeviceTreeDockWidget::updateFirmwareStatus(
+bool DeviceTreeDockWidget::updateFirmwareStatus(
     QStandardItem *moduleItem)
 {
     if (!moduleItem || !m_firmwareLoaded)
-        return;
+        return true;
 
     QStandardItem *versionItem =
         versionInfoItem(moduleItem);
 
+
     if (!versionItem)
-        return;
+        return true;
 
     versionItem->setBackground(QBrush());
     versionItem->setToolTip(QString());
@@ -488,6 +505,10 @@ void DeviceTreeDockWidget::updateFirmwareStatus(
             ->data(InstalledVersionRole)
             .toString()
             .trimmed();
+
+    // Пропускаем неизвестные модули, они не ломают общую валидность
+    if (moduleType.isEmpty() || moduleType.compare(QStringLiteral("unknown"), Qt::CaseInsensitive) == 0)
+        return true;
 
     const QMap<QString, firmwareAnalyzer::fwinfo>
         firmwareMap =
@@ -505,7 +526,7 @@ void DeviceTreeDockWidget::updateFirmwareStatus(
                 .arg(
                     installedVersion,
                     moduleType));
-        return;
+        return false;
     }
 
     const firmwareAnalyzer::fwinfo
@@ -529,7 +550,7 @@ void DeviceTreeDockWidget::updateFirmwareStatus(
                     installedVersion,
                     repositoryFirmware.sourcePath));
 
-        return;
+        return false;
     }
 
     const bool matches =
@@ -541,7 +562,7 @@ void DeviceTreeDockWidget::updateFirmwareStatus(
         versionItem->setBackground(
             QBrush(
                 QColor(
-                    QStringLiteral("#C3E6CB"))));
+                    SoftGreen)));
     }
 
     versionItem->setToolTip(
@@ -564,6 +585,7 @@ void DeviceTreeDockWidget::updateFirmwareStatus(
                     : QStringLiteral(
                           "версии не совпадают"),
                 repositoryFirmware.sourcePath));
+    return matches;
 }
 
 
@@ -578,6 +600,8 @@ void DeviceTreeDockWidget::clearAllFirmwareStatuses()
 
         if (!root)
             continue;
+
+        updatePlcRootStatus(root, false);
 
         for (int moduleRow = 0;
              moduleRow < root->rowCount();
@@ -608,6 +632,19 @@ void DeviceTreeDockWidget::clearAllFirmwareStatuses()
     }
 }
 
+void DeviceTreeDockWidget::updatePlcRootStatus(QStandardItem *plcRoot, bool allModulesMatch)
+{
+    if (!plcRoot)
+        return;
+    if (m_firmwareLoaded && allModulesMatch && plcRoot->rowCount() > 0) {
+        plcRoot->setBackground(QBrush(SoftGreen));
+        plcRoot->setData(true, PlcUpToDateRole);
+    } else {
+        plcRoot->setBackground(QBrush()); // Сброс фона
+        plcRoot->setData(false, PlcUpToDateRole);
+    }
+}
+
 
 void DeviceTreeDockWidget::updateAllFirmwareStatuses()
 {
@@ -626,6 +663,8 @@ void DeviceTreeDockWidget::updateAllFirmwareStatuses()
         if (!root)
             continue;
 
+        bool allModulesMatch = true;
+
         for (int moduleRow = 0;
              moduleRow < root->rowCount();
              ++moduleRow) {
@@ -638,9 +677,13 @@ void DeviceTreeDockWidget::updateAllFirmwareStatuses()
                        ->data(ModuleItemRole)
                        .toBool()) {
 
-                updateFirmwareStatus(moduleItem);
+                if (!updateFirmwareStatus(moduleItem)){
+                    allModulesMatch = false;
+                }
             }
         }
+        // Красим корень ПЛК на основе флага соответствия модулей
+        updatePlcRootStatus(root, allModulesMatch);
     }
 }
 

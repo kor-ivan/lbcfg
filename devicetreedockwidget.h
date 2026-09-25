@@ -24,7 +24,7 @@ signals:
     void requestConfig(const plcManager::CommandContext &ctx);
     void requestUpdate(const plcManager::CommandContext &ctx);
     // void requestFlash(const plcManager::CommandContext &ctx);
-    void requestFlashAll(const plcManager::CommandContext &ctx);
+    void requestFlashAll(const plcManager::CommandContext &ctx, const QStringList &otaSlots = {});
     void requestFboot(const plcManager::CommandContext &ctx);
 
 private slots:
@@ -36,7 +36,8 @@ private:
         ModuleTypeRole = Qt::UserRole + 1,
         InstalledVersionRole,
         ModuleItemRole,
-        VersionInfoRole
+        VersionInfoRole,
+        PlcUpToDateRole
     };
 
     plcManager *lbplc = nullptr;
@@ -55,9 +56,12 @@ private:
     bool loadFirmwareRepository(const QString &repositoryRoot);
     void clearFirmwareRepository();
 
-    void updateFirmwareStatus(QStandardItem *moduleItem);
+    bool updateFirmwareStatus(QStandardItem *moduleItem);
     void updateAllFirmwareStatuses();
     void clearAllFirmwareStatuses();
+
+    const QColor SoftGreen = QColor(QStringLiteral("#C3E6CB"));
+    void updatePlcRootStatus(QStandardItem *plcRoot, bool allModulesMatch);
 };
 
 #endif // DEVICETREEDOCKWIDGET_H

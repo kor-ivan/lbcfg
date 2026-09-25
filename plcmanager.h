@@ -49,7 +49,8 @@ public:
     void startConf(const CommandContext &ctx, const QString &yamlFilePath);
     void startFirmwareAll(const CommandContext &ctx, const QString &filePath,
                           const QString &checkMessage,
-                          const QString &startMessage);
+                          const QString &startMessage,
+                          const QStringList &otaSlots);
     void startRestartAll (const CommandContext &ctx);
     void startFbootDownload(const CommandContext &ctx, const QString &filePath);
     void startLog (const CommandContext &ctx, const QString &flag);

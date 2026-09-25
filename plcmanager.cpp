@@ -162,7 +162,7 @@ void plcManager::startConf(const CommandContext &ctx, const QString &yamlFilePat
     lbc->Execute();
 }
 
-void plcManager::startFirmwareAll(const CommandContext &ctx, const QString &filePath, const QString &checkMessage, const QString &startMessage)
+void plcManager::startFirmwareAll(const CommandContext &ctx, const QString &filePath, const QString &checkMessage, const QString &startMessage, const QStringList &otaSlots)
 {
     if (activeOtaClient) {
         emit eventOccurred(checkMessage);
@@ -172,7 +172,8 @@ void plcManager::startFirmwareAll(const CommandContext &ctx, const QString &file
     activeOtaClient->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
     prcActiveOtaClient = new lbprocess(this, activeOtaClient);
     prcActiveOtaClient->setOtaPath(filePath);
-
+    if (!otaSlots.isEmpty())
+        prcActiveOtaClient -> setPreOtaSlot(otaSlots);
     emit firmwareStarted(ctx, startMessage);
     connect(prcActiveOtaClient, &lbprocess::outMessage, this, [this]
             (const QString& lbstr, const QString& message, const QModbusDevice::Error error){

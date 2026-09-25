@@ -11,7 +11,7 @@
 #include <QDir>
 #include "commandmanager.h"
 #include "firmwarerepositorydialog.h"
-
+#include "appsettings.h"
 
 
 
@@ -235,12 +235,16 @@ DeviceTreeDockWidget *MainWindow::createTreeDockWidget()
                 }
             });
     connect(treeDock, &DeviceTreeDockWidget::requestFlashAll, this, [this]
-            (const plcManager::CommandContext &ctx){
-                QString filePath = QFileDialog::getExistingDirectory(this, "Выберите директорию для прошивки ...", "", QFileDialog::DontResolveSymlinks);
+            (const plcManager::CommandContext &ctx, const QStringList &otaSlots){
+        QString filePath;
+        if (otaSlots.isEmpty())
+                filePath = QFileDialog::getExistingDirectory(this, "Выберите директорию для прошивки ...", "", QFileDialog::DontResolveSymlinks);
+        else
+            filePath = AppSettings::firmwareRepositoryRoot();
                 if (!filePath.isEmpty()) {
                     lbplc->startFirmwareAll(ctx, filePath,
                                             "Загрузка уже выполняется, дождитесь окончания",
-                                            QString("Загрузка прошивки в %1 ...").arg(ctx.displayName()));
+                                            QString("Загрузка прошивки в %1 ...").arg(ctx.displayName()), otaSlots);
                 }
             });
     connect(treeDock, &DeviceTreeDockWidget::requestFboot, this, [this]
