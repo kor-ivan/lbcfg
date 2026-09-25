@@ -2,10 +2,15 @@
 
 #include <QDir>
 #include <QSettings>
+#include <QCoreApplication>
+
+static QString getIniPath() {
+    return QCoreApplication::applicationDirPath() + QStringLiteral("/settings.ini");
+}
 
 QString AppSettings::firmwareRepositoryRoot()
 {
-    QSettings settings;
+    QSettings settings(getIniPath(), QSettings::IniFormat);
     const QString value = settings.value(QString::fromLatin1(FirmwareRepositoryKey)).toString().trimmed();
     if (value.isEmpty())
         return {};
@@ -17,7 +22,7 @@ void AppSettings::setFirmwareRepositoryRoot(const QString &path)
 {
     const QString normalized = QDir::cleanPath(QDir::fromNativeSeparators(path.trimmed()));
 
-    QSettings settings;
+    QSettings settings(getIniPath(), QSettings::IniFormat);
     if (normalized.isEmpty() || normalized == QStringLiteral("."))
         settings.remove(QString::fromLatin1(FirmwareRepositoryKey));
     else
@@ -28,7 +33,7 @@ void AppSettings::setFirmwareRepositoryRoot(const QString &path)
 
 void AppSettings::clearFirmwareRepositoryRoot()
 {
-    QSettings settings;
+    QSettings settings(getIniPath(), QSettings::IniFormat);
     settings.remove(QString::fromLatin1(FirmwareRepositoryKey));
     settings.sync();
 }

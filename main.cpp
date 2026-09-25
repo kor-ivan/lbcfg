@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
     // so rebuilding or deleting the build directory does not lose them.
     QCoreApplication::setOrganizationName(QStringLiteral("LogicBox"));
     QCoreApplication::setApplicationName(QStringLiteral("lbcfg"));
-    QSettings::setDefaultFormat(QSettings::NativeFormat);
+    // QSettings::setDefaultFormat(QSettings::NativeFormat);
 
     QTranslator qtTranslator;
     if (qtTranslator.load("qtbase_ru", QLibraryInfo::path(QLibraryInfo::TranslationsPath)))
