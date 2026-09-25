@@ -3,15 +3,18 @@
 
 #include <QString>
 
+class FirmwareRepositoryDialog;
+
 class AppSettings
 {
+    friend class FirmwareRepositoryDialog;
 public:
     static QString firmwareRepositoryRoot();
-    static void setFirmwareRepositoryRoot(const QString &path);
-    static void clearFirmwareRepositoryRoot();
 
 private:
     static constexpr const char *FirmwareRepositoryKey = "Firmware/repositoryRoot";
+    static void setFirmwareRepositoryRoot(const QString &path);
+    static void clearFirmwareRepositoryRoot();
 };
 
 #endif // APPSETTINGS_H

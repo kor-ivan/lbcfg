@@ -212,6 +212,12 @@ void MainMenu::onEditMenuAboutToShow()
             p_mainWindow->editFirmwareRepositorySettings();
         });
 
+    QAction *firmwareReposiporyUpdate = editMenu->addAction("Сканировать репозиторий...");
+    firmwareReposiporyUpdate->setStatusTip("Сканировать репозиторий прошивок после git pull");
+    connect(firmwareReposiporyUpdate, &QAction::triggered, this, [this](){
+        p_mainWindow->getTreeDock()->reloadFirmwareRepositoryFromSettings();
+    });
+
 }
 
 void MainMenu::onViewMenuAboutToShow()
@@ -281,6 +287,14 @@ void MainMenu::onPlcMenuAboutToShow()
     if (logMenu)
         logMenu->deleteLater();
     logMenu = new QMenu("Запросить лог у...", plcMenu);
+    connect(logMenu, &QMenu::aboutToShow, this, [this](){
+        const auto &ldmap = plcManager::instanse()->getldmap();
+        for (auto it = ldmap.begin(); it != ldmap.end(); ++it){
+            auto ctx = plcManager::instanse()->getctx(it.key(), it.value().name,
+                                                      plcManager::instanse()->getIf(it.key()));
+            CommandManager::instance()->getLogMenu(ctx, logMenu, it.value().name);
+        }
+    });
     if (connectMenu)
         connectMenu->deleteLater();
     connectMenu = new QMenu("Подключиться к...", plcMenu);
@@ -315,18 +329,11 @@ void MainMenu::onPlcMenuAboutToShow()
     {
         const auto &ldmap = plcManager::instanse()->getldmap();
         if (!ldmap.isEmpty())
-        {
             logMenu->setEnabled(true);
-            for (auto it = ldmap.begin(); it != ldmap.end(); ++it){
-                auto ctx = plcManager::instanse()->getctx(it.key(), it.value().name,
-                                                          plcManager::instanse()->getIf(it.key()));
-                CommandManager::instance()->getLogMenu(ctx, logMenu, it.value().name);
-            }
-        }else
+        else
             logMenu->setEnabled(false);
-    }else{
+    }else
         logMenu->setEnabled(false);
-    }
 
     plcMenu->addMenu(connectMenu);
     auto watchDocks = p_mainWindow->getWatchDocks();

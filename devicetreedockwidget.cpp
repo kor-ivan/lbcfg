@@ -409,17 +409,6 @@ reloadFirmwareRepositoryFromSettings()
     }
 }
 
-
-void DeviceTreeDockWidget::clearFirmwareRepository()
-{
-    // m_mismatchedSlots.clear();
-    AppSettings::clearFirmwareRepositoryRoot();
-    m_repositoryRoot.clear();
-    m_firmwareLoaded = false;
-    clearAllFirmwareStatuses();
-}
-
-
 bool DeviceTreeDockWidget::loadFirmwareRepository(const QString &repositoryRoot)
 {
     m_firmwareAnalyzer->setPath(

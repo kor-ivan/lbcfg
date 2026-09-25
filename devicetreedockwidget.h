@@ -54,7 +54,6 @@ private:
 
     bool ensureFirmwareRepository();
     bool loadFirmwareRepository(const QString &repositoryRoot);
-    void clearFirmwareRepository();
 
     bool updateFirmwareStatus(QStandardItem *moduleItem);
     void updateAllFirmwareStatuses();
