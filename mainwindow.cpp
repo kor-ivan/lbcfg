@@ -1,7 +1,6 @@
 #include "mainwindow.h"
 #include <QDockWidget>
 #include <QStatusBar>
-#include <QLabel>
 #include <QFileDialog>
 #include <QApplication>
 #include <QHelpEvent>
@@ -66,63 +65,36 @@ MainWindow::MainWindow(QWidget *parent)
     // Временное сообщение (исчезнет через 5000 миллисекунд / 5 секунд)
     statusBar->showMessage(tr("Программа готова к работе"), 5000);
 
+
     QLabel *repStatusLabel = new QLabel(this);
     repStatusLabel->setAlignment(Qt::AlignCenter);
-    repStatusLabel->setStyleSheet("QLabel { padding: 2px 8px; border-radius: 3px; }");
     repStatusLabel->setFixedHeight(20);
     statusBar->addPermanentWidget(repStatusLabel);
-    connect(repo, &firmwareAnalyzer::updated, this, [repStatusLabel, this](const QString &hash) {
-        if (!hash.isEmpty()) {
-            repStatusLabel->setText(QString("logicbox: %1").arg(hash));
-            repStatusLabel->setToolTip(repo->path());
-            repStatusLabel->setStyleSheet(
-                "QLabel {"
-                "  background-color: #D4EDDA;"
-                "  color: #155724;"
-                "  border: 1px solid #C3E6CB;"
-                "  padding: 0px 6px;"          // Сузили вертикальный отступ до 0px
-                "  border-radius: 3px;"
-                "  font-weight: bold;"
-                "  font-size: 11px;"           // Слегка уменьшили шрифт, чтобы рамка не поджимала текст
-                "}"
-                );
-        }else{
-            repStatusLabel->setText("logicbox: Not found");
-            repStatusLabel->setToolTip("Репозиторий прошивок не настроен");
-            repStatusLabel->setStyleSheet("QLabel { padding: 2px 8px; border-radius: 3px; color: #6c757d; }");
-        }
+
+    connect(repo, &firmwareAnalyzer::updated, this, [this, repStatusLabel](const QString &hash) {
+        bool hasHash = !hash.isEmpty();
+        QString text = hasHash ? QString("logicbox: %1").arg(hash) : "logicbox: Not found";
+        QString tip = hasHash ? repo->path() : "Репозиторий прошивок не настроен";
+
+        setupStatusLabel(repStatusLabel, hasHash, text, tip);
     });
     repo->update();
 
-
     QLabel *watchStatusLabel = new QLabel(this);
     watchStatusLabel->setAlignment(Qt::AlignCenter);
-    watchStatusLabel->setStyleSheet("QLabel { padding: 2px 8px; border-radius: 3px; }");
     watchStatusLabel->setFixedHeight(20);
     statusBar->addPermanentWidget(watchStatusLabel);
-    connect(lbplc, &plcManager::activeWatchChanged, this, [watchStatusLabel](const QStringList &keys) {
+
+    connect(lbplc, &plcManager::activeWatchChanged, this, [this, watchStatusLabel](const QStringList &keys) {
         int count = keys.size();
-        if (count > 0) {
-            watchStatusLabel->setText(QString("Connected: %1").arg(count));
-            watchStatusLabel->setToolTip(QString("%1").arg(keys.join("\n")));
-            watchStatusLabel->setStyleSheet(
-                "QLabel {"
-                "  background-color: #D4EDDA;"
-                "  color: #155724;"
-                "  border: 1px solid #C3E6CB;"
-                "  padding: 0px 6px;"          // Сузили вертикальный отступ до 0px
-                "  border-radius: 3px;"
-                "  font-weight: bold;"
-                "  font-size: 11px;"           // Слегка уменьшили шрифт, чтобы рамка не поджимала текст
-                "}"
-                );
-        }else{
-            watchStatusLabel->setText("No Connections");
-            watchStatusLabel->setToolTip("No active watch lists");
-            watchStatusLabel->setStyleSheet("QLabel { padding: 2px 8px; border-radius: 3px; color: #6c757d; }");
-        }
+        bool hasConnections = count > 0;
+        QString text = hasConnections ? QString("Connected: %1").arg(count) : "No Connections";
+        QString tip = hasConnections ? keys.join("\n") : "No active watch lists";
+
+        setupStatusLabel(watchStatusLabel, hasConnections, text, tip);
     });
     emit lbplc->activeWatchChanged(lbplc->activeWatchKeys());
+
 
     fwWidget = new FirmwareWidget(this);
     statusBar->addPermanentWidget(fwWidget);
@@ -473,3 +445,33 @@ void MainWindow::checkTreeAndStartScan(const plcManager::CommandContext &ctx)
     if(!(treeDock->containsName(ctx.name)))
         lbplc->scanDevice(ctx);
 }
+
+void MainWindow::setupStatusLabel(QLabel* label, bool active, const QString& text, const QString& tooltip) {
+    label->setText(text);
+    label->setToolTip(tooltip);
+
+    if (active) {
+        label->setStyleSheet(
+            "QLabel {"
+            "  background-color: #D4EDDA;"
+            "  color: #155724;"
+            "  border: 1px solid #C3E6CB;"
+            "  padding: 0px 6px;"
+            "  border-radius: 3px;"
+            "  font-weight: bold;"
+            "  font-size: 11px;"
+            "}"
+            );
+    } else {
+        label->setStyleSheet(
+            "QLabel {"
+            "  padding: 2px 8px;"
+            "  border-radius: 3px;"
+            "  color: #6c757d;"
+            "  background-color: transparent;" // Явно сбрасываем фон и рамку
+            "  border: none;"
+            "}"
+            );
+    }
+}
+

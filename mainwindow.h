@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QPointer>
+#include <QLabel>
 #include "firmwarewidget.h"
 #include "devicetreedockwidget.h"
 #include "discoverdockwidget.h"
@@ -55,6 +56,7 @@ private:
 
     void checkTreeAndStartScan(const plcManager::CommandContext &ctx);
     firmwareAnalyzer *repo = nullptr;
+    void setupStatusLabel(QLabel* label, bool active, const QString& text, const QString& tooltip);
 
 protected:
     void showEvent(QShowEvent *event) override;
