@@ -5,6 +5,7 @@
 #include <QPointer>
 #include "configdockwidget.h"
 #include "watchdockwidget.h"
+#include "firmwareanalyzer.h"
 
 class CommandManager : public QObject
 {
@@ -40,6 +41,9 @@ public:
     void getRestartAction (const plcManager::CommandContext &ctx, QMenu *menu);
     void getFlashAction (const plcManager::CommandContext &ctx, QMenu *menu);
 
+    firmwareAnalyzer *getFirmwareAnalyzer() const;
+    void setFirmwareAnalyzer(firmwareAnalyzer *newFirmwareAnalyzer);
+
 signals:
     void activeConfDockWidgetChanged(ConfigDockWidget *newWidget);
     void requestFlash(const plcManager::CommandContext &ctx);
@@ -58,6 +62,7 @@ private:
     QPointer<QAction> confAction = nullptr;
 
     inline QString toBold(const QString &text);
+    firmwareAnalyzer *m_firmwareAnalyzer = nullptr;
 };
 
 #endif // COMMANDMANAGER_H

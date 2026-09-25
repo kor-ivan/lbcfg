@@ -43,7 +43,7 @@ firmwareAnalyzer::firmwareAnalyzer(QObject *parent, const QString &path)
     : QObject(parent),
       m_path(path)
 {
-    update();
+    // update();
 }
 
 QMap<QString, firmwareAnalyzer::fwinfo> firmwareAnalyzer::getFirmwareMap() const
@@ -149,7 +149,7 @@ void firmwareAnalyzer::update()
         analyzeFile(sourcePath);
     }
 
-    emit updated();
+    emit updated(getGitHeadHash(m_path));
 }
 
 void firmwareAnalyzer::analyzeFile(const QString &sourcePath)
@@ -463,3 +463,66 @@ QString firmwareAnalyzer::moduleFromFileName(const QString &filePath)
 
     return {};
 }
+
+QString firmwareAnalyzer::getGitHeadHash(const QString &repositoryPath)
+{
+    QDir dir(repositoryPath);
+    QString gitPath;
+
+    // Поднимаемся вверх по дереву каталогов в поиске папки .git
+    while (dir.exists() && !dir.isRoot()) {
+        if (dir.exists(QStringLiteral(".git"))) {
+            gitPath = dir.filePath(QStringLiteral(".git"));
+            break;
+        }
+        if (!dir.cdUp()) {
+            break;
+        }
+    }
+
+    if (gitPath.isEmpty())
+        return QString(); // Репозиторий Git не найден
+
+    // Если .git — это файл (например, в git-субмодулях), парсим путь из него
+    QFileInfo gitInfo(gitPath);
+    if (gitInfo.isFile()) {
+        QFile gitFile(gitPath);
+        if (gitFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QString content = QString::fromLatin1(gitFile.readAll()).trimmed();
+            if (content.startsWith(QStringLiteral("gitdir: "))) {
+                QString relPath = content.mid(8);
+                QDir baseDir(gitInfo.absolutePath());
+                gitPath = baseDir.absoluteFilePath(relPath);
+            }
+        }
+    }
+
+    // 1. Читаем файл .git/HEAD
+    QFile headFile(gitPath + QStringLiteral("/HEAD"));
+    if (!headFile.open(QIODevice::ReadOnly | QIODevice::Text))
+        return QString();
+
+    QString headContent = QString::fromLatin1(headFile.readAll()).trimmed();
+    headFile.close();
+
+    // HEAD может содержать ссылку на ветку ("ref: refs/heads/master") или прямой SHA-1 (Detached HEAD)
+    if (headContent.startsWith(QStringLiteral("ref: "))) {
+        QString refPath = headContent.mid(5); // Получаем "refs/heads/master"
+
+        // 2. Читаем файл, на который указывает ссылка (например, .git/refs/heads/master)
+        QFile refFile(gitPath + QStringLiteral("/") + refPath);
+        if (!refFile.open(QIODevice::ReadOnly | QIODevice::Text))
+            return QString();
+
+        QString hash = QString::fromLatin1(refFile.readAll()).trimmed();
+        return hash.left(7); // Возвращаем первые 7 символов
+    }
+
+    // Если это Detached HEAD, там уже лежит чистый хэш
+    if (headContent.length() >= 40) {
+        return headContent.left(7);
+    }
+
+    return QString();
+}
+

@@ -28,6 +28,16 @@ QString CommandManager::toBold(const QString &text)
     return QString("<b>%1</b>").arg(text);
 }
 
+firmwareAnalyzer *CommandManager::getFirmwareAnalyzer() const
+{
+    return m_firmwareAnalyzer;
+}
+
+void CommandManager::setFirmwareAnalyzer(firmwareAnalyzer* newFirmwareAnalyzer)
+{
+    m_firmwareAnalyzer = newFirmwareAnalyzer;
+}
+
 WatchDockWidget *CommandManager::getActiveWatchDockWidget() const
 {
     return activeWatchDockWidget.get();

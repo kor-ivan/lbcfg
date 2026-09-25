@@ -1,5 +1,4 @@
 #include "firmwarerepositorydialog.h"
-
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QFileDialog>
@@ -97,8 +96,8 @@ void FirmwareRepositoryDialog::validateAndAccept()
     if (selected.isEmpty()) {
         // if (m_allowEmpty) {
         AppSettings::clearFirmwareRepositoryRoot();
-            QDialog::accept();
-            return;
+        QDialog::accept();
+        return;
         // }
 
         // QMessageBox::warning(this,

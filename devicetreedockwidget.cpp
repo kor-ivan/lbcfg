@@ -12,7 +12,8 @@
 
 
 DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent)
-    : QDockWidget("Tree View", parent), lbplc(plcManager::instanse())
+    : QDockWidget("Tree View", parent), lbplc(plcManager::instanse()),
+    m_firmwareAnalyzer(CommandManager::instance()->getFirmwareAnalyzer())
 {
     QWidget *content = new QWidget(this);
     setWidget(content);
@@ -28,7 +29,10 @@ DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent)
     connect(treeView, &QTreeView::expanded,
             this, &DeviceTreeDockWidget::onTreeExpanded);
 
-    m_firmwareAnalyzer = new firmwareAnalyzer(this);
+    // m_firmwareAnalyzer = new firmwareAnalyzer(this);
+    // connect(m_firmwareAnalyzer, &firmwareAnalyzer::updated, this, [](const QString &gitHeadHash){
+    //     qDebug() << gitHeadHash;
+    // });
 
     layout->addWidget(treeView);
     connect(treeView, &QTreeView::doubleClicked, this,
@@ -205,7 +209,6 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
         }
         connect(flashAllNeed, &QAction::triggered, this, [this, ctx, index](){
             QStringList need = getMismatchedSlots(index);
-            qDebug() << need;
             emit requestFlashAll(ctx, need);
         });
 
@@ -411,10 +414,10 @@ reloadFirmwareRepositoryFromSettings()
 
 bool DeviceTreeDockWidget::loadFirmwareRepository(const QString &repositoryRoot)
 {
-    m_firmwareAnalyzer->setPath(
-        repositoryRoot);
+    // m_firmwareAnalyzer->setPath(
+    //     repositoryRoot);
 
-    m_firmwareAnalyzer->update();
+    // m_firmwareAnalyzer->update();
 
     if (m_firmwareAnalyzer->error()
         != firmwareAnalyzer::ok) {

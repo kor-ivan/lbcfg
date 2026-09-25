@@ -54,6 +54,7 @@ private:
     void tabifyDockWidgetTo(QDockWidget *dock, Qt::DockWidgetArea area);
 
     void checkTreeAndStartScan(const plcManager::CommandContext &ctx);
+    firmwareAnalyzer *repo = nullptr;
 
 protected:
     void showEvent(QShowEvent *event) override;

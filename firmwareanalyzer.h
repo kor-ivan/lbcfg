@@ -66,7 +66,7 @@ public:
     void update();
 
 signals:
-    void updated();
+    void updated(const QString &gitHeadHash = {});
 
 private:
     QString m_path;
@@ -95,6 +95,7 @@ private:
     static QString findEmbeddedVersion(const QByteArray &data);
     static QString moduleFromProjectName(const QString &projectName);
     static QString moduleFromFileName(const QString &filePath);
+    static QString getGitHeadHash(const QString &repositoryPath);
 };
 
 #endif // FIRMWAREANALYZER_H

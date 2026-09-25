@@ -16,13 +16,15 @@
 
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
+    : QMainWindow(parent), repo(new firmwareAnalyzer(this, AppSettings::firmwareRepositoryRoot()))
 {
     resize(1280, 720);
 
     QWidget* dummy = new QWidget(this);
     setCentralWidget(dummy);
     dummy->hide(); // Скрываем, чтобы доки сомкнулись в центре
+
+    CommandManager::instance()->setFirmwareAnalyzer(repo);
 
     lbplc = plcManager::instanse();
     createTreeDockWidget();
@@ -63,6 +65,34 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Временное сообщение (исчезнет через 5000 миллисекунд / 5 секунд)
     statusBar->showMessage(tr("Программа готова к работе"), 5000);
+
+    QLabel *repStatusLabel = new QLabel(this);
+    repStatusLabel->setAlignment(Qt::AlignCenter);
+    repStatusLabel->setStyleSheet("QLabel { padding: 2px 8px; border-radius: 3px; }");
+    repStatusLabel->setFixedHeight(20);
+    statusBar->addPermanentWidget(repStatusLabel);
+    connect(repo, &firmwareAnalyzer::updated, this, [repStatusLabel, this](const QString &hash) {
+        if (!hash.isEmpty()) {
+            repStatusLabel->setText(QString("logicbox: %1").arg(hash));
+            repStatusLabel->setToolTip(repo->path());
+            repStatusLabel->setStyleSheet(
+                "QLabel {"
+                "  background-color: #D4EDDA;"
+                "  color: #155724;"
+                "  border: 1px solid #C3E6CB;"
+                "  padding: 0px 6px;"          // Сузили вертикальный отступ до 0px
+                "  border-radius: 3px;"
+                "  font-weight: bold;"
+                "  font-size: 11px;"           // Слегка уменьшили шрифт, чтобы рамка не поджимала текст
+                "}"
+                );
+        }else{
+            repStatusLabel->setText("logicbox: Not found");
+            repStatusLabel->setToolTip("Репозиторий прошивок не настроен");
+            repStatusLabel->setStyleSheet("QLabel { padding: 2px 8px; border-radius: 3px; color: #6c757d; }");
+        }
+    });
+    repo->update();
 
 
     QLabel *watchStatusLabel = new QLabel(this);
@@ -125,7 +155,6 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     connect(lbplc, &plcManager::logStarted, this, &MainWindow::createLogDockWidget);
-
 }
 
 void MainWindow::showEvent(QShowEvent *event)
@@ -348,9 +377,14 @@ void MainWindow::editFirmwareRepositorySettings()
 
     if (dialog.exec() != QDialog::Accepted)
         return;
+    // CommandManager::instance()->getFirmwareAnalyzer()->update();
 
     const QString repositoryRoot =
         dialog.repositoryPath();
+
+    repo->setPath(repositoryRoot);
+
+    repo->update();
 
     if (repositoryRoot.isEmpty()) {
         if (treeDock) {
