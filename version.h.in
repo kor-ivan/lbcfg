@@ -1,0 +1,15 @@
+// version.h.in
+#ifndef LBCFG_VERSION_H
+#define LBCFG_VERSION_H
+
+// Чистая трехзначная версия: "0.1.0"
+#define APP_VERSION_BASE   "@PROJECT_VERSION@"
+
+// Тип сборки: "Debug" или "Release"
+#define APP_BUILD_TYPE     "@BUILD_TYPE@"
+
+// Полная строка: "0.1.0-g<hash>[-dirty](<type>)"
+#define APP_VERSION_STRING "@FULL_VERSION_STRING@"
+
+#endif // LBCFG_VERSION_H
+

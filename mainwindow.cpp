@@ -11,6 +11,7 @@
 #include "commandmanager.h"
 #include "firmwarerepositorydialog.h"
 #include "appsettings.h"
+#include "version.h"
 
 
 
@@ -23,6 +24,7 @@ MainWindow::MainWindow(QWidget *parent)
     setCentralWidget(dummy);
     dummy->hide(); // Скрываем, чтобы доки сомкнулись в центре
 
+    qDebug() << QCoreApplication::applicationName() << QString(APP_VERSION_STRING);
     CommandManager::instance()->setFirmwareAnalyzer(repo);
 
     lbplc = plcManager::instanse();
