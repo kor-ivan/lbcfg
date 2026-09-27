@@ -133,9 +133,12 @@ void yamlTextView::replacePlcBlock(int startLine, int endLine, const QString &ne
         QString customHeader = QString(
                                    "# --------------------------------------------------\n"
                                    "%1\n"
-                                   "# Powered by lbyaml & yaml-cpp libraries\n"
+                                   "# Powered by %2 %3 %4 \n"
                                    "# --------------------------------------------------\n"
-                                   ).arg(headerMarker);
+                                   ).arg(headerMarker,
+                                        QCoreApplication::organizationName(),
+                                        QCoreApplication::applicationName(),
+                                        QCoreApplication::applicationVersion());
         QString customFooter = QString(
             "\n# --------------------------------------------------\n"
             );

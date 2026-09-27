@@ -160,8 +160,8 @@ QMenu *helpMenu = menuBar->addMenu("&Справка");
     connect(aboutAct, &QAction::triggered, this, [this]() {
         QMessageBox::about(p_mainWindow,
                            tr("О программе lbcfg"),
-                           tr("<h3>Конфигуратор ПЛК Logic Box</h3>"
-                              "<p>Версия 1.0.0</p>"
+                           QString(tr("<h3>Конфигуратор ПЛК %1</h3>"
+                              "<p>Версия %2</p>"
                               "<p>Программа предназначена для сканирования устройств, "
                               "редактирования файлов конфигурации YAML/YML и безопасной "
                               "загрузки прошивок в ПЛК.</p>"
@@ -169,7 +169,8 @@ QMenu *helpMenu = menuBar->addMenu("&Справка");
                               "распространяемую на условиях лицензии GNU Lesser General Public License (LGPL) версии 3. "
                               "Вы имеете право пересобирать приложение с измененной версией библиотеки Qt в соответствии с условиями LGPLv3.</p>"
                               "<p>Подробную информацию о лицензии Qt можно найти в меню 'О библиотеке Qt'.</p>")
-                           );
+                                   ).arg(QCoreApplication::organizationName(),
+                                    QCoreApplication::applicationVersion()));
     });
 
     QAction *aboutQtAct = helpMenu->addAction("О библиотеке &Qt...");

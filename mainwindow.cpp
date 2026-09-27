@@ -11,8 +11,6 @@
 #include "commandmanager.h"
 #include "firmwarerepositorydialog.h"
 #include "appsettings.h"
-#include "version.h"
-
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -24,7 +22,7 @@ MainWindow::MainWindow(QWidget *parent)
     setCentralWidget(dummy);
     dummy->hide(); // Скрываем, чтобы доки сомкнулись в центре
 
-    qDebug() << QCoreApplication::applicationName() << QString(APP_VERSION_STRING);
+    qDebug() << QCoreApplication::applicationName() << QCoreApplication::applicationVersion();
     CommandManager::instance()->setFirmwareAnalyzer(repo);
 
     lbplc = plcManager::instanse();
@@ -157,7 +155,7 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
         if (index != -1) {
             QString tabText = tabBar->tabText(index);
             // Ищем документ, соответствующий этой вкладке
-            for (ConfigDockWidget *dock : configDocks.values()) {
+            for (ConfigDockWidget *dock : std::as_const(configDocks)) {
                 if (dock && dock->windowTitle() == tabText) {
                     QString filePath = dock->getCurrentFilePath();
                     if (!filePath.isEmpty()) {
@@ -210,7 +208,7 @@ ConfigDockWidget *MainWindow::CreateConfDockWidget(const QString &key, const QSt
             CommandManager::instance()->resetActiveConfDockWidget();
         });
         connect(lbplc, &plcManager::confCompleted, this, &MainWindow::checkTreeAndStartScan,
-                Qt::UniqueConnection);
+                Qt::UniqueConnection); // clazy:skip
     }
     return dock;
 }

@@ -96,7 +96,6 @@ signals:
     void discoverCompleted(const QMap<QString, discover::lbinfo>& DiscoverMap);
     void firmwareStarted(const CommandContext &ctx, const QString &message);
     void firmwareProgressChanged(int prc);
-    // void firmwareStatusChanged(const QString &message);
     void firmwareFinished();
     void logStarted();
     void logFinished();
