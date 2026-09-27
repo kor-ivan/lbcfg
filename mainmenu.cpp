@@ -158,19 +158,30 @@ QMenu *helpMenu = menuBar->addMenu("&Справка");
     aboutAct->setStatusTip(tr("Показать информацию о приложении"));
 
     connect(aboutAct, &QAction::triggered, this, [this]() {
-        QMessageBox::about(p_mainWindow,
-                           tr("О программе lbcfg"),
-                           QString(tr("<h3>Конфигуратор ПЛК %1</h3>"
-                              "<p>Версия %2</p>"
-                              "<p>Программа предназначена для сканирования устройств, "
-                              "редактирования файлов конфигурации YAML/YML и безопасной "
-                              "загрузки прошивок в ПЛК.</p>"
-                              "<p>Данное программное обеспечение использует библиотеку Qt, "
-                              "распространяемую на условиях лицензии GNU Lesser General Public License (LGPL) версии 3. "
-                              "Вы имеете право пересобирать приложение с измененной версией библиотеки Qt в соответствии с условиями LGPLv3.</p>"
-                              "<p>Подробную информацию о лицензии Qt можно найти в меню 'О библиотеке Qt'.</p>")
-                                   ).arg(QCoreApplication::organizationName(),
-                                    QCoreApplication::applicationVersion()));
+        QMessageBox *aboutBox = new QMessageBox(p_mainWindow);
+        aboutBox->setAttribute(Qt::WA_DeleteOnClose);
+        aboutBox->setWindowTitle(tr("О программе lbcfg"));
+        aboutBox->setIcon(QMessageBox::Information);
+
+        aboutBox->setTextInteractionFlags(Qt::TextSelectableByMouse);
+
+        QString styledVersion = QString("<span style='color: #0066cc; font-weight: bold; cursor: text;'>%1</span>")
+                                    .arg(QCoreApplication::applicationVersion());
+
+        QString infoText = QString(tr("<h3>Конфигуратор ПЛК %1</h3>"
+                                      "<p>Версия %2</p>"
+                                      "<p>Программа предназначена для сканирования устройств, "
+                                      "редактирования файлов конфигурации YAML/YML и безопасной "
+                                      "загрузки прошивок в ПЛК.</p>"
+                                      "<p>Данное программное обеспечение использует библиотеку Qt, "
+                                      "распространяемую на условиях лицензии GNU Lesser General Public License (LGPL) версии 3. "
+                                      "Вы имеете право пересобирать приложение с измененной версией библиотеки Qt в соответствии с условиями LGPLv3.</p>"
+                                      "<p>Подробную информацию о лицензии Qt можно найти в меню 'О библиотеке Qt'.</p>"))
+                               .arg(QCoreApplication::organizationName(), styledVersion);
+
+        aboutBox->setText(infoText);
+        aboutBox->show();
+
     });
 
     QAction *aboutQtAct = helpMenu->addAction("О библиотеке &Qt...");
