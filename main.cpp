@@ -2,7 +2,6 @@
 #include <QTranslator>
 #include <QLibraryInfo>
 #include <QApplication>
-#include "version.h"
 
 int main(int argc, char *argv[])
 {
@@ -10,7 +9,7 @@ int main(int argc, char *argv[])
 
     QCoreApplication::setOrganizationName(QStringLiteral("LogicBox"));
     QCoreApplication::setApplicationName(QStringLiteral("lbcfg"));
-    QCoreApplication::setApplicationVersion(QString(APP_VERSION_STRING));
+    QCoreApplication::setApplicationVersion(MainWindow::getLibraryVersion());
     // QSettings::setDefaultFormat(QSettings::NativeFormat);
 
     QTranslator qtTranslator;

@@ -10,7 +10,7 @@ plcManager::plcManager()
 // plcManager::~plcManager()
 // {}
 
-void plcManager::scanDevice(const CommandContext &ctx)
+void plcManager::scanDevice(const plc::CommandContext &ctx)
 {
     debugApp() << "plcManager::Starting process for:"<<ctx.ipv6str()<<ctx.ipv6.scopeId()<<ctx.name;
     LBclient *lbc = new LBclient(this);
@@ -43,7 +43,7 @@ void plcManager::scanDevice(const CommandContext &ctx)
     lbproc->run(lbprocess::scan, {"sys.serial"});
 }
 
-void plcManager::requestConfig(const CommandContext &ctx)
+void plcManager::requestConfig(const plc::CommandContext &ctx)
 {
     debugApp()<<"plcManager::getlbcfg: "<<ctx.ipv6str()<<ctx.ipv6.scopeId()<<ctx.name;
     LBclient *lbc = new LBclient(this, {"getconf"});
@@ -93,7 +93,7 @@ void plcManager::startDiscover()
     wgtdiscover -> execute();
 }
 
-bool plcManager::startFirmware(const CommandContext &ctx, const QString &filePath, const QString &checkMessage, const QString &startMessage, const QString &lbkey)
+bool plcManager::startFirmware(const plc::CommandContext &ctx, const QString &filePath, const QString &checkMessage, const QString &startMessage, const QString &lbkey)
 {
     if (activeOtaClient) {
         emit eventOccurred(checkMessage);
@@ -138,7 +138,7 @@ void plcManager::stopFirmware()
     emit firmwareFinished();
 }
 
-void plcManager::startConf(const CommandContext &ctx, const QString &yamlFilePath)
+void plcManager::startConf(const plc::CommandContext &ctx, const QString &yamlFilePath)
 {
     debugApp()<<"plcManager::startConf for "<<ctx.name;
     LBclient *lbc = new LBclient(this, {"conf"});
@@ -153,7 +153,7 @@ void plcManager::startConf(const CommandContext &ctx, const QString &yamlFilePat
             });
     connect(lbc, &LBclient::lbDisconnect, this, [lbc, ctx, ifce, this]
             (const QString& lbhost, const QString& message, const QModbusDevice::Error error){
-                plcManager::CommandContext m_ctx;
+                plc::CommandContext m_ctx;
                 m_ctx = ctx;
                 m_ctx.ipv6.setScopeId(ifce);
                 emit confCompleted(m_ctx);
@@ -162,7 +162,7 @@ void plcManager::startConf(const CommandContext &ctx, const QString &yamlFilePat
     lbc->Execute();
 }
 
-void plcManager::startFirmwareAll(const CommandContext &ctx, const QString &filePath, const QString &checkMessage, const QString &startMessage, const QStringList &otaSlots)
+void plcManager::startFirmwareAll(const plc::CommandContext &ctx, const QString &filePath, const QString &checkMessage, const QString &startMessage, const QStringList &otaSlots)
 {
     if (activeOtaClient) {
         emit eventOccurred(checkMessage);
@@ -196,7 +196,7 @@ void plcManager::startFirmwareAll(const CommandContext &ctx, const QString &file
     prcActiveOtaClient->run(lbprocess::autoota);
 }
 
-void plcManager::startRestartAll(const CommandContext &ctx)
+void plcManager::startRestartAll(const plc::CommandContext &ctx)
 {
     debugApp()<<"plcManager::startRestartAll for"<<ctx.ipv6<<ctx.ipv6.scopeId();
     LBclient *lbc = new LBclient (this);
@@ -215,7 +215,7 @@ void plcManager::startRestartAll(const CommandContext &ctx)
     prc->run(lbprocess::restartall);
 }
 
-void plcManager::startLog(const CommandContext &ctx, const QString &flag)
+void plcManager::startLog(const plc::CommandContext &ctx, const QString &flag)
 {
     if (activeLogClient){
         debugApp() << "Log is already running, stop the current log one first";
@@ -259,7 +259,7 @@ void plcManager::stopLog()
     emit logFinished();
 }
 
-WatchSession *plcManager::startWatch(const CommandContext &ctx, const QStringList &arg, QObject *p_watchDock)
+WatchSession *plcManager::startWatch(const plc::CommandContext &ctx, const QStringList &arg, QObject *p_watchDock)
 {
     if (activeWatchSessions.contains(ctx.name)) {
         debugApp() << "WatchSession for key" << ctx.name << "already exists. Returning existing session.";
@@ -334,18 +334,18 @@ QString plcManager::getIf(const QString &ipv6)
     return QString();
 }
 
-plcManager::CommandContext plcManager::getctx(const QString &ipv6, const QString &name, const QString &ifce)
+plc::CommandContext plcManager::getctx(const QString &ipv6, const QString &name, const QString &ifce)
 {
-    plcManager::CommandContext ctx;
+    plc::CommandContext ctx;
     ctx.ipv6 = QHostAddress(ipv6);
     if (!ifce.isEmpty()) ctx.ipv6.setScopeId(ifce);
     if (!name.isEmpty()) ctx.name = name;
     return ctx;
 }
 
-plcManager::CommandContext plcManager::getctx(const QHostAddress &host, const QString &name)
+plc::CommandContext plcManager::getctx(const QHostAddress &host, const QString &name)
 {
-    plcManager::CommandContext ctx;
+    plc::CommandContext ctx;
     ctx.ipv6 = host;
     if (!name.isEmpty()) ctx.name = name;
     return ctx;

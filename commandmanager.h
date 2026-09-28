@@ -29,7 +29,7 @@ public:
     QAction *getSaveAsAction() const;
     void setSaveAsAction(QAction *newSaveAsAction);
 
-    void getLogMenu(const plcManager::CommandContext &ctx, QMenu *parentMenu,
+    void getLogMenu(const plc::CommandContext &ctx, QMenu *parentMenu,
                     const QString &text = "Запросить лог");
 
     QAction *getConfAction() const;
@@ -37,16 +37,16 @@ public:
 
     WatchDockWidget* getActiveWatchDockWidget() const;
 
-    void getUptimeAction (const plcManager::CommandContext &ctx, QMenu *menu);
-    void getRestartAction (const plcManager::CommandContext &ctx, QMenu *menu);
-    void getFlashAction (const plcManager::CommandContext &ctx, QMenu *menu);
+    void getUptimeAction (const plc::CommandContext &ctx, QMenu *menu);
+    void getRestartAction (const plc::CommandContext &ctx, QMenu *menu);
+    void getFlashAction (const plc::CommandContext &ctx, QMenu *menu);
 
     firmwareAnalyzer *getFirmwareAnalyzer() const;
     void setFirmwareAnalyzer(firmwareAnalyzer *newFirmwareAnalyzer);
 
 signals:
     void activeConfDockWidgetChanged(ConfigDockWidget *newWidget);
-    void requestFlash(const plcManager::CommandContext &ctx);
+    void requestFlash(const plc::CommandContext &ctx);
 
 private:
     CommandManager();

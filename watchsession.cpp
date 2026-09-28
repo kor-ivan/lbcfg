@@ -2,7 +2,7 @@
 #include "logmanager.h"
 
 
-WatchSession::WatchSession(const plcManager::CommandContext &ctx, const QStringList &arg, QObject *parent)
+WatchSession::WatchSession(const plc::CommandContext &ctx, const QStringList &arg, QObject *parent)
     : QObject{parent}, m_key(ctx.name)
 {
     debugApp() << "WatchSession::Starting process for:" << m_key << ctx.ipv6;

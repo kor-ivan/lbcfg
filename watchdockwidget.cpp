@@ -11,7 +11,7 @@
 
 
 
-WatchDockWidget::WatchDockWidget(const plcManager::CommandContext &ctx, QWidget *parent)
+WatchDockWidget::WatchDockWidget(const plc::CommandContext &ctx, QWidget *parent)
     : QDockWidget{QString("Watch: %1").arg(ctx.name), parent}, m_ctx(ctx)
 {
     QWidget *container = new QWidget(this);
@@ -247,7 +247,7 @@ void WatchDockWidget::toggleConnection()
         return;
     }
 
-    // plcManager::CommandContext ctx;
+    // plc::CommandContext ctx;
     // ctx.ipv6 = ipv6;
     // ctx.name = plcname;
 

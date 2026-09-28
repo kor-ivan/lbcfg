@@ -18,9 +18,9 @@ public:
     // QMap<QString, discover::lbinfo> getLdmap() const;
 
 signals:
-    void deviceSelected(const plcManager::CommandContext &ctx);
-    void requestConfig(const plcManager::CommandContext &ctx);
-    void newConfig(const plcManager::CommandContext &ctx);
+    void deviceSelected(const plc::CommandContext &ctx);
+    void requestConfig(const plc::CommandContext &ctx);
+    void newConfig(const plc::CommandContext &ctx);
 
 private slots:
     void cleanRow();

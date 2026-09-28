@@ -9,6 +9,26 @@
 
 class WatchSession;
 
+namespace plc {
+struct CommandContext {
+    QString name;
+    QHostAddress ipv6;
+    int slot = -1;
+
+    bool isSlot() const { return slot != -1; }
+    QString displayName() const {
+        return isSlot() ? QString("%1/slot %2").arg(name).arg(slot) : name;
+    }
+    QString ipv6str() const {
+        if (ipv6.protocol() == QAbstractSocket::IPv6Protocol)
+            return QHostAddress(ipv6.toIPv6Address()).toString();
+        else if (ipv6.protocol() == QAbstractSocket::IPv4Protocol)
+            return ipv6.toString();
+        return QString();
+    }
+};
+}
+
 class plcManager : public QObject
 {
     Q_OBJECT
@@ -20,44 +40,27 @@ public:
         static plcManager inst;
         return &inst;
     }
-    struct CommandContext {
-        QString name;
-        QHostAddress ipv6;
-        int slot = -1;
 
-        bool isSlot() const { return slot != -1; }
-        QString displayName() const {
-            return isSlot() ? QString("%1/slot %2").arg(name).arg(slot) : name;
-        }
-        QString ipv6str() const {
-            if (ipv6.protocol() == QAbstractSocket::IPv6Protocol)
-                return QHostAddress(ipv6.toIPv6Address()).toString();
-            else if (ipv6.protocol() == QAbstractSocket::IPv4Protocol)
-                return ipv6.toString();
-            return QString();
-        }
-    };
-
-    void scanDevice(const CommandContext &ctx);
-    void requestConfig(const CommandContext &ctx);
+    void scanDevice(const plc::CommandContext &ctx);
+    void requestConfig(const plc::CommandContext &ctx);
     void startDiscover();
-    bool startFirmware(const CommandContext &ctx, const QString &filePath,
+    bool startFirmware(const plc::CommandContext &ctx, const QString &filePath,
                        const QString &checkMessage,
                        const QString &startMessage,
                        const QString &lbkey = "ota");
     void stopFirmware();
-    void startConf(const CommandContext &ctx, const QString &yamlFilePath);
-    void startFirmwareAll(const CommandContext &ctx, const QString &filePath,
+    void startConf(const plc::CommandContext &ctx, const QString &yamlFilePath);
+    void startFirmwareAll(const plc::CommandContext &ctx, const QString &filePath,
                           const QString &checkMessage,
                           const QString &startMessage,
                           const QStringList &otaSlots);
-    void startRestartAll (const CommandContext &ctx);
-    void startFbootDownload(const CommandContext &ctx, const QString &filePath);
-    void startLog (const CommandContext &ctx, const QString &flag);
+    void startRestartAll (const plc::CommandContext &ctx);
+    void startFbootDownload(const plc::CommandContext &ctx, const QString &filePath);
+    void startLog (const plc::CommandContext &ctx, const QString &flag);
     void stopLog();
 
     template <typename F>
-    void lbc_executeCommand(const CommandContext &ctx,
+    void lbc_executeCommand(const plc::CommandContext &ctx,
                             const QStringList &args,
                             const QString &boxTitle,
                             F messageBuilder){
@@ -79,29 +82,29 @@ public:
         lbc->Execute();
     }
 
-    WatchSession* startWatch(const CommandContext &ctx, const QStringList &arg, QObject *p_watchDock = nullptr);
+    WatchSession* startWatch(const plc::CommandContext &ctx, const QStringList &arg, QObject *p_watchDock = nullptr);
     QStringList activeWatchKeys() const;
 
     QString getIf(const QString &ipv6);
-    CommandContext getctx(const QString &ipv6, const QString &name = {}, const QString &ifce = {});
-    CommandContext getctx(const QHostAddress &host, const QString &name = {});
+    plc::CommandContext getctx(const QString &ipv6, const QString &name = {}, const QString &ifce = {});
+    plc::CommandContext getctx(const QHostAddress &host, const QString &name = {});
     const QMap<QString, discover::lbinfo>& getldmap() const;
 
 signals:
-    void scanCompleted(const CommandContext &ctx, const QMap<qsizetype, lbprocess::scaninfo> &scanData);
-    void configReceived(const CommandContext &ctx, const QString &yamlContent);
+    void scanCompleted(const plc::CommandContext &ctx, const QMap<qsizetype, lbprocess::scaninfo> &scanData);
+    void configReceived(const plc::CommandContext &ctx, const QString &yamlContent);
     void errorOccurred(const QString &message);
     void eventOccurred(const QString &message);
     void discoverStarting();
     void discoverCompleted(const QMap<QString, discover::lbinfo>& DiscoverMap);
-    void firmwareStarted(const CommandContext &ctx, const QString &message);
+    void firmwareStarted(const plc::CommandContext &ctx, const QString &message);
     void firmwareProgressChanged(int prc);
     void firmwareFinished();
     void logStarted();
     void logFinished();
-    void confCompleted(const CommandContext &ctx);
+    void confCompleted(const plc::CommandContext &ctx);
     void showMessage(const QString &title, const QString &message);
-    void restartAllCompleted(const CommandContext &ctx);
+    void restartAllCompleted(const plc::CommandContext &ctx);
     void activeWatchChanged(const QStringList &keys);
 
 private:

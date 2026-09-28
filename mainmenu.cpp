@@ -3,6 +3,9 @@
 #include <QApplication>
 #include <QMessageBox>
 #include "mainwindow.h"
+#include "devicetreedockwidget.h"
+#include "discoverdockwidget.h"
+#include "logdockwidget.h"
 #include <QProcess>
 #include <QDir>
 
@@ -180,7 +183,7 @@ void MainMenu::initViewMenu(QMenuBar *menuBar)
     watchMenu->addAction(createWatch);
     connect(createWatch, &QAction::triggered, this, [this](){
         static QAtomicInt counter(0);
-        plcManager::CommandContext ctx;
+        plc::CommandContext ctx;
         ctx.name = QString("new %1").arg(counter.fetchAndAddRelaxed(1) + 1);
         WatchDockWidget* watch = p_mainWindow->createWatchDockWidget(ctx);
         watch->show();

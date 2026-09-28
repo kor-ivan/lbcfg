@@ -86,7 +86,7 @@ void LogDockWidget::appendLogEntry(const QDateTime &timestamp,
                                    LogCatcher::Source source,
                                    LogCatcher::Level level,
                                    const QString &message,
-                                   const plcManager::CommandContext &ctx,
+                                   const plc::CommandContext &ctx,
                                    LogCatcher::Wrapped wrap,
                                    LogCatcher::TimeType timeType)
 {

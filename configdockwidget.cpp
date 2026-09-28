@@ -1,5 +1,4 @@
 #include "configdockwidget.h"
-// #include "commandmanager.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFile>
@@ -14,6 +13,7 @@
 #include <QStandardPaths>
 #include "logmanager.h"
 #include "mainwindow.h"
+#include "watchdockwidget.h"
 
 
 ConfigDockWidget::ConfigDockWidget(const QString &name, MainWindow *parent)
@@ -316,7 +316,7 @@ void ConfigDockWidget::onConfigureClicked()
             return;
         }
     }
-    plcManager::CommandContext ctx;
+    plc::CommandContext ctx;
     // ctx.name = currentSelected;
     // ctx.ipv6 = QHostAddress(lbyaml::MacToIPv6(mac));
     if (lbplc)
@@ -524,7 +524,7 @@ void ConfigDockWidget::onAddVariableToWatch(const QString &varName)
     }
     if (!watch){
         debugApp() << "onAddVariableToWatch: New Watch" << ipv6 << plcName << varName;
-        // plcManager::CommandContext ctx;
+        // plc::CommandContext ctx;
         // ctx.ipv6 = QHostAddress(ipv6);
         // ctx.ipv6.setScopeId(plcManager::instanse()->getIf(ipv6));
         // ctx.name = plcName;

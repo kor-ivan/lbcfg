@@ -10,7 +10,7 @@ class WatchSession : public QObject
 {
     Q_OBJECT
 public:
-    explicit WatchSession(const plcManager::CommandContext &ctx, const QStringList &arg, QObject *parent = nullptr);
+    explicit WatchSession(const plc::CommandContext &ctx, const QStringList &arg, QObject *parent = nullptr);
     virtual ~WatchSession();
     void start();
     void stop();

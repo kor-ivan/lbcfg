@@ -39,7 +39,7 @@ DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent)
             [this](const QModelIndex &index){
                 if (!index.isValid()) return;
                 if (!index.parent().isValid()){
-                    // plcManager::CommandContext ctx;
+                    // plc::CommandContext ctx;
                     // ctx.ipv6 = index.data(Qt::UserRole).value<QHostAddress>();
                     // ctx.name = index.data().toString();
                     emit requestConfig(lbplc->getctx(index.data(Qt::UserRole).value<QHostAddress>(), index.data().toString()));
@@ -50,14 +50,14 @@ DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent)
         QMessageBox::information(this, title, message);
     });
     connect(lbplc, &plcManager::restartAllCompleted, this, [this]
-            (const plcManager::CommandContext &ctx){
+            (const plc::CommandContext &ctx){
                 QMessageBox::information(this, "Перезагрузить все",
                                          QString("Команда на перезагрузку всех модулей %1 отправлена").arg(ctx.name));
             });
     // qRegisterMetaType<QHostAddress>("QHostAddress");
 }
 
-void DeviceTreeDockWidget::updateDevice(const plcManager::CommandContext &ctx, const QMap<qsizetype, lbprocess::scaninfo> &scan)
+void DeviceTreeDockWidget::updateDevice(const plc::CommandContext &ctx, const QMap<qsizetype, lbprocess::scaninfo> &scan)
 {
     QStandardItem* plcRoot = findPlcRoot(ctx.ipv6);
     QModelIndex rootIndex;
@@ -146,7 +146,7 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
     if (!isRoot && !isModule)
         return;
 
-    plcManager::CommandContext ctx;
+    plc::CommandContext ctx;
     if (isRoot) {
         ctx.name = index.data().toString();
         ctx.ipv6 = index.data(Qt::UserRole).value<QHostAddress>();

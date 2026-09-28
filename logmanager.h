@@ -36,7 +36,7 @@ signals:
                      LogCatcher::Source source,
                      LogCatcher::Level level,
                      const QString &message,
-                     const plcManager::CommandContext &ctx,
+                     const plc::CommandContext &ctx,
                      LogCatcher::Wrapped wrap = LogCatcher::wrapNo,
                      LogCatcher::TimeType timeType = LogCatcher::TimeReal);
 };
@@ -51,9 +51,9 @@ public:
     using Wrapped = LogCatcher::Wrapped;
     using TimeType = LogCatcher::TimeType;
 
-    LogManager(const plcManager::CommandContext &ctx, bool parse, Source source);
+    LogManager(const plc::CommandContext &ctx, bool parse, Source source);
     LogManager(Source source, Level level = Level::Info, Wrapped wrap = Wrapped::wrapNo);
-    LogManager(const plcManager::CommandContext &ctx, Source source, Level level = Level::Info, Wrapped wrap = Wrapped::wrapNo);
+    LogManager(const plc::CommandContext &ctx, Source source, Level level = Level::Info, Wrapped wrap = Wrapped::wrapNo);
     // LogManager(const QDateTime &timestamp, Source source, Level level = Level::Info, Wrapped wrap = Wrapped::wrapNo);
     ~LogManager();
 
@@ -76,7 +76,7 @@ private:
     TimeType m_timetype = LogCatcher::TimeReal;
     bool m_parse = false;
     Level loglevel = LogCatcher::Debug;
-    plcManager::CommandContext m_ctx;
+    plc::CommandContext m_ctx;
 };
 
 inline LogManager logApp(LogCatcher::Level level = LogCatcher::Info) {
@@ -85,14 +85,14 @@ inline LogManager logApp(LogCatcher::Level level = LogCatcher::Info) {
 
 inline LogManager logPLC(const QString &name = QString(), LogCatcher::Level level = LogCatcher::Info,
                          LogCatcher::Wrapped wrap = LogCatcher::wrapNo) {
-    plcManager::CommandContext ctx;
+    plc::CommandContext ctx;
     ctx.name = name;
     return LogManager(ctx, LogCatcher::PLC, level, wrap);
 }
 
 
 inline LogManager debugPLC(const QString &name = QString()) {
-    plcManager::CommandContext ctx;
+    plc::CommandContext ctx;
     ctx.name = name;
     return LogManager(ctx, LogCatcher::PLC, LogCatcher::Debug);
 }
@@ -101,7 +101,7 @@ inline LogManager debugApp() {
     return LogManager(LogCatcher::App, LogCatcher::Debug);
 }
 
-inline LogManager rawPLC(const plcManager::CommandContext &ctx){
+inline LogManager rawPLC(const plc::CommandContext &ctx){
     return LogManager(ctx, true, LogCatcher::PLC);
 }
 

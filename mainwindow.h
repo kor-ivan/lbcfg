@@ -3,18 +3,22 @@
 
 #include <QMainWindow>
 #include <QPointer>
-#include <QLabel>
-#include "firmwarewidget.h"
-#include "devicetreedockwidget.h"
-#include "discoverdockwidget.h"
-#include "configdockwidget.h"
-#include "plcmanager.h"
-#include "mainmenu.h"
-#include "logdockwidget.h"
-#include "watchdockwidget.h"
+#include "lbcfg_global.h"
 
+class DeviceTreeDockWidget;
+class DiscoverDockWidget;
+class LogDockWidget;
+class WatchDockWidget;
+class ConfigDockWidget;
+class QLabel;
 
-class MainWindow : public QMainWindow
+namespace plc {
+struct CommandContext; // Поддержка вложенной структуры контекста
+}
+
+class MainWindowPrivate;
+
+class LBCFG_CORE_EXPORT MainWindow : public QMainWindow
 {
     Q_OBJECT
 
@@ -30,37 +34,19 @@ public:
     DeviceTreeDockWidget *createTreeDockWidget();
     DiscoverDockWidget* createDiscoverDockWidget();
     LogDockWidget* createLogDockWidget();
-    WatchDockWidget* createWatchDockWidget(const plcManager::CommandContext &ctx);
+    WatchDockWidget* createWatchDockWidget(const plc::CommandContext &ctx);
     QList<ConfigDockWidget*> getConfigDocks() const;
     QList<WatchDockWidget*> getWatchDocks() const;
 
     void editFirmwareRepositorySettings();
 
-private:
-    plcManager *lbplc = nullptr;
-    QPointer<DeviceTreeDockWidget> treeDock = nullptr;
-    QPointer<DiscoverDockWidget> discoverDock = nullptr;
-    QPointer<LogDockWidget> logDock = nullptr;
-    QMap<QString, ConfigDockWidget*> configDocks;
-    QMap<QString, WatchDockWidget*> watchDocks;
-
-    ConfigDockWidget* CreateConfDockWidget(const QString &key, const QString &name);
-
-    MainMenu *menu = nullptr;
-
-    FirmwareWidget *fwWidget = nullptr;
-    void CreateConfig(const plcManager::CommandContext &ctx, const QString &content = {});
-
-    QList<QDockWidget*> getDocksInArea(Qt::DockWidgetArea area) const;
-    void tabifyDockWidgetTo(QDockWidget *dock, Qt::DockWidgetArea area);
-
-    void checkTreeAndStartScan(const plcManager::CommandContext &ctx);
-    firmwareAnalyzer *repo = nullptr;
-    void setupStatusLabel(QLabel* label, bool active, const QString& text, const QString& tooltip);
+    static QString getLibraryVersion();
 
 protected:
     void showEvent(QShowEvent *event) override;
     bool eventFilter(QObject *watched, QEvent *event) override;
 
+private:
+    MainWindowPrivate *p;
 };
 #endif // MAINWINDOW_H

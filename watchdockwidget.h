@@ -12,7 +12,7 @@ class WatchDockWidget : public QDockWidget
 {
     Q_OBJECT
 public:
-    WatchDockWidget(const plcManager::CommandContext &ctx, QWidget *parent = nullptr);
+    WatchDockWidget(const plc::CommandContext &ctx, QWidget *parent = nullptr);
 
     QString getPlcName() const;
 
@@ -27,7 +27,7 @@ protected:
 private:
     // QString plcname;
     // QString ipv6;
-    plcManager::CommandContext m_ctx;
+    plc::CommandContext m_ctx;
     QTableView *watch = nullptr;
     QStandardItemModel *watchModel = nullptr;
 

@@ -28,7 +28,7 @@ private:
                         LogCatcher::Source source,
                         LogCatcher::Level level,
                         const QString &message,
-                        const plcManager::CommandContext &ctx,
+                        const plc::CommandContext &ctx,
                         LogCatcher::Wrapped wrap,
                         LogCatcher::TimeType timeType);
     QPlainTextEdit *logViewer = nullptr;

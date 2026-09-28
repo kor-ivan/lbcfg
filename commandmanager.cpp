@@ -43,7 +43,7 @@ WatchDockWidget *CommandManager::getActiveWatchDockWidget() const
     return activeWatchDockWidget.get();
 }
 
-void CommandManager::getUptimeAction(const plcManager::CommandContext &ctx, QMenu *menu)
+void CommandManager::getUptimeAction(const plc::CommandContext &ctx, QMenu *menu)
 {
     QAction *getUptime = menu->addAction("Время работы");
     connect(getUptime, &QAction::triggered, this, [this, ctx]() {
@@ -54,7 +54,7 @@ void CommandManager::getUptimeAction(const plcManager::CommandContext &ctx, QMen
     });
 }
 
-void CommandManager::getRestartAction(const plcManager::CommandContext &ctx, QMenu *menu)
+void CommandManager::getRestartAction(const plc::CommandContext &ctx, QMenu *menu)
 {
     QAction *restart = menu->addAction("Перезагрузить");
     connect(restart, &QAction::triggered, this, [this, ctx]() {
@@ -64,7 +64,7 @@ void CommandManager::getRestartAction(const plcManager::CommandContext &ctx, QMe
     });
 }
 
-void CommandManager::getFlashAction(const plcManager::CommandContext &ctx, QMenu *menu)
+void CommandManager::getFlashAction(const plc::CommandContext &ctx, QMenu *menu)
 {
     QAction *flash = menu->addAction("Загрузить прошивку ...");
     connect(flash, &QAction::triggered, this, [this, ctx](){
@@ -92,7 +92,7 @@ void CommandManager::setSaveAsAction(QAction *newSaveAsAction)
     saveAsAction = newSaveAsAction;
 }
 
-void CommandManager::getLogMenu(const plcManager::CommandContext &ctx, QMenu *parentMenu, const QString &text)
+void CommandManager::getLogMenu(const plc::CommandContext &ctx, QMenu *parentMenu, const QString &text)
 {
     QMenu *logMenu = parentMenu->addMenu(text);
     QAction *logAll = logMenu->addAction("Запросить весь лог");

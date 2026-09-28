@@ -30,30 +30,12 @@ endif()
 # Передаем управление в поддиректорию lbmbc
 add_subdirectory(lbmbc)
 
+set(EXE_SOURCES main.cpp)
 
-set(PROJECT_SOURCES
-        main.cpp
+set(LIB_SOURCES
         mainwindow.cpp
         mainwindow.h
         GenerateVersion.cmake
-)
-
-# === АВТО-ВЕРСИЯ: Создаем таргет для ежесборочной проверки Git и типа сборки ===
-add_custom_target(lbcfg_version_check ALL
-    COMMAND ${CMAKE_COMMAND}
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/GenerateVersion.cmake"
-        "${CMAKE_CURRENT_SOURCE_DIR}"
-        "${CMAKE_CURRENT_BINARY_DIR}"
-        "${PROJECT_VERSION}"
-        "${CMAKE_BUILD_TYPE}" # Передаем тип сборки шестым аргументом (ARGV6)
-    BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/version.h"
-    COMMENT "Checking Git repository status and build type for version.h..."
-)
-
-if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    qt_add_executable(lbcfg
-        MANUAL_FINALIZATION
-        ${PROJECT_SOURCES}
         appsettings.h appsettings.cpp
         discoverdockwidget.h discoverdockwidget.cpp
         devicetreedockwidget.h devicetreedockwidget.cpp
@@ -73,32 +55,63 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         watchsession.h watchsession.cpp
         resources.qrc
         version.h.in
+        lbcfg_global.h
+)
+
+# === АВТО-ВЕРСИЯ: Создаем таргет для ежесборочной проверки Git и типа сборки ===
+add_custom_target(lbcfg_version_check ALL
+    COMMAND ${CMAKE_COMMAND}
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/GenerateVersion.cmake"
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "${PROJECT_VERSION}"
+        "${CMAKE_BUILD_TYPE}" # Передаем тип сборки шестым аргументом (ARGV6)
+    BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/version.h"
+    COMMENT "Checking Git repository status and build type for version.h..."
+)
+
+add_library(lbcfg_lib SHARED ${LIB_SOURCES})
+
+# Передаем макрос компилятора, сигнализирующий о сборке библиотеки
+target_compile_definitions(lbcfg_lib PRIVATE MY_SHARED_LIB_LIBRARY)
+
+set_target_properties(lbcfg_lib PROPERTIES
+    OUTPUT_NAME "lbcfg"   # Имя файла будет lbcfg.dll
+    PREFIX "lib"          # Явно добавляем lib в начало (будет liblbcfg.dll)
+)
+
+# Линкуем библиотеку с Qt и внутренней поддиректорией
+target_link_libraries(lbcfg_lib PRIVATE Qt${QT_VERSION_MAJOR}::Widgets lbmbc_lib)
+target_include_directories(lbcfg_lib PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+
+# Привязываем генерацию version.h к библиотеке
+add_dependencies(lbcfg_lib lbcfg_version_check)
+
+# === 3. СОЗДАЕМ ИСПОЛНЯЕМЫЙ ФАЙЛ (EXE) ===
+if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
+    qt_add_executable(lbcfg
+        MANUAL_FINALIZATION
+        ${EXE_SOURCES}
     )
-# Define target properties for Android with Qt 6 as:
-#    set_property(TARGET lbcfg APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
-#                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
-# For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
 else()
     if(ANDROID)
         add_library(lbcfg SHARED
-            ${PROJECT_SOURCES}
+            ${EXE_SOURCES}
         )
-# Define properties for Android with Qt 5 after find_package() calls as:
-#    set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
     else()
         add_executable(lbcfg
-            ${PROJECT_SOURCES}
+            ${EXE_SOURCES}
         )
     endif()
 endif()
 
-target_link_libraries(lbcfg PRIVATE Qt${QT_VERSION_MAJOR}::Widgets
-    lbmbc_lib)
+target_link_libraries(lbcfg PRIVATE lbcfg_lib Qt${QT_VERSION_MAJOR}::Widgets)
+target_include_directories(lbcfg PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 
 # === АВТО-ВЕРСИЯ: Подключаем сгенерированные заголовочные файлы к lbcfg ===
-target_include_directories(lbcfg PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-add_dependencies(lbcfg lbcfg_version_check)
+# target_include_directories(lbcfg PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+# add_dependencies(lbcfg lbcfg_version_check)
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
@@ -124,3 +137,10 @@ install(TARGETS lbcfg
 if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(lbcfg)
 endif()
+
+# Автоматическое копирование liblbmbc в папку к исполняемому файлу после сборки
+add_custom_command(TARGET lbcfg POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "$<TARGET_FILE:lbmbc_lib>"
+    "$<TARGET_FILE_DIR:lbcfg>"
+)

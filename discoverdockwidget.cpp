@@ -89,7 +89,7 @@ void DiscoverDockWidget::onTableDoubleClicked(int row, int column)
     }
     QTableWidgetItem *item = table->item(row, 6);
     if (!item) return;
-    // plcManager::CommandContext ctx;
+    // plc::CommandContext ctx;
     // ctx.ipv6 = QHostAddress(item->text());
     // ctx.ipv6.setScopeId(table->item(item->row(), 5)->text());
     // ctx.name = table->item(item->row(), 0)->text();
@@ -102,7 +102,7 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
 {
     QTableWidgetItem *item = table->itemAt(pos);
     if (!item) return;
-    // plcManager::CommandContext ctx;
+    // plc::CommandContext ctx;
 
     // ctx.ipv6 = QHostAddress(table->item(item->row(), 6)->text());
     // ctx.ipv6.setScopeId(table->item(item->row(), 5)->text());

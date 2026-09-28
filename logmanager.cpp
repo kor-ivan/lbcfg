@@ -2,7 +2,7 @@
 #include <QRegularExpression>
 #include <qtimezone.h>
 
-LogManager::LogManager(const plcManager::CommandContext &ctx, bool parse, Source source)
+LogManager::LogManager(const plc::CommandContext &ctx, bool parse, Source source)
     : m_ctx(ctx), m_parse(parse), m_source(source), m_level(LogCatcher::Debug)
 {}
 
@@ -10,7 +10,7 @@ LogManager::LogManager(Source source, Level level, Wrapped wrap)
 : m_source(source), m_level(level), m_wrap(wrap), m_timestamp(QDateTime::currentDateTime())
 {}
 
-LogManager::LogManager(const plcManager::CommandContext &ctx, Source source, Level level, Wrapped wrap)
+LogManager::LogManager(const plc::CommandContext &ctx, Source source, Level level, Wrapped wrap)
     : m_ctx(ctx), m_source(source), m_level(level),
     m_wrap(wrap), m_timestamp(QDateTime::currentDateTime())
 {}
