@@ -39,7 +39,6 @@ if(GIT_FOUND AND EXISTS "${CURRENT_SOURCE_DIR}/.git")
     endif()
 endif()
 
-# Формируем итоговую строку версии, например: "0.1.0-g1a2b3c4-dirty(Debug)"
 if(NOT "${GIT_COMMIT_HASH}" STREQUAL "n/a")
     set(FULL_VERSION_STRING "${PROJECT_VERSION} ${BUILD_TYPE} ${GIT_COMMIT_HASH}${GIT_DIRTY_STATUS}")
 else()

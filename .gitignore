@@ -42,5 +42,6 @@
 
 # Игнорировать все файлы настроек пользователя и build
 CMakeLists.txt.user*
+*.autosave
 
 build*/

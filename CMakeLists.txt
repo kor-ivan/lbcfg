@@ -12,7 +12,24 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
+# Проверяем тип сборки для Single-config генераторов (Ninja, Make)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(BUILD_LBMBC_EXE OFF)
+    set(ALLOWED_LBMBC_CONFIG "None") # Для Debug запрещаем установку exe
+else()
+    set(BUILD_LBMBC_EXE ON)
+
+    # Запоминаем имя конфигурации. Если оно не задано (по умолчанию), пишем Release
+    if(NOT CMAKE_BUILD_TYPE)
+        set(ALLOWED_LBMBC_CONFIG "Release")
+    else()
+        set(ALLOWED_LBMBC_CONFIG ${CMAKE_BUILD_TYPE})
+    endif()
+endif()
+
+# Передаем управление в поддиректорию lbmbc
 add_subdirectory(lbmbc)
+
 
 set(PROJECT_SOURCES
         main.cpp
