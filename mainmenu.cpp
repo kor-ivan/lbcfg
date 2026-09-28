@@ -3,6 +3,8 @@
 #include <QApplication>
 #include <QMessageBox>
 #include "mainwindow.h"
+#include <QProcess>
+#include <QDir>
 
 MainMenu::MainMenu(MainWindow *mainWindow)
     : QObject{mainWindow}, p_mainWindow(mainWindow), p_menuBar(mainWindow->menuBar())
@@ -66,6 +68,56 @@ void MainMenu::initFileMenu(QMenuBar *menuBar)
     CommandManager::instance()->setSaveAsAction(saveAsAction);
 
     fileMenu->addSeparator();
+
+    #if defined(Q_OS_WIN)
+
+    QAction *openCmdAction = fileMenu->addAction("Открыть консоль cmd...");
+    connect(openCmdAction, &QAction::triggered, this, [](){
+        QString dirPath = QCoreApplication::applicationDirPath();
+        QString lbmbcDir = QDir(dirPath).filePath("lbmbc");
+
+        QDir dir(lbmbcDir);
+        if (!dir.exists()) {
+            dir.mkpath(".");
+        }
+
+        QString nativePath = QDir::toNativeSeparators(lbmbcDir);
+
+        QString program = "cmd.exe";
+        QStringList arguments;
+        arguments << "/c"
+                  << "start"
+                  << "cmd.exe"
+                  << "/K"
+                  << "cd" << "/d" << nativePath;
+
+        QProcess::startDetached(program, arguments, lbmbcDir);
+    });
+
+    QAction *openPowerShellAction = fileMenu->addAction("Открыть консоль PowerShell...");
+    connect(openPowerShellAction, &QAction::triggered, this, [](){
+        QString dirPath = QCoreApplication::applicationDirPath();
+        QString lbmbcDir = QDir(dirPath).filePath("lbmbc");
+        QDir dir(lbmbcDir);
+        if (!dir.exists()) {
+            dir.mkpath(".");
+        }
+        QString nativePath = QDir::toNativeSeparators(lbmbcDir);
+        QString program = "cmd.exe";
+        QStringList arguments;
+        arguments << "/c"
+                  << "start"
+                  << "powershell.exe"
+                  << "-NoExit"
+                  << "-Command"
+                  << "Set-Location"
+                  << "'" + nativePath + "'";
+
+        QProcess::startDetached(program, arguments, lbmbcDir);
+    });
+
+    fileMenu->addSeparator();
+    #endif // Q_OS_WIN
 
     QAction *exitAction = fileMenu->addAction(tr("&Выход"));
     exitAction->setShortcut(QKeySequence::Quit);
@@ -313,7 +365,7 @@ void MainMenu::onPlcMenuAboutToShow()
 
 
     QAction *discoverAction = plcMenu->addAction("Сканироавть");
-    connect(discoverAction, &QAction::triggered, [this](){
+    connect(discoverAction, &QAction::triggered, this, [this](){
         if (!p_mainWindow->getDiscoverDock().get()){
             auto dock = p_mainWindow->createDiscoverDockWidget();
             dock->show();

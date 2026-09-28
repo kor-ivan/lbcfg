@@ -22,7 +22,6 @@ MainWindow::MainWindow(QWidget *parent)
     setCentralWidget(dummy);
     dummy->hide(); // Скрываем, чтобы доки сомкнулись в центре
 
-    qDebug() << QCoreApplication::applicationName() << QCoreApplication::applicationVersion();
     CommandManager::instance()->setFirmwareAnalyzer(repo);
 
     lbplc = plcManager::instanse();
