@@ -95,18 +95,6 @@ endif()
 target_link_libraries(lbcfg PRIVATE Qt${QT_VERSION_MAJOR}::Widgets
     lbmbc_lib)
 
-# # Windows uses the stock QtSerialBus from the selected Qt installation.
-# # This deliberately overwrites any stale patched Qt6SerialBus.dll left in the
-# # build directory by older revisions, so runtime behaviour no longer depends
-# # on PATH tricks or a special launcher.
-# if(WIN32)
-#     add_custom_command(TARGET lbcfg POST_BUILD
-#         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-#                 "$<TARGET_FILE:Qt${QT_VERSION_MAJOR}::SerialBus>"
-#                 "$<TARGET_FILE_DIR:lbcfg>"
-#         COMMENT "Deploying stock Qt SerialBus runtime"
-#     )
-# endif()
 
 # === АВТО-ВЕРСИЯ: Подключаем сгенерированные заголовочные файлы к lbcfg ===
 target_include_directories(lbcfg PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
