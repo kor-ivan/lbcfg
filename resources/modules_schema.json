@@ -50,6 +50,7 @@
         "description": "Слот для модулей ввода/вывода",
         "modules": [
             {
+                "firmware_project_names": ["bcbase3"],
                 "name": "LB241CPU", "description": "Процессорный базовый модуль", "base": 4, "structure": {
                     "module": {"type": "const", "value": ["bcbase", "LB241CPU"]},
                     "macaddr": {"type": "string", "description": "MAC адрес", "default": "7c:df:a1:ff:ff:ff"},
@@ -269,6 +270,7 @@
                 }
             },
             {
+                "firmware_project_names": ["bcai"],
                 "name": "LB241AI4", "description": "Модуль аналогового ввода 4 канала", "io": 20, "structure": {
                     "module": {"type": "const", "value": "bcai"},
                     "chan": {
@@ -289,6 +291,7 @@
                 }
             },
             {
+                "firmware_project_names": ["bcao"],
                 "name": "LB241AO4", "description": "Модуль аналогового вывода 4 канала", "io": 20, "structure": {
                     "module": {"type": "const", "value": "bcao"},
                     "chan": {

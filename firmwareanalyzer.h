@@ -2,9 +2,11 @@
 #define FIRMWAREANALYZER_H
 
 #include <QByteArray>
+#include <QHash>
 #include <QList>
 #include <QMap>
 #include <QObject>
+#include <QSet>
 #include <QString>
 
 class firmwareAnalyzer : public QObject
@@ -26,7 +28,9 @@ public:
         unknownProjectName,
         unknownModuleName,
         duplicateModule,
-        removeTempErr
+        removeTempErr,
+        schemaErr,
+        moduleNameMismatch
     };
     Q_ENUM(Error)
 
@@ -74,7 +78,11 @@ private:
     QList<fwinfo> m_rejectedFirmware;
     Error m_error = ok;
     QString m_errorString;
+    QHash<QString, QString> m_modules;
+    QHash<QString, QString> m_projectModules;
+    QSet<QString> m_duplicateModules;
 
+    bool loadModulesSchema();
     void analyzeFile(const QString &sourcePath);
 
     static QByteArray calculateSha256(const QString &filePath,
@@ -93,8 +101,8 @@ private:
                                    qsizetype size);
 
     static QString findEmbeddedVersion(const QByteArray &data);
-    static QString moduleFromProjectName(const QString &projectName);
-    static QString moduleFromFileName(const QString &filePath);
+    QString moduleFromProjectName(const QString &projectName) const;
+    QString moduleFromFileName(const QString &filePath) const;
     static QString getGitHeadHash(const QString &repositoryPath);
 };
 

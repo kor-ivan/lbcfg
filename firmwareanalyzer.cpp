@@ -6,7 +6,9 @@
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
-#include <QHash>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QRegularExpression>
 
 namespace {
@@ -20,17 +22,6 @@ constexpr qsizetype VersionOffset = 16;
 constexpr qsizetype VersionSize = 32;
 constexpr qsizetype ProjectNameOffset = 48;
 constexpr qsizetype ProjectNameSize = 32;
-
-const QStringList KnownModules = {
-    QStringLiteral("LB241CPU"),
-    QStringLiteral("LB241BC"),
-    QStringLiteral("LB241AI4"),
-    QStringLiteral("LB241AO4"),
-    QStringLiteral("LB241DI16"),
-    QStringLiteral("LB241DO16"),
-    QStringLiteral("LB241MG"),
-    QStringLiteral("LB241CS")
-};
 
 } // namespace
 
@@ -116,6 +107,9 @@ void firmwareAnalyzer::update()
 {
     m_firmwareMap.clear();
     m_rejectedFirmware.clear();
+    m_duplicateModules.clear();
+    m_modules.clear();
+    m_projectModules.clear();
     m_error = ok;
     m_errorString.clear();
 
@@ -135,14 +129,19 @@ void firmwareAnalyzer::update()
         return;
     }
 
+    if (!loadModulesSchema()) {
+        m_error = schemaErr;
+        emit updated();
+        return;
+    }
+
     QDirIterator it(m_path, QDir::Files, QDirIterator::Subdirectories);
 
     while (it.hasNext()) {
         const QString sourcePath = it.next();
-        const QString fileName = QFileInfo(sourcePath).fileName().toLower();
-
-        if (!fileName.endsWith(QStringLiteral(".bin"))
-            && !fileName.endsWith(QStringLiteral(".bin.xz"))) {
+        // Only <schema module name>.bin.xz belongs to the repository catalog.
+        // Unpacked BINs and unrelated archives must not create duplicates.
+        if (moduleFromFileName(sourcePath).isEmpty()) {
             continue;
         }
 
@@ -228,7 +227,7 @@ void firmwareAnalyzer::analyzeFile(const QString &sourcePath)
         }
     } else {
         // Fallback for valid images without project_name. This is required for
-        // LB241CS built for STM32, where ESP-IDF app metadata does not exist.
+        // STM32 images, where ESP-IDF app metadata does not exist.
         moduleName = moduleFromFileName(sourcePath);
 
         if (moduleName.isEmpty()) {
@@ -241,14 +240,25 @@ void firmwareAnalyzer::analyzeFile(const QString &sourcePath)
         }
     }
 
+    if (moduleName != moduleFromFileName(sourcePath)) {
+        info.err = moduleNameMismatch;
+        info.errStr = QStringLiteral("Имя файла не соответствует project_name %1: %2")
+                          .arg(projectName, sourcePath);
+        m_rejectedFirmware.append(info);
+        return;
+    }
+
     // QMap cannot represent two different firmware files for one module without
     // silently replacing one of them. Treat that as an error instead.
-    if (m_firmwareMap.contains(moduleName)) {
-        fwinfo existing = m_firmwareMap.take(moduleName);
-        existing.err = duplicateModule;
-        existing.errStr = QStringLiteral("Найдено несколько прошивок для %1")
-                              .arg(moduleName);
-        m_rejectedFirmware.append(existing);
+    if (m_firmwareMap.contains(moduleName) || m_duplicateModules.contains(moduleName)) {
+        if (m_firmwareMap.contains(moduleName)) {
+            fwinfo existing = m_firmwareMap.take(moduleName);
+            existing.err = duplicateModule;
+            existing.errStr = QStringLiteral("Найдено несколько прошивок для %1")
+                                  .arg(moduleName);
+            m_rejectedFirmware.append(existing);
+        }
+        m_duplicateModules.insert(moduleName);
 
         info.err = duplicateModule;
         info.errStr = QStringLiteral("Дублирующая прошивка для %1: %2")
@@ -429,39 +439,75 @@ QString firmwareAnalyzer::findEmbeddedVersion(const QByteArray &data)
     return match.hasMatch() ? match.captured(1) : QString();
 }
 
-QString firmwareAnalyzer::moduleFromProjectName(const QString &projectName)
+bool firmwareAnalyzer::loadModulesSchema()
 {
-    // Mapping obtained from actual LogicBox firmware images.
-    static const QHash<QString, QString> modules = {
-        {QStringLiteral("bcai"),      QStringLiteral("LB241AI4")},
-        {QStringLiteral("bcao"),      QStringLiteral("LB241AO4")},
-        {QStringLiteral("bcbase3"),   QStringLiteral("LB241CPU")},
-        {QStringLiteral("lb241bc"),   QStringLiteral("LB241BC")},
-        {QStringLiteral("lb241di16"), QStringLiteral("LB241DI16")},
-        {QStringLiteral("lb241do16"), QStringLiteral("LB241DO16")},
-        {QStringLiteral("lb241mg"),   QStringLiteral("LB241MG")}
-    };
+    QFile file(QStringLiteral(":/config/resources/modules_schema.json"));
+    if (!file.open(QIODevice::ReadOnly)) {
+        m_errorString = QStringLiteral("Не удалось открыть схему модулей: %1")
+                            .arg(file.errorString());
+        return false;
+    }
 
-    return modules.value(projectName.trimmed().toLower());
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parseError);
+    if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+        m_errorString = QStringLiteral("Некорректная JSON-схема модулей: %1")
+                            .arg(parseError.errorString());
+        return false;
+    }
+
+    const QJsonArray modules = document.object().value(QStringLiteral("slot"))
+                                  .toObject().value(QStringLiteral("modules")).toArray();
+    if (modules.isEmpty()) {
+        m_errorString = QStringLiteral("В схеме отсутствует непустой массив slot.modules");
+        return false;
+    }
+
+    for (const QJsonValue &value : modules) {
+        const QJsonObject module = value.toObject();
+        const QString name = module.value(QStringLiteral("name")).toString().trimmed();
+        const QString key = name.toLower();
+        if (name.isEmpty() || m_modules.contains(key)) {
+            m_errorString = QStringLiteral("Пустое или повторяющееся имя модуля в схеме: %1").arg(name);
+            return false;
+        }
+        m_modules.insert(key, name);
+
+        // Canonical names work automatically; only legacy ESP project names
+        // need explicit aliases in the schema (not YAML module identifiers).
+        const QJsonValue aliases = module.value(QStringLiteral("firmware_project_names"));
+        if (!aliases.isUndefined() && !aliases.isArray()) {
+            m_errorString = QStringLiteral("firmware_project_names должен быть массивом: %1").arg(name);
+            return false;
+        }
+        QJsonArray projects = aliases.toArray();
+        projects.append(name);
+        for (const QJsonValue &project : projects) {
+            const QString projectKey = project.toString().trimmed().toLower();
+            if (projectKey.isEmpty()
+                || (m_projectModules.contains(projectKey) && m_projectModules.value(projectKey) != name)) {
+                m_errorString = QStringLiteral("Пустое или неоднозначное имя проекта в схеме: %1").arg(projectKey);
+                return false;
+            }
+            m_projectModules.insert(projectKey, name);
+        }
+    }
+    return true;
 }
 
-QString firmwareAnalyzer::moduleFromFileName(const QString &filePath)
+QString firmwareAnalyzer::moduleFromProjectName(const QString &projectName) const
+{
+    return m_projectModules.value(projectName.trimmed().toLower());
+}
+
+QString firmwareAnalyzer::moduleFromFileName(const QString &filePath) const
 {
     QString fileName = QFileInfo(filePath).fileName();
 
-    if (fileName.endsWith(QStringLiteral(".bin.xz"), Qt::CaseInsensitive))
-        fileName.chop(7);
-    else if (fileName.endsWith(QStringLiteral(".bin"), Qt::CaseInsensitive))
-        fileName.chop(4);
-
-    // Filename fallback is intentionally strict: only an exact known module
-    // name is accepted. It is used only when valid firmware has no project_name.
-    for (const QString &module : KnownModules) {
-        if (fileName.compare(module, Qt::CaseInsensitive) == 0)
-            return module;
-    }
-
-    return {};
+    if (!fileName.endsWith(QStringLiteral(".bin.xz"), Qt::CaseInsensitive))
+        return {};
+    fileName.chop(7);
+    return m_modules.value(fileName.toLower());
 }
 
 QString firmwareAnalyzer::getGitHeadHash(const QString &repositoryPath)
