@@ -72,7 +72,6 @@ ConfigDockWidget *MainWindowPrivate::CreateConfDockWidget(const QString &key, co
             if (configDocks.isEmpty() && scanConnection) {
                 QObject::disconnect(scanConnection);
                 scanConnection = QMetaObject::Connection();
-                qDebug() << "scanConnection = QMetaObject::Connection()";
             }
         });
         if (!scanConnection) {
@@ -101,7 +100,7 @@ QList<QDockWidget *> MainWindowPrivate::getDocksInArea(Qt::DockWidgetArea area) 
     QList<QDockWidget*> allDocks = q_ptr->findChildren<QDockWidget*>();
 
     // 2. Фильтруем их по текущей области
-    for (QDockWidget *dock : allDocks) {
+    for (QDockWidget *dock : std::as_const(allDocks)) {
         if (dock && q_ptr->dockWidgetArea(dock) == area) {
             result.append(dock);
         }
@@ -115,7 +114,7 @@ void MainWindowPrivate::tabifyDockWidgetTo(QDockWidget *dock, Qt::DockWidgetArea
     QList<QDockWidget*> areaDocks = getDocksInArea(area);
 
     QDockWidget* targetForTab = nullptr;
-    for (QDockWidget* d : areaDocks) {
+    for (QDockWidget* d : std::as_const(areaDocks)) {
         if (d->isVisible()) {
             targetForTab = d;
             break;

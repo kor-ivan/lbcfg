@@ -72,13 +72,11 @@ void MainMenu::initFileMenu(QMenuBar *menuBar)
 
     fileMenu->addSeparator();
 
-    #if defined(Q_OS_WIN)
+#if defined(Q_OS_WIN)
 
     QAction *openCmdAction = fileMenu->addAction("Открыть консоль cmd...");
     connect(openCmdAction, &QAction::triggered, this, [](){
-        QString dirPath = QCoreApplication::applicationDirPath();
-        QString lbmbcDir = QDir(dirPath).filePath("lbmbc");
-
+        QString lbmbcDir = QCoreApplication::applicationDirPath();
         QDir dir(lbmbcDir);
         if (!dir.exists()) {
             dir.mkpath(".");
@@ -99,8 +97,7 @@ void MainMenu::initFileMenu(QMenuBar *menuBar)
 
     QAction *openPowerShellAction = fileMenu->addAction("Открыть консоль PowerShell...");
     connect(openPowerShellAction, &QAction::triggered, this, [](){
-        QString dirPath = QCoreApplication::applicationDirPath();
-        QString lbmbcDir = QDir(dirPath).filePath("lbmbc");
+        QString lbmbcDir = QCoreApplication::applicationDirPath();
         QDir dir(lbmbcDir);
         if (!dir.exists()) {
             dir.mkpath(".");
@@ -119,9 +116,20 @@ void MainMenu::initFileMenu(QMenuBar *menuBar)
         QProcess::startDetached(program, arguments, lbmbcDir);
     });
 
-    fileMenu->addSeparator();
-    #endif // Q_OS_WIN
+#endif // Q_OS_WIN
+#ifdef Q_OS_LINUX
+    QAction *openTerminalAction = fileMenu->addAction("Открыть терминал...");
+    connect(openTerminalAction, &QAction::triggered, this, [](){
+        QString lbmbcDir = QCoreApplication::applicationDirPath();
 
+        // Системный симлинк Debian/Ubuntu на дефолтный терминал системы
+        QString program = "/usr/bin/x-terminal-emulator";
+        QStringList arguments;
+        arguments << "--working-directory" << lbmbcDir;
+        QProcess::startDetached(program, arguments, lbmbcDir);
+    });
+#endif
+    fileMenu->addSeparator();
     QAction *exitAction = fileMenu->addAction(tr("&Выход"));
     exitAction->setShortcut(QKeySequence::Quit);
     connect(exitAction, &QAction::triggered, qApp, &QCoreApplication::quit);
@@ -258,7 +266,7 @@ void MainMenu::onEditMenuAboutToShow()
     }
     else
     {
-        for (QAction *act : actions)
+        for (QAction *act : std::as_const(actions))
             editMenu->addAction(act);
     }
 
@@ -305,7 +313,7 @@ void MainMenu::onViewMenuAboutToShow()
 
     if (!openWatch.isEmpty()){
 
-        for (auto *watch : openWatch){
+        for (auto *watch : std::as_const(openWatch)){
             QAction *watchAct = watchMenu->addAction(watch->getPlcName());
 
             if (CommandManager::instance()->getActiveWatchDockWidget() == watch){
@@ -326,7 +334,7 @@ void MainMenu::onViewMenuAboutToShow()
     if (!openConf.isEmpty()) {
         confMenu->setEnabled(true);
 
-        for (ConfigDockWidget *dock : openConf) {
+        for (ConfigDockWidget *dock : std::as_const(openConf)) {
             QAction *docAct = confMenu->addAction(dock->getPlcName());
 
             // Если этот файл сейчас редактируется (активен) — ставим галочку
@@ -407,7 +415,7 @@ void MainMenu::onPlcMenuAboutToShow()
     if (!watchDocks.isEmpty()){
         connectMenu->setEnabled(true);
         QList<WatchDockWidget*> connectedWatch;
-        for (auto w : watchDocks) {
+        for (auto w : std::as_const(watchDocks)) {
             QAction *wA = connectMenu->addAction(w->getPlcName());
             if (w->isConnected()){
                 wA->setCheckable(true);
