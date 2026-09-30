@@ -99,7 +99,7 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
 {
     QTableWidgetItem *item = table->itemAt(pos);
     if (!item) return;
-    QString ipv6 = item->text();
+    QString ipv6 = table->item(item->row(), 6)->text();
     auto ctx = lbplc->getctx(ipv6,
                              table->item(item->row(), 0)->text(),
                              lbplc->getIf(ipv6));
