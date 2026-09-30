@@ -89,27 +89,20 @@ void DiscoverDockWidget::onTableDoubleClicked(int row, int column)
     }
     QTableWidgetItem *item = table->item(row, 6);
     if (!item) return;
-    // plc::CommandContext ctx;
-    // ctx.ipv6 = QHostAddress(item->text());
-    // ctx.ipv6.setScopeId(table->item(item->row(), 5)->text());
-    // ctx.name = table->item(item->row(), 0)->text();
-    emit deviceSelected(lbplc->getctx(item->text(),
+    QString ipv6 = item->text();
+    emit deviceSelected(lbplc->getctx(ipv6,
                                       table->item(item->row(), 0)->text(),
-                                      table->item(item->row(), 5)->text()));
+                                      lbplc->getIf(ipv6)));
 }
 
 void DiscoverDockWidget::showContextMenu(const QPoint &pos)
 {
     QTableWidgetItem *item = table->itemAt(pos);
     if (!item) return;
-    // plc::CommandContext ctx;
-
-    // ctx.ipv6 = QHostAddress(table->item(item->row(), 6)->text());
-    // ctx.ipv6.setScopeId(table->item(item->row(), 5)->text());
-    // ctx.name = table->item(item->row(), 0)->text();
-    auto ctx = lbplc->getctx(table->item(item->row(), 6)->text(),
+    QString ipv6 = item->text();
+    auto ctx = lbplc->getctx(ipv6,
                              table->item(item->row(), 0)->text(),
-                             table->item(item->row(), 5)->text());
+                             lbplc->getIf(ipv6));
 
     QMenu menu(this);
     QAction *AddDivice = menu.addAction("Добавить");

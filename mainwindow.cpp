@@ -37,6 +37,7 @@ public:
     MainMenu *menu = nullptr;
     FirmwareWidget *fwWidget = nullptr;
     firmwareAnalyzer *repo = nullptr;
+    QMetaObject::Connection scanConnection;
 
     ConfigDockWidget* CreateConfDockWidget(const QString &key, const QString &name);
     void CreateConfig(const plc::CommandContext &ctx, const QString &content = {});
@@ -67,10 +68,18 @@ ConfigDockWidget *MainWindowPrivate::CreateConfDockWidget(const QString &key, co
             debugApp() << "destroy ConfDockWidget: "<<key;
             configDocks.remove(key);
             CommandManager::instance()->resetActiveConfDockWidget();
+            // Если это был последний док, разрываем соединение
+            if (configDocks.isEmpty() && scanConnection) {
+                QObject::disconnect(scanConnection);
+                scanConnection = QMetaObject::Connection();
+                qDebug() << "scanConnection = QMetaObject::Connection()";
+            }
         });
-        QObject::connect(lbplc, &plcManager::confCompleted, q_ptr, [this](const plc::CommandContext &ctx){
-            this->checkTreeAndStartScan(ctx);
-        }, Qt::UniqueConnection); // clazy:skip
+        if (!scanConnection) {
+            scanConnection = QObject::connect(lbplc, &plcManager::confCompleted, q_ptr, [this](const plc::CommandContext &ctx){
+                this->checkTreeAndStartScan(ctx);
+            });
+        }
     }
     return dock;
 }
