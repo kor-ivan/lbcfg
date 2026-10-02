@@ -40,34 +40,50 @@ if(ENABLE_INSTALLER_BUILD)
     if(EXISTS "${VERSION_FILE}")
         file(READ "${VERSION_FILE}" VERSION_CONTENT)
         if(VERSION_CONTENT MATCHES "#define APP_VERSION_STRING \"([^\"]+)\"")
-            set(FULL_VERSION_STR "${CMAKE_MATCH_1}")
+                set(FULL_VERSION_STR "${CMAKE_MATCH_1}")
+            endif()
         endif()
-    endif()
 
-    if(FULL_VERSION_STR)
+        if(NOT FULL_VERSION_STR)
+            set(FULL_VERSION_STR "${PROJECT_VERSION}")
+        endif()
+
         set(INSTALLER_FILENAME "setup_lbcfg_${FULL_VERSION_STR}.exe")
-    else()
-        set(INSTALLER_FILENAME "setup_lbcfg_${PROJECT_VERSION}.exe")
-    endif()
 
-    set(IFW_BINARY_CREATOR "C:/Qt/Tools/QtInstallerFramework/4.8/bin/binarycreator.exe")
-    set(INSTALLER_CONFIG_DIR "${CMAKE_CURRENT_SOURCE_DIR}/installer")
-    set(INSTALLER_DATA_DIR "${INSTALLER_CONFIG_DIR}/packages/com.logicbox.lbcfg/data")
+        set(IFW_BINARY_CREATOR "C:/Qt/Tools/QtInstallerFramework/4.8/bin/binarycreator.exe")
+        set(INSTALLER_CONFIG_DIR "${CMAKE_CURRENT_SOURCE_DIR}/installer")
+        set(INSTALLER_DATA_DIR "${INSTALLER_CONFIG_DIR}/packages/com.logicbox.lbcfg/data")
+
+        # -----------------------------------------------------------------
+        # РЕШЕНИЕ: Создаем изолированный CMake-скрипт для текстового патча.
+        # Никаких кавычек и многострочных блоков внутри Ninja больше нет!
+        # -----------------------------------------------------------------
+        set(PATCH_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/patch_config.cmake")
+        file(WRITE "${PATCH_SCRIPT_FILE}" "
+            file(READ \"${INSTALLER_CONFIG_DIR}/config/config.xml.in\" CONTENT)
+            string(REPLACE \"@FULL_VERSION_STR@\" \"${FULL_VERSION_STR}\" CONTENT \"\${CONTENT}\")
+            string(REPLACE \"%ApplicationsDirX64%\" \"@ApplicationsDirX64@\" CONTENT \"\${CONTENT}\")
+            file(WRITE \"${INSTALLER_CONFIG_DIR}/config/config.xml\" \"\${CONTENT}\")
+            ")
+        # -----------------------------------------------------------------
 
     add_custom_command(
         OUTPUT "${INSTALLER_CONFIG_DIR}/${INSTALLER_FILENAME}"
         COMMAND ${CMAKE_COMMAND} -E rm -rf "${INSTALLER_DATA_DIR}"
         COMMAND ${CMAKE_COMMAND} -E make_directory "${INSTALLER_DATA_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${DEPLOY_DIR}" "${INSTALLER_DATA_DIR}"
+
+        COMMAND ${CMAKE_COMMAND} -P "${PATCH_SCRIPT_FILE}"
+
         COMMAND "${IFW_BINARY_CREATOR}" -c "${INSTALLER_CONFIG_DIR}/config/config.xml" -p "${INSTALLER_CONFIG_DIR}/packages" "${INSTALLER_CONFIG_DIR}/${INSTALLER_FILENAME}"
         DEPENDS
-            lbcfg
-            "${INSTALLER_CONFIG_DIR}/config/config.xml"
-            "${INSTALLER_CONFIG_DIR}/packages/com.logicbox.lbcfg/meta/package.xml"
-            "${INSTALLER_CONFIG_DIR}/packages/com.logicbox.lbcfg/meta/license.txt"
-            "${INSTALLER_CONFIG_DIR}/packages/com.logicbox.lbcfg/meta/installscript.qs"
+        lbcfg
+        "${INSTALLER_CONFIG_DIR}/config/config.xml"
+        "${INSTALLER_CONFIG_DIR}/packages/com.logicbox.lbcfg/meta/package.xml"
+        "${INSTALLER_CONFIG_DIR}/packages/com.logicbox.lbcfg/meta/license.txt"
+        "${INSTALLER_CONFIG_DIR}/packages/com.logicbox.lbcfg/meta/installscript.qs"
         COMMENT "GENERATING IN THE BACKEND ARCHIVE INSTALLER: ${INSTALLER_FILENAME}..."
     )
 
-    add_custom_target(run_binarycreator_target ALL DEPENDS "${INSTALLER_CONFIG_DIR}/${INSTALLER_FILENAME}")
+add_custom_target(run_binarycreator_target ALL DEPENDS "${INSTALLER_CONFIG_DIR}/${INSTALLER_FILENAME}")
 endif()

@@ -47,5 +47,6 @@ CMakeLists.txt.user*
 /installer/*.exe
 /installer/packages/com.logicbox.lbcfg/data/
 /.cmake/
+/installer/config/config.xml
 
 build*/

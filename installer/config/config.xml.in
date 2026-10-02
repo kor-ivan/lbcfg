@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Installer>
     <Name>LogicBox Configuration Tool</Name>
-    <Version>0.1.0</Version>
+    <Version>@FULL_VERSION_STR@</Version>
     <Title>LogicBox Configuration Setup</Title>
     <Publisher>LogicBox</Publisher>
     <StartMenuDir>LogicBox</StartMenuDir>
-    <TargetDir>@ApplicationsDirX64@/LogicBox/lbcfg</TargetDir>
+    <TargetDir>%ApplicationsDirX64%/LogicBox/lbcfg</TargetDir>
 </Installer>
