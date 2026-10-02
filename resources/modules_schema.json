@@ -91,7 +91,8 @@
                     },
                     "modbus_client": {
                         "description": "ModBus клиент", "type": "link", "dynamic": true, "structure": {
-                            "addr": {"type": "int", "description": "Адрес ModBus сервера", "default": "1"},
+                            "addr": {"type": "int", "description": "Адрес ModBus RTU сервера", "default": "1"},
+                            "server": {"type": "string", "description": "Адрес ModBus TCP сервера"},
                             "response_timeout": {"type": "time", "description": "Таймаут запроса к ModBus серверу", "default": "100ms"},
                             "holding": {
                                 "type": "keynum", "description": "holding регистр", "structure": {
@@ -192,7 +193,8 @@
                     },
                     "modbus_client": {
                         "description": "ModBus клиент", "type": "link", "dynamic": true, "structure": {
-                            "addr": {"type": "int", "description": "Адрес ModBus сервера", "default": "1"},
+                            "addr": {"type": "int", "description": "Адрес ModBus RTU сервера", "default": "1"},
+                            "server": {"type": "string", "description": "Адрес ModBus TCP сервера"},
                             "response_timeout": {"type": "time", "description": "Таймаут запроса к ModBus серверу", "default": "100ms"},
                             "holding": {
                                 "type": "keynum", "description": "holding регистр", "structure": {
