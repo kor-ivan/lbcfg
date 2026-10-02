@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 
 project(lbcfg VERSION 0.1.0 LANGUAGES CXX)
+option(ENABLE_AUTO_DEPLOY "Enable automated windeployqt packaging after build" OFF)
+option(ENABLE_INSTALLER_BUILD "Run binarycreator to build the installer .exe after deploy" OFF)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -92,6 +94,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(lbcfg
         MANUAL_FINALIZATION
         ${EXE_SOURCES}
+        app_resources.rc
+        DeployWindows.cmake
     )
 else()
     if(ANDROID)
@@ -101,6 +105,7 @@ else()
     else()
         add_executable(lbcfg
             ${EXE_SOURCES}
+            app_resources.rc
         )
     endif()
 endif()
@@ -110,12 +115,6 @@ target_include_directories(lbcfg PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 
 # === АВТО-ВЕРСИЯ: Подключаем сгенерированные заголовочные файлы к lbcfg ===
-# target_include_directories(lbcfg PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-# add_dependencies(lbcfg lbcfg_version_check)
-
-# Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
-# If you are developing for iOS or macOS you should consider setting an
-# explicit, fixed bundle identifier manually though.
 if(${QT_VERSION} VERSION_LESS 6.1.0)
   set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.lbcfg)
 endif()
@@ -127,20 +126,25 @@ set_target_properties(lbcfg PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
-include(GNUInstallDirs)
-install(TARGETS lbcfg
-    BUNDLE DESTINATION .
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
-
-if(QT_VERSION_MAJOR EQUAL 6)
-    qt_finalize_executable(lbcfg)
+# === КРОСС ПЛАТФОРМЕННЫЙ ДЕПЛОЙМЕНТ ===
+if(ENABLE_AUTO_DEPLOY)
+    if(WIN32)
+        # Подключаем изолированный сценарий деплоя для Windows
+        include(DeployWindows.cmake)
+    elseif(LINUX)
+        # Сюда в будущем добавится include(DeployLinux.cmake) для вызова linuxdeployqt / cpack
+        message(STATUS "Linux deployment script will be integrated here.")
+    endif()
 endif()
 
-# Автоматическое копирование liblbmbc в папку к исполняемому файлу после сборки
-add_custom_command(TARGET lbcfg POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "$<TARGET_FILE:lbmbc_lib>"
-    "$<TARGET_FILE_DIR:lbcfg>"
-)
+# Обычное копирование бинарников для локального запуска в корне билда (Оставляем только для Windows Release)
+if(WIN32 AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_custom_command(TARGET lbcfg POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:lbmbc_lib>" "$<TARGET_FILE_DIR:lbcfg>"
+    )
+    if(TARGET lbmbc)
+        add_custom_command(TARGET lbcfg POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:lbmbc>" "$<TARGET_FILE_DIR:lbcfg>"
+        )
+    endif()
+endif()

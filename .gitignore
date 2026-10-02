@@ -44,4 +44,8 @@
 CMakeLists.txt.user*
 *.autosave
 
+/installer/*.exe
+/installer/packages/com.logicbox.lbcfg/data/
+/.cmake/
+
 build*/

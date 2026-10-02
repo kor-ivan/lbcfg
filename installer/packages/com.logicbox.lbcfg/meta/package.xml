@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package>
+    <DisplayName>LogicBox Main Application</DisplayName>
+    <Description>Installs the main executable and required core DLLs.</Description>
+    <Version>0.1.0</Version>
+    <ReleaseDate>2026-09-28</ReleaseDate>
+    <Default>true</Default>
+	<Script>installscript.qs</Script>
+	<Licenses>
+        <License name="Лицензионное соглашение LogicBox" file="license.txt" />
+    </Licenses>
+</Package>
