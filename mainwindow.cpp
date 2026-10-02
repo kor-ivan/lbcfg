@@ -216,23 +216,22 @@ MainWindow::MainWindow(QWidget *parent)
     // Создаем строку состояния (Status Bar)
     QStatusBar *statusBar = this->statusBar();
 
-    // Временное сообщение (исчезнет через 5000 миллисекунд / 5 секунд)
-    statusBar->showMessage(tr("Программа готова к работе"), 5000);
-
-
     QLabel *repStatusLabel = new QLabel(this);
     repStatusLabel->setAlignment(Qt::AlignCenter);
     repStatusLabel->setFixedHeight(20);
     statusBar->addPermanentWidget(repStatusLabel);
 
-    connect(p->repo, &firmwareAnalyzer::updated, this, [this, repStatusLabel](const QString &hash) {
+    connect(p->repo, &firmwareAnalyzer::updated, this, [this, repStatusLabel, statusBar](const QString &hash) {
         bool hasHash = !hash.isEmpty();
         QString text = hasHash ? QString("logicbox: %1").arg(hash) : "logicbox: Not found";
         QString tip = hasHash ? p->repo->path() : "Репозиторий прошивок не настроен";
-
+        statusBar->showMessage("Репозиторий прошивок обновлен", 3000);
         p->setupStatusLabel(repStatusLabel, hasHash, text, tip);
     });
     p->repo->update();
+
+    // Временное сообщение (исчезнет через 5000 миллисекунд / 5 секунд)
+    statusBar->showMessage(tr("Программа готова к работе"), 5000);
 
     QLabel *watchStatusLabel = new QLabel(this);
     watchStatusLabel->setAlignment(Qt::AlignCenter);

@@ -290,6 +290,7 @@ void MainMenu::onEditMenuAboutToShow()
     QAction *firmwareReposiporyUpdate = editMenu->addAction("Сканировать репозиторий...");
     firmwareReposiporyUpdate->setStatusTip("Сканировать репозиторий прошивок после git pull");
     connect(firmwareReposiporyUpdate, &QAction::triggered, this, [this](){
+        CommandManager::instance()->getFirmwareAnalyzer()->update();
         p_mainWindow->getTreeDock()->reloadFirmwareRepositoryFromSettings();
     });
 

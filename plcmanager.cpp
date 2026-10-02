@@ -110,9 +110,11 @@ bool plcManager::startFirmware(const plc::CommandContext &ctx, const QString &fi
 
     connect(activeOtaClient, &LBclient::ExecuteCompleted, this, &plcManager::prcOtaSender);
     connect(activeOtaClient, &LBclient::lbDisconnect, this,
-            [this](const QString &, const QString &message, const QModbusDevice::Error) {
-                if (!message.isEmpty())
+            [this, ctx](const QString& lbhost, const QString& message, const QModbusDevice::Error error) {
+                if (!message.isEmpty()){
                     emit eventOccurred(message);
+                    logPLC(ctx.name) << message << error;
+                }
                 emit firmwareFinished();
                 if (activeOtaClient)
                     activeOtaClient->deleteLater();
@@ -144,12 +146,13 @@ void plcManager::startConf(const plc::CommandContext &ctx, const QString &yamlFi
     LBclient *lbc = new LBclient(this, {"conf"});
     QString ifce = getIf(ctx.ipv6str());
     lbc->setlbHost(ctx.name, yamlFilePath, ifce);
-    connect(lbc, &LBclient::ExecuteCompletedStr, this, [this]
+    connect(lbc, &LBclient::ExecuteCompletedStr, this, [this, ctx]
             (const QString& lbstr, const QString& message, const QModbusDevice::Error error){
                 if (lbstr!="OK")
                     emit errorOccurred(lbstr);
                 else
                     emit eventOccurred(lbstr);
+                logPLC(ctx.name) << lbstr;
             });
     connect(lbc, &LBclient::lbDisconnect, this, [lbc, ctx, ifce, this]
             (const QString& lbhost, const QString& message, const QModbusDevice::Error error){
@@ -175,17 +178,19 @@ void plcManager::startFirmwareAll(const plc::CommandContext &ctx, const QString 
     if (!otaSlots.isEmpty())
         prcActiveOtaClient -> setPreOtaSlot(otaSlots);
     emit firmwareStarted(ctx, startMessage);
-    connect(prcActiveOtaClient, &lbprocess::outMessage, this, [this]
+    connect(prcActiveOtaClient, &lbprocess::outMessage, this, [this, ctx]
             (const QString& lbstr, const QString& message, const QModbusDevice::Error error){
-                debugApp()<<lbstr<<message<<error;
+                logPLC(ctx.name) <<lbstr<<message<<error;
                 emit errorOccurred(lbstr);
             });
     connect(prcActiveOtaClient, &lbprocess::outOta, this, &plcManager::prcOtaSender);
     connect(activeOtaClient, &LBclient::lbDisconnect, this,
-            [this]
-            (const QString &, const QString &message, const QModbusDevice::Error){
-                if (!message.isEmpty())
+            [this, ctx]
+            (const QString& lbhost, const QString& message, const QModbusDevice::Error error){
+                if (!message.isEmpty()){
                     emit eventOccurred(message);
+                    logPLC(ctx.name) << message << error;
+                }
                 emit firmwareFinished();
 
                 if (prcActiveOtaClient)
