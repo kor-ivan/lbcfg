@@ -48,7 +48,7 @@ if(ENABLE_INSTALLER_BUILD)
             set(FULL_VERSION_STR "${PROJECT_VERSION}")
         endif()
 
-        set(INSTALLER_FILENAME "setup_lbcfg_${FULL_VERSION_STR}.exe")
+        set(INSTALLER_FILENAME "setup_lbcfg_${FULL_VERSION_STR}_win_x64.exe")
 
         set(IFW_BINARY_CREATOR "C:/Qt/Tools/QtInstallerFramework/4.8/bin/binarycreator.exe")
         set(INSTALLER_CONFIG_DIR "${CMAKE_CURRENT_SOURCE_DIR}/installer")

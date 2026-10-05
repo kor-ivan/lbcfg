@@ -73,7 +73,7 @@ if(ENABLE_INSTALLER_BUILD)
     endif()
 
     # Имя инсталлятора для Linux (обычно имеет расширение .run)
-    set(INSTALLER_FILENAME "setup_lbcfg_${FULL_VERSION_STR}.run")
+    set(INSTALLER_FILENAME "setup_lbcfg_${FULL_VERSION_STR}_linux_x64.run")
 
     # 2. Поиск binarycreator в системе Linux
     # Сначала проверяем путь в домашней папке Qt (куда ставит Qt Online Installer)
