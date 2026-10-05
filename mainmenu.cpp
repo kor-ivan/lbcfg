@@ -8,6 +8,7 @@
 #include "logdockwidget.h"
 #include <QProcess>
 #include <QDir>
+#include "appsettings.h"
 
 MainMenu::MainMenu(MainWindow *mainWindow)
     : QObject{mainWindow}, p_mainWindow(mainWindow), p_menuBar(mainWindow->menuBar())
@@ -127,6 +128,24 @@ void MainMenu::initFileMenu(QMenuBar *menuBar)
         QStringList arguments;
         arguments << "--working-directory" << lbmbcDir;
         QProcess::startDetached(program, arguments, lbmbcDir);
+    });
+    QAction *openTerminalLbAction = fileMenu->addAction("Открыть терминал logicbox...");
+    connect(openTerminalLbAction, &QAction::triggered, this, [](){
+        QDir repoDir(AppSettings::firmwareRepositoryRoot());
+        repoDir.cd("../bin");
+        QString lbmbcDir = repoDir.absolutePath();
+
+        // Системный симлинк Debian/Ubuntu на дефолтный терминал системы
+        QString program = "/usr/bin/x-terminal-emulator";
+        QStringList arguments;
+        arguments << "--working-directory" << lbmbcDir;
+        QProcess::startDetached(program, arguments, lbmbcDir);
+    });
+    connect(fileMenu, &QMenu::aboutToShow, this, [openTerminalLbAction](){
+        if (AppSettings::firmwareRepositoryRoot().isEmpty())
+            openTerminalLbAction->setEnabled(false);
+        else
+            openTerminalLbAction->setEnabled(true);
     });
 #endif
     fileMenu->addSeparator();
