@@ -96,6 +96,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         ${EXE_SOURCES}
         app_resources.rc
         DeployWindows.cmake
+        DeployDebian.cmake
+
     )
 else()
     if(ANDROID)
@@ -132,8 +134,7 @@ if(ENABLE_AUTO_DEPLOY)
         # Подключаем изолированный сценарий деплоя для Windows
         include(DeployWindows.cmake)
     elseif(LINUX)
-        # Сюда в будущем добавится include(DeployLinux.cmake) для вызова linuxdeployqt / cpack
-        message(STATUS "Linux deployment script will be integrated here.")
+        include(DeployDebian.cmake)
     endif()
 endif()
 

@@ -169,7 +169,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
     p(new MainWindowPrivate(this))
 {
-    setWindowIcon(QIcon(QStringLiteral(":/config/resources/app_icon.ico")));
+    setWindowIcon(QIcon(QStringLiteral(":/config/resources/logo.ico")));
     p->repo = new firmwareAnalyzer(this, AppSettings::firmwareRepositoryRoot());
 
     resize(1280, 720);

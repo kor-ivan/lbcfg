@@ -22,4 +22,31 @@ Component.prototype.createOperations = function() {
                                        installer.value("StartMenuDir") + "/Удалить LogicBox Tool.lnk",
                                        "--uninstall");
     }
+    else if (systemInfo.productType === "linux" || systemInfo.productType === "ubuntu" || systemInfo.productType === "debian") {
+        // --- ДЛЯ LINUX (DEBIAN) ---
+
+        // 1. Создаем ярлык для главного приложения (добавлен префикс LogicBox)
+        component.addOperation("CreateDesktopEntry",
+            "com.logicbox.lbcfg.desktop",
+            "Type=Application\n" +
+            "Name=LogicBox: Configuration Tool\n" +
+            "Exec=\"@TargetDir@/lbcfg\"\n" +
+            "Comment=LogicBox Configuration Tool\n" +
+            "Icon=@TargetDir@/share/icons/hicolor/256x256/apps/logo.png\n" +
+            "Categories=Utility;Development;\n" +
+            "Terminal=false"
+        );
+
+        // 2. Создаем ярлык для утилиты удаления (добавлен префикс LogicBox)
+        component.addOperation("CreateDesktopEntry",
+            "com.logicbox.lbcfg-uninstall.desktop",
+            "Type=Application\n" +
+            "Name=LogicBox: Uninstall Tool\n" +
+            "Exec=\"@TargetDir@/maintenancetool\"\n" +
+            "Comment=Uninstall LogicBox Configuration Tool\n" +
+            "Icon=@TargetDir@/share/icons/hicolor/256x256/apps/logo.png\n" +
+            "Categories=Utility;Development;\n" +
+            "Terminal=false"
+        );
+    }
 }
