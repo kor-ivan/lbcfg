@@ -48,6 +48,8 @@ if(ENABLE_INSTALLER_BUILD)
             set(FULL_VERSION_STR "${PROJECT_VERSION}")
         endif()
 
+        message(STATUS "[DEPLOY] CMake configuration read version: ${FULL_VERSION_STR}")
+
         string(REPLACE " " "_" SAFE_VERSION_STR "${FULL_VERSION_STR}")
         set(INSTALLER_FILENAME "setup_lbcfg_${SAFE_VERSION_STR}_win_x64.exe")
 

@@ -72,6 +72,8 @@ if(ENABLE_INSTALLER_BUILD)
             set(FULL_VERSION_STR "${PROJECT_VERSION}")
         endif()
 
+        message(STATUS "[DEPLOY] CMake configuration read version: ${FULL_VERSION_STR}")
+
         # Имя инсталлятора для Linux (обычно имеет расширение .run)
         string(REPLACE " " "_" SAFE_VERSION_STR "${FULL_VERSION_STR}")
         set(INSTALLER_FILENAME "setup_lbcfg_${SAFE_VERSION_STR}_linux_x64.run")
