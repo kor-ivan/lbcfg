@@ -48,24 +48,43 @@ if(ENABLE_INSTALLER_BUILD)
             set(FULL_VERSION_STR "${PROJECT_VERSION}")
         endif()
 
-        set(INSTALLER_FILENAME "setup_lbcfg_${FULL_VERSION_STR}_win_x64.exe")
+        string(REPLACE " " "_" SAFE_VERSION_STR "${FULL_VERSION_STR}")
+        set(INSTALLER_FILENAME "setup_lbcfg_${SAFE_VERSION_STR}_win_x64.exe")
 
-        set(IFW_BINARY_CREATOR "C:/Qt/Tools/QtInstallerFramework/4.8/bin/binarycreator.exe")
-        set(INSTALLER_CONFIG_DIR "${CMAKE_CURRENT_SOURCE_DIR}/installer")
-        set(INSTALLER_DATA_DIR "${INSTALLER_CONFIG_DIR}/packages/com.logicbox.lbcfg/data")
+        find_program(IFW_BINARY_CREATOR
+            NAMES binarycreator binarycreator.exe
+            HINTS
+            "C:/Qt/Tools/QtInstallerFramework/*/bin"  # Звездочка заставляет CMake сканировать ВСЕ версии папок
+            "D:/Qt/Tools/QtInstallerFramework/*/bin"
+            "C:/Qt6/Tools/QtInstallerFramework/*/bin"
+            DOC "Path to the QtIFW binarycreator tool"
+        )
 
-        # -----------------------------------------------------------------
-        # РЕШЕНИЕ: Создаем изолированный CMake-скрипт для текстового патча.
-        # Никаких кавычек и многострочных блоков внутри Ninja больше нет!
-        # -----------------------------------------------------------------
-        set(PATCH_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/patch_config.cmake")
-        file(WRITE "${PATCH_SCRIPT_FILE}" "
-            file(READ \"${INSTALLER_CONFIG_DIR}/config/config.xml.in\" CONTENT)
-            string(REPLACE \"@FULL_VERSION_STR@\" \"${FULL_VERSION_STR}\" CONTENT \"\${CONTENT}\")
-            string(REPLACE \"%ApplicationsDirX64%\" \"@ApplicationsDirX64@\" CONTENT \"\${CONTENT}\")
-            file(WRITE \"${INSTALLER_CONFIG_DIR}/config/config.xml\" \"\${CONTENT}\")
+    # Страховочная проверка: если утилита вообще не найдена в системе, пишем понятную ошибку
+    if(NOT IFW_BINARY_CREATOR)
+        message(FATAL_ERROR "
+            [ERROR] Qt Installer Framework tool 'binarycreator' NOT FOUND!
+            Please make sure it is installed via Qt Maintenance Tool (under Tools section).
             ")
-        # -----------------------------------------------------------------
+    else()
+        message(STATUS "Found QtIFW binarycreator automatically: ${IFW_BINARY_CREATOR}")
+    endif()
+
+    set(INSTALLER_CONFIG_DIR "${CMAKE_CURRENT_SOURCE_DIR}/installer")
+    set(INSTALLER_DATA_DIR "${INSTALLER_CONFIG_DIR}/packages/com.logicbox.lbcfg/data")
+
+    # -----------------------------------------------------------------
+    # РЕШЕНИЕ: Создаем изолированный CMake-скрипт для текстового патча.
+    # Никаких кавычек и многострочных блоков внутри Ninja больше нет!
+    # -----------------------------------------------------------------
+    set(PATCH_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/patch_config.cmake")
+    file(WRITE "${PATCH_SCRIPT_FILE}" "
+        file(READ \"${INSTALLER_CONFIG_DIR}/config/config.xml.in\" CONTENT)
+        string(REPLACE \"@FULL_VERSION_STR@\" \"${FULL_VERSION_STR}\" CONTENT \"\${CONTENT}\")
+        string(REPLACE \"%ApplicationsDirX64%\" \"@ApplicationsDirX64@\" CONTENT \"\${CONTENT}\")
+        file(WRITE \"${INSTALLER_CONFIG_DIR}/config/config.xml\" \"\${CONTENT}\")
+        ")
+    # -----------------------------------------------------------------
 
     add_custom_command(
         OUTPUT "${INSTALLER_CONFIG_DIR}/${INSTALLER_FILENAME}"
@@ -78,7 +97,7 @@ if(ENABLE_INSTALLER_BUILD)
         COMMAND "${IFW_BINARY_CREATOR}" -c "${INSTALLER_CONFIG_DIR}/config/config.xml" -p "${INSTALLER_CONFIG_DIR}/packages" "${INSTALLER_CONFIG_DIR}/${INSTALLER_FILENAME}"
         DEPENDS
         lbcfg
-        "${INSTALLER_CONFIG_DIR}/config/config.xml"
+        #"${INSTALLER_CONFIG_DIR}/config/config.xml"
         "${INSTALLER_CONFIG_DIR}/packages/com.logicbox.lbcfg/meta/package.xml"
         "${INSTALLER_CONFIG_DIR}/packages/com.logicbox.lbcfg/meta/license.txt"
         "${INSTALLER_CONFIG_DIR}/packages/com.logicbox.lbcfg/meta/installscript.qs"

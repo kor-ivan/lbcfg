@@ -11,12 +11,12 @@ if(NOT LINUXDEPLOYQT_EXECUTABLE)
     if(NOT EXISTS "${DOWNLOAD_PATH}")
         file(DOWNLOAD "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
             "${DOWNLOAD_PATH}"
-                         SHOW_PROGRESS
-                         STATUS DOWNLOAD_STATUS
-                    )
-        execute_process(COMMAND chmod +x "${DOWNLOAD_PATH}")
-    endif()
-    set(LINUXDEPLOYQT_EXECUTABLE "${DOWNLOAD_PATH}")
+            SHOW_PROGRESS
+            STATUS DOWNLOAD_STATUS
+        )
+    execute_process(COMMAND chmod +x "${DOWNLOAD_PATH}")
+endif()
+set(LINUXDEPLOYQT_EXECUTABLE "${DOWNLOAD_PATH}")
 endif()
 
 install(TARGETS lbcfg lbcfg_lib lbmbc_lib
@@ -64,26 +64,36 @@ if(ENABLE_INSTALLER_BUILD)
     if(EXISTS "${VERSION_FILE}")
         file(READ "${VERSION_FILE}" VERSION_CONTENT)
         if(VERSION_CONTENT MATCHES "#define APP_VERSION_STRING \"([^\"]+)\"")
-            set(FULL_VERSION_STR "${CMAKE_MATCH_1}")
+                set(FULL_VERSION_STR "${CMAKE_MATCH_1}")
+            endif()
         endif()
-    endif()
 
-    if(NOT FULL_VERSION_STR)
-        set(FULL_VERSION_STR "${PROJECT_VERSION}")
-    endif()
+        if(NOT FULL_VERSION_STR)
+            set(FULL_VERSION_STR "${PROJECT_VERSION}")
+        endif()
 
-    # Имя инсталлятора для Linux (обычно имеет расширение .run)
-    set(INSTALLER_FILENAME "setup_lbcfg_${FULL_VERSION_STR}_linux_x64.run")
+        # Имя инсталлятора для Linux (обычно имеет расширение .run)
+        string(REPLACE " " "_" SAFE_VERSION_STR "${FULL_VERSION_STR}")
+        set(INSTALLER_FILENAME "setup_lbcfg_${SAFE_VERSION_STR}_linux_x64.run")
 
-    # 2. Поиск binarycreator в системе Linux
-    # Сначала проверяем путь в домашней папке Qt (куда ставит Qt Online Installer)
-    set(DEFAULT_IFW_PATH "$ENV{HOME}/Qt/Tools/QtInstallerFramework/4.10/bin/binarycreator")
+        # 2. Поиск binarycreator в системе Linux
+        find_program(IFW_BINARY_CREATOR
+            NAMES binarycreator
+            HINTS
+            "$ENV{HOME}/Qt/Tools/QtInstallerFramework/*/bin"    # Сканирует любые версии папок в домашней папке Qt
+            "$ENV{HOME}/Qt6/Tools/QtInstallerFramework/*/bin"
+            "/opt/Qt/Tools/QtInstallerFramework/*/bin"          # Проверка глобальных путей установки
+            DOC "Path to the Linux QtIFW binarycreator tool"
+        )
 
-    if(EXISTS "${DEFAULT_IFW_PATH}")
-        set(IFW_BINARY_CREATOR "${DEFAULT_IFW_PATH}")
+    # Проверка на случай отсутствия утилиты в Linux
+    if(NOT IFW_BINARY_CREATOR)
+        message(FATAL_ERROR "
+            [ERROR] Linux Qt Installer Framework tool 'binarycreator' NOT FOUND!
+            Please make sure it is installed via Qt Maintenance Tool or in your $HOME/Qt path.
+            ")
     else()
-        # Если там нет, пытаемся найти через системный PATH
-        find_program(IFW_BINARY_CREATOR NAMES binarycreator REQUIRED)
+        message(STATUS "Found Linux QtIFW binarycreator automatically: ${IFW_BINARY_CREATOR}")
     endif()
 
     set(INSTALLER_CONFIG_DIR "${CMAKE_CURRENT_SOURCE_DIR}/installer")
@@ -97,7 +107,7 @@ if(ENABLE_INSTALLER_BUILD)
         # На Linux дефолтную папку установки ApplicationsDirX64 заменяем на домашний каталог пользователя
         string(REPLACE \"%ApplicationsDirX64%\" \"@HomeDir@/Applications\" CONTENT \"\${CONTENT}\")
         file(WRITE \"${INSTALLER_CONFIG_DIR}/config/config.xml\" \"\${CONTENT}\")
-    ")
+        ")
 
     # 4. Кастомная команда сборки инсталлятора (.run)
     add_custom_command(
@@ -121,6 +131,6 @@ if(ENABLE_INSTALLER_BUILD)
         COMMENT "GENERATING LINUX GRAPHICAL INSTALLER: ${INSTALLER_FILENAME}..."
     )
 
-    # Привязываем выполнение к общему таргету, чтобы инсталлятор собирался автоматически при Build
-    add_custom_target(run_binarycreator_target ALL DEPENDS "${INSTALLER_CONFIG_DIR}/${INSTALLER_FILENAME}")
+# Привязываем выполнение к общему таргету, чтобы инсталлятор собирался автоматически при Build
+add_custom_target(run_binarycreator_target ALL DEPENDS "${INSTALLER_CONFIG_DIR}/${INSTALLER_FILENAME}")
 endif()
