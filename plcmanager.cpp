@@ -220,7 +220,7 @@ void plcManager::startRestartAll(const plc::CommandContext &ctx)
     prc->run(lbprocess::restartall);
 }
 
-void plcManager::startLog(const plc::CommandContext &ctx, const QString &flag)
+void plcManager::startLog(const plc::CommandContext &ctx, const QString &flag, const QString &fileName)
 {
     if (activeLogClient){
         debugApp() << "Log is already running, stop the current log one first";
@@ -234,18 +234,52 @@ void plcManager::startLog(const plc::CommandContext &ctx, const QString &flag)
     if (ctx.slot!=-1)
         activeLogClient->setSlot(ctx.slot);
     activeLogClient->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
-    connect(activeLogClient, &LBclient::ExecuteCompletedStr, this, [this, ctx]
-            (const QString& lbstr, const QString& message, const QModbusDevice::Error error){
+
+    QPointer<QFile> logFile;
+
+    if (!fileName.isEmpty()) {
+        logFile = new QFile(fileName, activeLogClient);
+        if (!logFile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
+            debugApp() << "Failed to open log file for writing:" << fileName;
+            if (activeLogClient)
+                activeLogClient->deleteLater();
+            return;
+        } else {
+            QTextStream stream(logFile);
+            stream << QString("--- Log started at %1 ---\n")
+                          .arg(QDateTime::currentDateTime().toString(Qt::ISODate));
+            logApp() << "Log started:" << fileName;
+        }
+    }
+
+    connect(activeLogClient, &LBclient::ExecuteCompletedStr, this,
+            [this, ctx, fileName, logFile, lineCount = 0]
+            (const QString& lbstr, const QString& message, const QModbusDevice::Error error) mutable {
                 if (error==QModbusDevice::NoError){
-                    rawPLC(ctx)<<lbstr;
+                    if (fileName.isEmpty())
+                        rawPLC(ctx)<<lbstr;
+                    else{
+                        QTextStream stream(logFile);
+                        stream << '\n' << lbstr;
+                        lineCount++;
+                        if (lineCount % 100 == 0)
+                            logApp() << QString("[%1] Записано строк в файл: %2").arg(ctx.ipv6str()).arg(lineCount);
+                    }
                 }
                 else
                     emit errorOccurred(lbstr);
             });
-    connect(activeLogClient, &LBclient::lbDisconnect, this, [this]
+    connect(activeLogClient, &LBclient::lbDisconnect, this, [this, logFile, fileName]
             (const QString& lbhost, const QString& message, const QModbusDevice::Error){
                 if (!message.isEmpty())
                     debugPLC()<<message;
+                if (logFile && logFile->isOpen()){
+                    QTextStream stream(logFile);
+                    stream << QString("--- Log finished at %1 ---\n")
+                                  .arg(QDateTime::currentDateTime().toString(Qt::ISODate));
+                    logFile->close();
+                    logApp() << "Log finished:" << fileName;
+                }
                 if (activeLogClient)
                     activeLogClient->deleteLater();
                 emit logFinished();

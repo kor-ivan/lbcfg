@@ -2,6 +2,7 @@
 #include <QApplication>
 #include "logmanager.h"
 #include "qmenu.h"
+#include <QFileDialog>
 
 CommandManager::CommandManager() :
     lbplc(plcManager::instanse())
@@ -108,6 +109,19 @@ void CommandManager::getLogMenu(const plc::CommandContext &ctx, QMenu *parentMen
     QAction *logLast100f = logMenu->addAction("Запросить 100 и следовать");
     connect(logLast100f, &QAction::triggered, logLast100f, [this, ctx](){
         lbplc->startLog(ctx, "a100f");
+    });
+
+    QAction *logAllToFile = logMenu->addAction("Запросить весь лог в файл...");
+    connect(logAllToFile, &QAction::triggered, logLast100f, [this, ctx, parentMenu](){
+        QString fileName = QFileDialog::getSaveFileName(
+            parentMenu,
+            "Сохранить лог как...",
+            QString("log_%1").arg(ctx.displayName()).replace('/', '_'),
+            "Log Files (*.log);;Text Files (*.txt);;All Files (*)"
+            );
+        if (fileName.isEmpty())
+            return;
+        lbplc->startLog(ctx, "a", fileName);
     });
 }
 

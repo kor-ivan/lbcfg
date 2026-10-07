@@ -56,7 +56,7 @@ public:
                           const QStringList &otaSlots);
     void startRestartAll (const plc::CommandContext &ctx);
     void startFbootDownload(const plc::CommandContext &ctx, const QString &filePath);
-    void startLog (const plc::CommandContext &ctx, const QString &flag);
+    void startLog (const plc::CommandContext &ctx, const QString &flag, const QString &fileName = {});
     void stopLog();
 
     template <typename F>
