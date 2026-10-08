@@ -72,7 +72,8 @@ add_custom_target(lbcfg_version_check ALL
     COMMENT "Checking Git repository status and build type for version.h..."
 )
 
-add_library(lbcfg_lib SHARED ${LIB_SOURCES})
+add_library(lbcfg_lib SHARED ${LIB_SOURCES}
+    settingsdialog.h settingsdialog.cpp)
 
 # Передаем макрос компилятора, сигнализирующий о сборке библиотеки
 target_compile_definitions(lbcfg_lib PRIVATE MY_SHARED_LIB_LIBRARY)

@@ -4,25 +4,37 @@
 #include <QSettings>
 #include <QCoreApplication>
 
-static QString getIniPath() {
-    return QCoreApplication::applicationDirPath() + QStringLiteral("/settings.ini");
+static QSettings getSettings(){
+    return QSettings(QCoreApplication::applicationDirPath() + QStringLiteral("/settings.ini"),
+                     QSettings::IniFormat);
 }
 
 QString AppSettings::firmwareRepositoryRoot()
 {
-    QSettings settings(getIniPath(), QSettings::IniFormat);
-    const QString value = settings.value(QString::fromLatin1(FirmwareRepositoryKey)).toString().trimmed();
+    const QString value = getSettings().value(QString::fromLatin1(FirmwareRepositoryKey)).toString().trimmed();
     if (value.isEmpty())
         return {};
 
     return QDir::cleanPath(QDir::fromNativeSeparators(value));
 }
 
+int AppSettings::getFirmwareStrtegy()
+{
+    const auto value = getSettings().value(firmwareStrtegy);
+    if (value.isNull())
+        return 0;
+    bool ok = false;
+    int strategy = value.toInt(&ok);
+    if (ok)
+        return strategy;
+    return 0;
+}
+
 void AppSettings::setFirmwareRepositoryRoot(const QString &path)
 {
     const QString normalized = QDir::cleanPath(QDir::fromNativeSeparators(path.trimmed()));
 
-    QSettings settings(getIniPath(), QSettings::IniFormat);
+    QSettings settings = getSettings();
     if (normalized.isEmpty() || normalized == QStringLiteral("."))
         settings.remove(QString::fromLatin1(FirmwareRepositoryKey));
     else
@@ -33,7 +45,21 @@ void AppSettings::setFirmwareRepositoryRoot(const QString &path)
 
 void AppSettings::clearFirmwareRepositoryRoot()
 {
-    QSettings settings(getIniPath(), QSettings::IniFormat);
+    QSettings settings = getSettings();
     settings.remove(QString::fromLatin1(FirmwareRepositoryKey));
+    settings.sync();
+}
+
+void AppSettings::setFirmwareStrtegy(const int &str)
+{
+    QSettings settings = getSettings();
+    settings.setValue(firmwareStrtegy, str);
+    settings.sync();
+}
+
+void AppSettings::clearFirmwareStrtegy()
+{
+    QSettings settings = getSettings();
+    settings.remove(firmwareStrtegy);
     settings.sync();
 }

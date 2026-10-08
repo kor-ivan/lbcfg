@@ -30,7 +30,7 @@ FirmwareRepositoryDialog::FirmwareRepositoryDialog(QWidget *parent)
 
     auto *pathLayout = new QHBoxLayout;
     m_pathEdit = new QLineEdit(this);
-    m_pathEdit->setText(QDir::toNativeSeparators(AppSettings::firmwareRepositoryRoot()));
+    m_pathEdit->setText(QDir::toNativeSeparators(QFileInfo(AppSettings::firmwareRepositoryRoot()).absolutePath()));
     m_pathEdit->setPlaceholderText(QStringLiteral("Например: C:\\git\\logicbox"));
     m_pathEdit->setClearButtonEnabled(true);
     pathLayout->addWidget(m_pathEdit, 1);

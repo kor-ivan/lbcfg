@@ -8,7 +8,10 @@
 #include "logdockwidget.h"
 #include <QProcess>
 #include <QDir>
+#include "settingsdialog.h"
+#ifdef Q_OS_LINUX
 #include "appsettings.h"
+#endif
 
 MainMenu::MainMenu(MainWindow *mainWindow)
     : QObject{mainWindow}, p_mainWindow(mainWindow), p_menuBar(mainWindow->menuBar())
@@ -313,6 +316,13 @@ void MainMenu::onEditMenuAboutToShow()
         p_mainWindow->getTreeDock()->reloadFirmwareRepositoryFromSettings();
     });
 
+    editMenu->addSeparator();
+
+    QAction *SettingsAction = editMenu->addAction(tr("Параметры"));
+    connect(SettingsAction, &QAction::triggered, this, [this](){
+        SettingsDialog dialog(p_mainWindow);
+        dialog.exec();
+    });
 }
 
 void MainMenu::onViewMenuAboutToShow()
