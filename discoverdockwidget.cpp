@@ -91,8 +91,7 @@ void DiscoverDockWidget::onTableDoubleClicked(int row, int column)
     if (!item) return;
     QString ipv6 = item->text();
     emit deviceSelected(lbplc->getctx(ipv6,
-                                      table->item(item->row(), 0)->text(),
-                                      lbplc->getIf(ipv6)));
+                                      table->item(item->row(), 0)->text()));
 }
 
 void DiscoverDockWidget::showContextMenu(const QPoint &pos)
@@ -101,8 +100,7 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
     if (!item) return;
     QString ipv6 = table->item(item->row(), 6)->text();
     auto ctx = lbplc->getctx(ipv6,
-                             table->item(item->row(), 0)->text(),
-                             lbplc->getIf(ipv6));
+                             table->item(item->row(), 0)->text());
 
     QMenu menu(this);
     QAction *AddDivice = menu.addAction("Добавить");
@@ -160,7 +158,7 @@ void DiscoverDockWidget::discoverReceived(const QMap<QString, discover::lbinfo> 
     table->setSortingEnabled(false); // Отключаем сортировку на время вставки для скорости
     int row = 0;
     for (auto it = ldmap.begin(); it != ldmap.end(); ++it) {
-        debugPLC() << it.value();
+        debugPLC() << it.key() << it.value();
         table->insertRow(row);
         table->setItem(row, 0, new QTableWidgetItem(it.value().name));
         table->setItem(row, 1, new QTableWidgetItem(it.value().type));

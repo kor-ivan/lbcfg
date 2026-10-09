@@ -395,8 +395,7 @@ void MainMenu::onPlcMenuAboutToShow()
     connect(logMenu, &QMenu::aboutToShow, this, [this](){
         const auto &ldmap = plcManager::instanse()->getldmap();
         for (auto it = ldmap.begin(); it != ldmap.end(); ++it){
-            auto ctx = plcManager::instanse()->getctx(it.key(), it.value().name,
-                                                      plcManager::instanse()->getIf(it.key()));
+            auto ctx = plcManager::instanse()->getctx(it.key(), it.value().name);
             CommandManager::instance()->getLogMenu(ctx, logMenu, it.value().name);
         }
     });

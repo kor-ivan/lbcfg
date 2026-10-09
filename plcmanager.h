@@ -85,8 +85,7 @@ public:
     WatchSession* startWatch(const plc::CommandContext &ctx, const QStringList &arg, QObject *p_watchDock = nullptr);
     QStringList activeWatchKeys() const;
 
-    QString getIf(const QString &ipv6);
-    plc::CommandContext getctx(const QString &ipv6, const QString &name = {}, const QString &ifce = {});
+    plc::CommandContext getctx(const QString &ipv6, const QString &name = {});
     plc::CommandContext getctx(const QHostAddress &host, const QString &name = {});
     const QMap<QString, discover::lbinfo>& getldmap() const;
 
@@ -123,6 +122,7 @@ private:
     QMap<QString, discover::lbinfo> last_ldmap;
     bool SearchDiscoverRuning = false;
     QString getFastIfce(const discover::lbinfo &val);
+    QString getIf(const QString &ipv6);
 };
 
 #endif // PLCMANAGER_H

@@ -2,11 +2,12 @@
 
 #include <QDir>
 #include <QSettings>
-#include <QCoreApplication>
+#include <QStandardPaths>
 
 static QSettings getSettings(){
-    return QSettings(QCoreApplication::applicationDirPath() + QStringLiteral("/settings.ini"),
-                     QSettings::IniFormat);
+    QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    QDir().mkpath(appDataPath);
+    return QSettings(appDataPath + QStringLiteral("/settings.ini"), QSettings::IniFormat);
 }
 
 QString AppSettings::firmwareRepositoryRoot()

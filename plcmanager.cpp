@@ -373,11 +373,11 @@ QString plcManager::getIf(const QString &ipv6)
     return QString();
 }
 
-plc::CommandContext plcManager::getctx(const QString &ipv6, const QString &name, const QString &ifce)
+plc::CommandContext plcManager::getctx(const QString &ipv6, const QString &name)
 {
     plc::CommandContext ctx;
     ctx.ipv6 = QHostAddress(ipv6);
-    if (!ifce.isEmpty()) ctx.ipv6.setScopeId(ifce);
+    ctx.ipv6.setScopeId(getIf(ctx.ipv6str()));
     if (!name.isEmpty()) ctx.name = name;
     return ctx;
 }

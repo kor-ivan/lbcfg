@@ -510,7 +510,7 @@ void ConfigDockWidget::onAddVariableToWatch(const QString &varName)
     }
     int index = plcSelector->findText(currentPlc);
     QStandardItemModel* model = qobject_cast<QStandardItemModel*>(plcSelector->model());
-    QString ipv6 = lbyaml::MacToIPv6(model->item(index, 1)->text());
+    QString ipv6 = QHostAddress(lbyaml::MacToIPv6(model->item(index, 1)->text())).toString();
     auto watches = p_mainWindow->getWatchDocks();
     WatchDockWidget* watch = nullptr;
     if (!watches.isEmpty())
@@ -528,8 +528,7 @@ void ConfigDockWidget::onAddVariableToWatch(const QString &varName)
         // ctx.ipv6 = QHostAddress(ipv6);
         // ctx.ipv6.setScopeId(plcManager::instanse()->getIf(ipv6));
         // ctx.name = plcName;
-        watch = p_mainWindow->createWatchDockWidget(lbplc->getctx(ipv6, plcName,
-                                                                  lbplc->getIf(ipv6)));
+        watch = p_mainWindow->createWatchDockWidget(lbplc->getctx(ipv6, plcName));
         watch->addVar(varName);
         watch->toggleConnection();
     }else{

@@ -197,7 +197,7 @@ void WatchDockWidget::setIpv6(const QString &newIpv6)
     if (h.isNull()) return;
     auto m_plcm = plcManager::instanse();
     if (h.protocol() == QAbstractSocket::IPv6Protocol){
-        m_ctx = m_plcm->getctx(splitstr.value(0), m_ctx.name, m_plcm->getIf(splitstr.value(0)));
+        m_ctx = m_plcm->getctx(splitstr.value(0), m_ctx.name);
     }else if(h.protocol() == QAbstractSocket::IPv4Protocol){
         m_ctx = m_plcm->getctx(splitstr.value(0), m_ctx.name);
     }
