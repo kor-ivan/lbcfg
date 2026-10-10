@@ -147,10 +147,13 @@ QWidget *SettingsDialog::createFirmwareSettings()
     // Делаем ширину фиксированной или аккуратной по контенту
     btnOpenRepoDialog->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 
+    auto *resetDefaultRepo = new QPushButton(tr("Сбросить..."), repoWidget);
+
     auto *repoStatusLabel = new QLabel(repoWidget);
     updateRepoStatusLabel(repoStatusLabel);
 
     repoLayout->addWidget(btnOpenRepoDialog);
+    repoLayout->addWidget(resetDefaultRepo);
     repoLayout->addWidget(repoStatusLabel);
     repoLayout->addStretch(); // Выталкиваем элементы влево
 
@@ -166,6 +169,11 @@ QWidget *SettingsDialog::createFirmwareSettings()
             &firmwareAnalyzer::updated,
             this,[this, repoStatusLabel](){
                 updateRepoStatusLabel(repoStatusLabel);
+    });
+
+    connect(resetDefaultRepo, &QPushButton::clicked, this, [this](){
+        AppSettings::clearFirmwareRepositoryRoot();
+        p_mainWindow->editFirmwareRepositorySettings(true);
     });
 
     auto *StrategyWidget = new QWidget(page);
@@ -190,6 +198,11 @@ QWidget *SettingsDialog::createFirmwareSettings()
     StrategyLayout->addStretch();
 
     formLayout->addRow(tr("Стратегия:"), StrategyWidget);
+
+    connect(resetDefaultStrategy, &QPushButton::clicked, this, [this](){
+        AppSettings::clearFirmwareStrtegy();
+        strategyCombo->setCurrentIndex(AppSettings::getFirmwareStrtegy());
+    });
 
     // Добавляем форму в основной макет страницы
     layout->addLayout(formLayout);

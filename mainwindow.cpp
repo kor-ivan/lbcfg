@@ -474,16 +474,22 @@ WatchDockWidget *MainWindow::createWatchDockWidget(const plc::CommandContext &ct
     return dock;
 }
 
-void MainWindow::editFirmwareRepositorySettings()
+void MainWindow::editFirmwareRepositorySettings(const bool whithOutDialog)
 {
-    FirmwareRepositoryDialog dialog(this);
+    QString repositoryRoot;
+    if (!whithOutDialog)
+    {
+        FirmwareRepositoryDialog dialog(this);
 
-    if (dialog.exec() != QDialog::Accepted)
-        return;
-    // CommandManager::instance()->getFirmwareAnalyzer()->update();
+        if (dialog.exec() != QDialog::Accepted)
+            return;
+        // CommandManager::instance()->getFirmwareAnalyzer()->update();
 
-    const QString repositoryRoot =
-        dialog.repositoryPath();
+        repositoryRoot =
+            dialog.repositoryPath();
+    }
+    else
+        repositoryRoot = AppSettings::firmwareRepositoryRoot();
 
     p->repo->setPath(repositoryRoot);
 

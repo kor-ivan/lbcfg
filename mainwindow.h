@@ -38,7 +38,7 @@ public:
     QList<ConfigDockWidget*> getConfigDocks() const;
     QList<WatchDockWidget*> getWatchDocks() const;
 
-    void editFirmwareRepositorySettings();
+    void editFirmwareRepositorySettings(const bool whithOutDialog = false);
 
     static QString getLibraryVersion();
 

@@ -1,6 +1,7 @@
 #include "plcmanager.h"
 #include "logmanager.h"
 #include "watchsession.h"
+#include "appsettings.h"
 #include <QEventLoop>
 
 
@@ -173,7 +174,8 @@ void plcManager::startFirmwareAll(const plc::CommandContext &ctx, const QString 
     }
     activeOtaClient = new LBclient(this);
     activeOtaClient->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
-    prcActiveOtaClient = new lbprocess(this, activeOtaClient);
+    prcActiveOtaClient = new lbprocess(this, activeOtaClient,
+                                       static_cast<lbprocess::Strategy>(AppSettings::getFirmwareStrtegy()));
     prcActiveOtaClient->setOtaPath(filePath);
     if (!otaSlots.isEmpty())
         prcActiveOtaClient -> setPreOtaSlot(otaSlots);
