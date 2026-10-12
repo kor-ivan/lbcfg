@@ -7,6 +7,7 @@
 #include <QPushButton>
 #include <QFormLayout>
 #include <QDir>
+#include <QCheckBox>
 #include "appsettings.h"
 #include "mainwindow.h"
 #include "commandmanager.h"
@@ -33,6 +34,13 @@ void SettingsDialog::saveSettings()
         int oldStrategy = AppSettings::getFirmwareStrtegy();
         if (newStrategy != oldStrategy)
             AppSettings::setFirmwareStrtegy(strategyCombo->currentData().toInt());
+    }
+
+    if (ignoreCpuModuleCheck) {
+        bool newIgnoreState = ignoreCpuModuleCheck->isChecked();
+        bool oldIgnoreState = AppSettings::getFirmwareIgnoreCPU();
+        if (newIgnoreState != oldIgnoreState)
+            AppSettings::setFirmwareIgnoreCPU(newIgnoreState);
     }
 }
 
@@ -202,6 +210,29 @@ QWidget *SettingsDialog::createFirmwareSettings()
     connect(resetDefaultStrategy, &QPushButton::clicked, this, [this](){
         AppSettings::clearFirmwareStrtegy();
         strategyCombo->setCurrentIndex(AppSettings::getFirmwareStrtegy());
+    });
+
+    auto *CpuIgnoreWidget = new QWidget(page);
+    auto *CpuIgnoreLayout = new QHBoxLayout(CpuIgnoreWidget);
+    CpuIgnoreLayout->setContentsMargins(0, 0, 0, 0);
+    CpuIgnoreLayout->setSpacing(8);
+
+    ignoreCpuModuleCheck = new QCheckBox(tr("Игнорировать процессорный модуль при групповой прошивке"), CpuIgnoreWidget);
+    ignoreCpuModuleCheck->setChecked(AppSettings::getFirmwareIgnoreCPU());
+
+    auto *resetDefaultCpuIgnore = new QPushButton(tr("Сбросить..."), CpuIgnoreWidget);
+    resetDefaultCpuIgnore->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+
+    CpuIgnoreLayout->addWidget(ignoreCpuModuleCheck);
+    CpuIgnoreLayout->addWidget(resetDefaultCpuIgnore);
+    CpuIgnoreLayout->addStretch();
+
+    // Добавляем пустую текстовую метку слева, чтобы чекбокс выровнялся строго по одной линии с комбобоксом
+    formLayout->addRow(QString(), CpuIgnoreWidget);
+
+    connect(resetDefaultCpuIgnore, &QPushButton::clicked, this, [this](){
+        AppSettings::clearFirmwareIgnoreCPU();
+        ignoreCpuModuleCheck->setChecked(AppSettings::getFirmwareIgnoreCPU());
     });
 
     // Добавляем форму в основной макет страницы

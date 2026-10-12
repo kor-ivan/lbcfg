@@ -31,6 +31,14 @@ int AppSettings::getFirmwareStrtegy()
     return 0;
 }
 
+bool AppSettings::getFirmwareIgnoreCPU()
+{
+    const auto value = getSettings().value(firmwareIgnoreCPU);
+    if (value.isNull())
+        return false;
+    return value.toBool();
+}
+
 void AppSettings::setFirmwareRepositoryRoot(const QString &path)
 {
     const QString normalized = QDir::cleanPath(QDir::fromNativeSeparators(path.trimmed()));
@@ -62,5 +70,19 @@ void AppSettings::clearFirmwareStrtegy()
 {
     QSettings settings = getSettings();
     settings.remove(firmwareStrtegy);
+    settings.sync();
+}
+
+void AppSettings::setFirmwareIgnoreCPU(const bool a)
+{
+    QSettings settings = getSettings();
+    settings.setValue(firmwareIgnoreCPU, a);
+    settings.sync();
+}
+
+void AppSettings::clearFirmwareIgnoreCPU()
+{
+    QSettings settings = getSettings();
+    settings.remove(firmwareIgnoreCPU);
     settings.sync();
 }

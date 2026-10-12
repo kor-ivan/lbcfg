@@ -9,6 +9,7 @@
 class QListWidget;
 class QStackedWidget;
 class MainWindow;
+class QCheckBox;
 
 class SettingsDialog  : public QDialog
 {
@@ -28,6 +29,7 @@ private:
     QListWidget *sidebarMenu = nullptr;
     QStackedWidget *pagesContainer = nullptr;
     QComboBox *strategyCombo = nullptr;
+    QCheckBox *ignoreCpuModuleCheck = nullptr;
 
     QWidget* createFirmwareSettings();
     QWidget* createYAMLSettings();

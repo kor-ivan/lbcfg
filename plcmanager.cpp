@@ -172,6 +172,8 @@ void plcManager::startFirmwareAll(const plc::CommandContext &ctx, const QString 
         emit eventOccurred(checkMessage);
         return;
     }
+    logPLC() << QString(tr("Команда прошить все модули запущена %1")).
+                arg(AppSettings::getFirmwareIgnoreCPU()?tr("с опцией: игнорировать процессорный модуль"):"");
     activeOtaClient = new LBclient(this);
     activeOtaClient->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
     prcActiveOtaClient = new lbprocess(this, activeOtaClient,

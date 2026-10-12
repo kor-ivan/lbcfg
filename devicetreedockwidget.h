@@ -48,6 +48,7 @@ private:
     bool m_firmwareLoaded = false;
     QString m_repositoryRoot;
     QStringList getMismatchedSlots(const QModelIndex &plcIndex) const;
+    QStringList getIgnoreCPUslots(const QModelIndex &plcIndex, const QStringList &mismatched = {}) const;
 
     QStandardItem *findPlcRoot(const QHostAddress& ipv6);
     QStandardItem *versionInfoItem(QStandardItem *moduleItem) const;

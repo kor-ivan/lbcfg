@@ -199,8 +199,11 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
         });
 
         QAction *flashAll = menu.addAction(QString("Прошить все модули %1").arg(ctx.name));
-        connect(flashAll, &QAction::triggered, this, [this, ctx](){
-            emit requestFlashAll(ctx);
+        connect(flashAll, &QAction::triggered, this, [this, ctx, index](){
+            if (AppSettings::getFirmwareIgnoreCPU())
+                emit requestFlashAll(ctx, getMismatchedSlots(index));
+            else
+                emit requestFlashAll(ctx);
         });
 
         QAction *flashAllNeed = menu.addAction(QString("Прошить необходимые модули %1").arg(ctx.name));
@@ -208,7 +211,11 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
             flashAllNeed->setEnabled(false);
         }
         connect(flashAllNeed, &QAction::triggered, this, [this, ctx, index](){
-            QStringList need = getMismatchedSlots(index);
+            QStringList need;
+            if (AppSettings::getFirmwareIgnoreCPU())
+                need = getIgnoreCPUslots(index, getMismatchedSlots(index));
+            else
+                need = getMismatchedSlots(index);
             emit requestFlashAll(ctx, need);
         });
 
@@ -341,6 +348,27 @@ QStringList DeviceTreeDockWidget::getMismatchedSlots(const QModelIndex &plcIndex
     }
 
     return mismatchedSlots;
+}
+
+QStringList DeviceTreeDockWidget::getIgnoreCPUslots(const QModelIndex &plcIndex, const QStringList &mismatched) const
+{
+    QStringList ignoreCPUslots;
+    QStandardItem *plcRoot = treeModel->itemFromIndex(plcIndex);
+    if (!plcRoot)
+        return ignoreCPUslots;
+
+    for (int row = 0; row < plcRoot->rowCount(); ++row) {
+        QStandardItem *moduleItem = plcRoot->child(row);
+        const QString moduleType = moduleItem->data(ModuleTypeRole).toString().trimmed();
+        QString slotNumber = moduleItem->data(Qt::UserRole).toString();
+        if (!mismatched.isEmpty() && !mismatched.contains(slotNumber))
+            continue;
+        if (moduleType.compare("LB241CPU", Qt::CaseInsensitive) == 0){
+            continue;
+        }
+        ignoreCPUslots.append(slotNumber);
+    }
+    return ignoreCPUslots;
 }
 
 
