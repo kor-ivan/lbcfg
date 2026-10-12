@@ -39,6 +39,18 @@ bool AppSettings::getFirmwareIgnoreCPU()
     return value.toBool();
 }
 
+int AppSettings::getMaxFlowLevel()
+{
+    const auto value = getSettings().value(maxFlowLevel);
+    if (value.isNull())
+        return 2;
+    bool ok = false;
+    int strategy = value.toInt(&ok);
+    if (ok)
+        return strategy;
+    return 2;
+}
+
 void AppSettings::setFirmwareRepositoryRoot(const QString &path)
 {
     const QString normalized = QDir::cleanPath(QDir::fromNativeSeparators(path.trimmed()));
@@ -84,5 +96,19 @@ void AppSettings::clearFirmwareIgnoreCPU()
 {
     QSettings settings = getSettings();
     settings.remove(firmwareIgnoreCPU);
+    settings.sync();
+}
+
+void AppSettings::setMaxFlowLevel(const int level)
+{
+    QSettings settings = getSettings();
+    settings.setValue(maxFlowLevel, level);
+    settings.sync();
+}
+
+void AppSettings::clearMaxFlowLevel()
+{
+    QSettings settings = getSettings();
+    settings.remove(maxFlowLevel);
     settings.sync();
 }

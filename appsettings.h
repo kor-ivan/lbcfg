@@ -15,6 +15,8 @@ public:
     static QString firmwareRepositoryRoot();
     static int getFirmwareStrtegy();
     static bool getFirmwareIgnoreCPU();
+    static int getMaxFlowLevel();
+    static int getStyleYamlArray();
 
 private:
     static constexpr const char *FirmwareRepositoryKey = "Firmware/repositoryRoot";
@@ -28,6 +30,14 @@ private:
     static inline const QLatin1StringView firmwareIgnoreCPU{"Firmware/ignoreCPU"};
     static void setFirmwareIgnoreCPU(const bool a);
     static void clearFirmwareIgnoreCPU();
+
+    static inline const QLatin1StringView maxFlowLevel{"YAML/maxFlowLevel"};
+    static void setMaxFlowLevel(const int level);
+    static void clearMaxFlowLevel();
+
+    static inline const QLatin1StringView styleYamlArray{"YAML/styleYamlArray"};
+    static void setStyleYamlArray(const int style);
+    static void clearStyleYamlArray();
 };
 
 #endif // APPSETTINGS_H
