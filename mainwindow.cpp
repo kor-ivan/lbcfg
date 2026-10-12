@@ -367,10 +367,10 @@ DeviceTreeDockWidget *MainWindow::createTreeDockWidget()
                 }
             });
     connect(p->treeDock, &DeviceTreeDockWidget::requestFlashAll, this, [this]
-            (const plc::CommandContext &ctx, const QStringList &otaSlots){
+            (const plc::CommandContext &ctx, const QStringList &otaSlots, const bool pathRequest){
         QString filePath;
-        if (otaSlots.isEmpty())
-                filePath = QFileDialog::getExistingDirectory(this, "Выберите директорию для прошивки ...", "", QFileDialog::DontResolveSymlinks);
+        if (pathRequest)
+            filePath = QFileDialog::getExistingDirectory(this, "Выберите директорию для прошивки ...", "", QFileDialog::DontResolveSymlinks);
         else
             filePath = AppSettings::firmwareRepositoryRoot();
                 if (!filePath.isEmpty()) {

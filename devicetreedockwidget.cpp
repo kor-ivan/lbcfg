@@ -6,14 +6,17 @@
 #include <QFileInfo>
 #include <QBrush>
 #include <QColor>
+#include <QStatusBar>
 #include "logmanager.h"
 #include "commandmanager.h"
 #include "appsettings.h"
+#include "mainwindow.h"
 
 
 DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent)
     : QDockWidget("Tree View", parent), lbplc(plcManager::instanse()),
-    m_firmwareAnalyzer(CommandManager::instance()->getFirmwareAnalyzer())
+    m_firmwareAnalyzer(CommandManager::instance()->getFirmwareAnalyzer()),
+    p_mainWindow(static_cast<MainWindow*>(parent))
 {
     QWidget *content = new QWidget(this);
     setWidget(content);
@@ -201,23 +204,39 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
         QAction *flashAll = menu.addAction(QString("Прошить все модули %1").arg(ctx.name));
         connect(flashAll, &QAction::triggered, this, [this, ctx, index](){
             if (AppSettings::getFirmwareIgnoreCPU())
-                emit requestFlashAll(ctx, getMismatchedSlots(index));
+                emit requestFlashAll(ctx, getIgnoreCPUslots(index));
             else
                 emit requestFlashAll(ctx);
         });
 
         QAction *flashAllNeed = menu.addAction(QString("Прошить необходимые модули %1").arg(ctx.name));
-        if (index.data(PlcUpToDateRole).toBool()) {
+        QStringList need;
+        if (AppSettings::getFirmwareIgnoreCPU())
+            need = getIgnoreCPUslots(index, getMismatchedSlots(index));
+        else
+            need = getMismatchedSlots(index);
+        if (index.data(PlcUpToDateRole).toBool() || AppSettings::firmwareRepositoryRoot().isEmpty() ||
+            need.isEmpty()) {
             flashAllNeed->setEnabled(false);
+            if (need.isEmpty() && !index.data(PlcUpToDateRole).toBool())
+                flashAllNeed->setStatusTip(tr("Включена опция: Игнорировать процессорный модуль при групповой прошивке"));
         }
-        connect(flashAllNeed, &QAction::triggered, this, [this, ctx, index](){
-            QStringList need;
-            if (AppSettings::getFirmwareIgnoreCPU())
-                need = getIgnoreCPUslots(index, getMismatchedSlots(index));
-            else
-                need = getMismatchedSlots(index);
-            emit requestFlashAll(ctx, need);
+        connect(flashAllNeed, &QAction::triggered, this, [this, ctx, index, need](){
+            emit requestFlashAll(ctx, need, false);
         });
+
+        if (p_mainWindow) {
+            // Отслеживаем, над каким пунктом меню сейчас находится курсор мыши
+            connect(&menu, &QMenu::hovered, this, [this](QAction *action) {
+                if (action && !action->statusTip().isEmpty()) {
+                    // Отправляем подсказку в StatusBar главного окна приложения
+                    p_mainWindow->statusBar()->showMessage(action->statusTip());
+                } else {
+                    // Очищаем статус-бар, если у элемента нет подсказки
+                    p_mainWindow->statusBar()->clearMessage();
+                }
+            });
+        }
 
         QAction *fboot = menu.addAction(QString("Загрузить fboot в %1").arg(ctx.name));
         connect(fboot, &QAction::triggered, this, [this, ctx](){
