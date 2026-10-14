@@ -52,7 +52,10 @@ void plcManager::requestConfig(const plc::CommandContext &ctx)
     connect(lbc, &LBclient::ExecuteCompletedJson, this,
             [lbc, this, ctx](const QString& lbhost, const QJsonObject& Qjo, const QString& message, const QModbusDevice::Error error){
                 if(error==QModbusDevice::NoError){
-                    QString yamlContent = lbyaml::getlbconf(Qjo, lbyaml::retainY);
+                    QString yamlContent = lbyaml::getlbconf(Qjo,
+                                                            lbyaml::retainY,
+                                                            AppSettings::getMaxFlowLevel(),
+                                                            static_cast<YAML::EmitterStyle::value>(AppSettings::getStyleYamlArray()));
                     debugApp()<<"# BEGIN YAML";
                     logPLC(ctx.name, LogCatcher::Debug, LogCatcher::wrapYes)<<yamlContent;
                     // lbyaml::printlbconf(Qjo);

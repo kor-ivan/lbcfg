@@ -30,6 +30,7 @@ private:
     QStackedWidget *pagesContainer = nullptr;
     QComboBox *strategyCombo = nullptr;
     QCheckBox *ignoreCpuModuleCheck = nullptr;
+    QComboBox *flowLevelCombo = nullptr;
 
     QWidget* createFirmwareSettings();
     QWidget* createYAMLSettings();

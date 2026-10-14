@@ -42,6 +42,13 @@ void SettingsDialog::saveSettings()
         if (newIgnoreState != oldIgnoreState)
             AppSettings::setFirmwareIgnoreCPU(newIgnoreState);
     }
+
+    if(flowLevelCombo){
+        int newLevelCombo = flowLevelCombo->currentData().toInt();
+        int oldLevelCombo = AppSettings::getMaxFlowLevel();
+        if (newLevelCombo != oldLevelCombo)
+            AppSettings::setMaxFlowLevel(newLevelCombo);
+    }
 }
 
 void SettingsDialog::setupUi()
@@ -248,6 +255,36 @@ QWidget *SettingsDialog::createYAMLSettings()
     auto *layout = new QVBoxLayout(page);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(new QLabel(tr("<h3>Настройки представления YAML</h3>"), page));
+
+    auto *formLayout = new QFormLayout();
+    formLayout->setContentsMargins(0, 5, 0, 5);
+    formLayout->setSpacing(8);
+    formLayout->setFieldGrowthPolicy(QFormLayout::FieldsStayAtSizeHint);
+
+    auto *flowLevelWidget = new QWidget(page);
+    auto *flowLevelLayout = new QHBoxLayout(flowLevelWidget);
+    flowLevelLayout->setContentsMargins(0, 0, 0, 0);
+    flowLevelLayout->setSpacing(8);
+
+    flowLevelCombo = new QComboBox(flowLevelWidget);
+    flowLevelCombo->setMinimumWidth(150);
+
+    for (int i = 1; i <= 5; ++i) {
+        flowLevelCombo->addItem(QString::number(i), i);
+    }
+    strategyCombo->setCurrentIndex(AppSettings::getMaxFlowLevel());
+
+    auto *resetFlowLevelButton = new QPushButton(tr("Сбросить..."), flowLevelWidget);
+    resetFlowLevelButton->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+
+    flowLevelLayout->addWidget(flowLevelCombo);
+    flowLevelLayout->addWidget(resetFlowLevelButton);
+    flowLevelLayout->addStretch();
+
+    formLayout->addRow(tr(""), flowLevelWidget);
+
+    layout->addLayout(formLayout);
+
     layout->addStretch();
     return page;
 }

@@ -14,6 +14,7 @@
 #include "logmanager.h"
 #include "mainwindow.h"
 #include "watchdockwidget.h"
+#include "appsettings.h"
 
 
 ConfigDockWidget::ConfigDockWidget(const QString &name, MainWindow *parent)
@@ -703,7 +704,10 @@ int ConfigDockWidget::isModifiedPages(bool allowCancel)
             QJsonObject updatedJson = devicePage->getUpdateData();
             debugApp() << "SYNC: devicePage getlbconf";
             // Генерируем текст измененного блока модулей ПЛК
-            QString updatedYamlText = yamlParser->getlbconf(updatedJson);
+            QString updatedYamlText = yamlParser->getlbconf(updatedJson,
+                                                            lbyaml::raw,
+                                                            AppSettings::getMaxFlowLevel(),
+                                                            static_cast<YAML::EmitterStyle::value>(AppSettings::getStyleYamlArray()));
             debugApp() << "SYNC: devicePage replacePlcBlockInYaml";
             if (!replacePlcBlockInYaml(updatedYamlText)) {
                 QMessageBox::critical(

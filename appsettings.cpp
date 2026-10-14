@@ -1,54 +1,22 @@
 #include "appsettings.h"
 
 #include <QDir>
-#include <QSettings>
 #include <QStandardPaths>
 
-static QSettings getSettings(){
+QSettings AppSettings::getSettings(){
     QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
     QDir().mkpath(appDataPath);
     return QSettings(appDataPath + QStringLiteral("/settings.ini"), QSettings::IniFormat);
 }
 
+// --- Firmware Repository Root ---
 QString AppSettings::firmwareRepositoryRoot()
 {
-    const QString value = getSettings().value(QString::fromLatin1(FirmwareRepositoryKey)).toString().trimmed();
+    const QString value = getSettings().value(FirmwareRepositoryKey).toString().trimmed();
     if (value.isEmpty())
         return {};
 
     return QDir::cleanPath(QDir::fromNativeSeparators(value));
-}
-
-int AppSettings::getFirmwareStrtegy()
-{
-    const auto value = getSettings().value(firmwareStrtegy);
-    if (value.isNull())
-        return 0;
-    bool ok = false;
-    int strategy = value.toInt(&ok);
-    if (ok)
-        return strategy;
-    return 0;
-}
-
-bool AppSettings::getFirmwareIgnoreCPU()
-{
-    const auto value = getSettings().value(firmwareIgnoreCPU);
-    if (value.isNull())
-        return false;
-    return value.toBool();
-}
-
-int AppSettings::getMaxFlowLevel()
-{
-    const auto value = getSettings().value(maxFlowLevel);
-    if (value.isNull())
-        return 2;
-    bool ok = false;
-    int strategy = value.toInt(&ok);
-    if (ok)
-        return strategy;
-    return 2;
 }
 
 void AppSettings::setFirmwareRepositoryRoot(const QString &path)
@@ -57,58 +25,93 @@ void AppSettings::setFirmwareRepositoryRoot(const QString &path)
 
     QSettings settings = getSettings();
     if (normalized.isEmpty() || normalized == QStringLiteral("."))
-        settings.remove(QString::fromLatin1(FirmwareRepositoryKey));
+        settings.remove(FirmwareRepositoryKey);
     else
-        settings.setValue(QString::fromLatin1(FirmwareRepositoryKey), normalized);
+        settings.setValue(FirmwareRepositoryKey, normalized);
 
     settings.sync();
 }
 
 void AppSettings::clearFirmwareRepositoryRoot()
 {
-    QSettings settings = getSettings();
-    settings.remove(QString::fromLatin1(FirmwareRepositoryKey));
-    settings.sync();
+    clear(FirmwareRepositoryKey);
+}
+
+// --- Firmware Strategy ---
+bool isValidFirmwareStrtegy(int val)
+{
+    return val >= 0 && val <= 3;
+}
+
+int AppSettings::getFirmwareStrtegy()
+{
+    return get<int>(firmwareStrtegy, 0, isValidFirmwareStrtegy);
 }
 
 void AppSettings::setFirmwareStrtegy(const int &str)
 {
-    QSettings settings = getSettings();
-    settings.setValue(firmwareStrtegy, str);
-    settings.sync();
+    set(firmwareStrtegy, str, isValidFirmwareStrtegy);
 }
 
 void AppSettings::clearFirmwareStrtegy()
 {
-    QSettings settings = getSettings();
-    settings.remove(firmwareStrtegy);
-    settings.sync();
+    clear(firmwareStrtegy);
+}
+
+// --- Firmware Ignore CPU ---
+bool AppSettings::getFirmwareIgnoreCPU()
+{
+    return get<bool>(firmwareIgnoreCPU, false);
 }
 
 void AppSettings::setFirmwareIgnoreCPU(const bool a)
 {
-    QSettings settings = getSettings();
-    settings.setValue(firmwareIgnoreCPU, a);
-    settings.sync();
+    set<bool>(firmwareIgnoreCPU, a);
 }
 
 void AppSettings::clearFirmwareIgnoreCPU()
 {
-    QSettings settings = getSettings();
-    settings.remove(firmwareIgnoreCPU);
-    settings.sync();
+    clear(firmwareIgnoreCPU);
+}
+
+// --- Max Flow Level ---
+bool isValidFlowLevel(int val)
+{
+    return val >= 1 && val <= 5;
+}
+
+int AppSettings::getMaxFlowLevel()
+{
+    return get<int>(maxFlowLevel, 2, isValidFlowLevel);
 }
 
 void AppSettings::setMaxFlowLevel(const int level)
 {
-    QSettings settings = getSettings();
-    settings.setValue(maxFlowLevel, level);
-    settings.sync();
+    set<int>(maxFlowLevel, level, isValidFlowLevel);
 }
 
 void AppSettings::clearMaxFlowLevel()
 {
-    QSettings settings = getSettings();
-    settings.remove(maxFlowLevel);
-    settings.sync();
+    clear(maxFlowLevel);
+}
+
+// --- Style Yaml Array ---
+bool isValidStyleYaml(int val)
+{
+    return val >= 1 && val <= 2;
+}
+
+int AppSettings::getStyleYamlArray()
+{
+    return get<int>(styleYamlArray, 2, isValidStyleYaml);
+}
+
+void AppSettings::setStyleYamlArray(const int style)
+{
+    set<int>(styleYamlArray, style, isValidStyleYaml);
+}
+
+void AppSettings::clearStyleYamlArray()
+{
+    clear(styleYamlArray);
 }
