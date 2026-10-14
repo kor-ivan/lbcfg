@@ -31,6 +31,7 @@ private:
     QComboBox *strategyCombo = nullptr;
     QCheckBox *ignoreCpuModuleCheck = nullptr;
     QComboBox *flowLevelCombo = nullptr;
+    QComboBox *styleYamlCombo = nullptr;
 
     QWidget* createFirmwareSettings();
     QWidget* createYAMLSettings();
@@ -38,6 +39,18 @@ private:
     QWidget* createLanguageSettings();
 
     void updateRepoStatusLabel(QLabel *label);
+
+    QWidget* createSettingsLine(QWidget *mainWidget,
+                                QPushButton **outResetButton = nullptr,
+                                QLabel **outStatusLabel = nullptr);
+
+    template <typename T, typename AppSetter>
+    void updateSettings(QWidget* widget, T newValue, T oldValue, AppSetter setter){
+        if (!widget)
+            return;
+        if (newValue != oldValue)
+            setter(newValue);
+    }
 
 };
 

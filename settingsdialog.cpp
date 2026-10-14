@@ -29,25 +29,31 @@ void SettingsDialog::onCategoryChanged(int index)
 
 void SettingsDialog::saveSettings()
 {
-    if (strategyCombo){
-        int newStrategy = strategyCombo->currentData().toInt();
-        int oldStrategy = AppSettings::getFirmwareStrtegy();
-        if (newStrategy != oldStrategy)
-            AppSettings::setFirmwareStrtegy(strategyCombo->currentData().toInt());
-    }
+    if (strategyCombo)
+        updateSettings(strategyCombo,
+                       strategyCombo->currentData().toInt(),
+                       AppSettings::getFirmwareStrtegy(),
+                       AppSettings::setFirmwareStrtegy);
 
     if (ignoreCpuModuleCheck) {
-        bool newIgnoreState = ignoreCpuModuleCheck->isChecked();
-        bool oldIgnoreState = AppSettings::getFirmwareIgnoreCPU();
-        if (newIgnoreState != oldIgnoreState)
-            AppSettings::setFirmwareIgnoreCPU(newIgnoreState);
+        updateSettings(ignoreCpuModuleCheck,
+                       ignoreCpuModuleCheck->isChecked(),
+                       AppSettings::getFirmwareIgnoreCPU(),
+                       AppSettings::setFirmwareIgnoreCPU);
     }
 
     if(flowLevelCombo){
-        int newLevelCombo = flowLevelCombo->currentData().toInt();
-        int oldLevelCombo = AppSettings::getMaxFlowLevel();
-        if (newLevelCombo != oldLevelCombo)
-            AppSettings::setMaxFlowLevel(newLevelCombo);
+        updateSettings(flowLevelCombo,
+                       flowLevelCombo->currentData().toInt(),
+                       AppSettings::getMaxFlowLevel(),
+                       AppSettings::setMaxFlowLevel);
+    }
+
+    if(styleYamlCombo){
+        updateSettings(styleYamlCombo,
+                       styleYamlCombo->currentData().toInt(),
+                       AppSettings::getStyleYamlArray(),
+                       AppSettings::setStyleYamlArray);
     }
 }
 
@@ -153,98 +159,53 @@ QWidget *SettingsDialog::createFirmwareSettings()
     formLayout->setSpacing(8);
     formLayout->setFieldGrowthPolicy(QFormLayout::FieldsStayAtSizeHint);
 
-    auto *repoWidget = new QWidget(page);
-    auto *repoLayout = new QHBoxLayout(repoWidget);
-    repoLayout->setContentsMargins(0, 0, 0, 0);
-    repoLayout->setSpacing(8);
-
-    auto *btnOpenRepoDialog = new QPushButton(tr("Репозиторий прошивок..."), repoWidget);
-    // Делаем ширину фиксированной или аккуратной по контенту
+    auto *btnOpenRepoDialog = new QPushButton(tr("Репозиторий прошивок..."), page);
     btnOpenRepoDialog->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-
-    auto *resetDefaultRepo = new QPushButton(tr("Сбросить..."), repoWidget);
-
-    auto *repoStatusLabel = new QLabel(repoWidget);
+    QPushButton *resetRepoBtn = nullptr;
+    QLabel *repoStatusLabel = nullptr;
+    auto repoRow = createSettingsLine(btnOpenRepoDialog, &resetRepoBtn, &repoStatusLabel);
     updateRepoStatusLabel(repoStatusLabel);
-
-    repoLayout->addWidget(btnOpenRepoDialog);
-    repoLayout->addWidget(resetDefaultRepo);
-    repoLayout->addWidget(repoStatusLabel);
-    repoLayout->addStretch(); // Выталкиваем элементы влево
-
-    formLayout->addRow(tr("Репозиторий:"), repoWidget);
-
-    // Подключаем вызов вашего существующего диалога FirmwareRepositoryDialog
+    formLayout->addRow(tr("Репозиторий:"), repoRow);
     connect(btnOpenRepoDialog, &QPushButton::clicked, this, [this, repoStatusLabel]() {
         p_mainWindow->editFirmwareRepositorySettings();
 
     });
-
     connect(CommandManager::instance()->getFirmwareAnalyzer(),
             &firmwareAnalyzer::updated,
             this,[this, repoStatusLabel](){
                 updateRepoStatusLabel(repoStatusLabel);
     });
-
-    connect(resetDefaultRepo, &QPushButton::clicked, this, [this](){
+    connect(resetRepoBtn, &QPushButton::clicked, this, [this](){
         AppSettings::clearFirmwareRepositoryRoot();
         p_mainWindow->editFirmwareRepositorySettings(true);
     });
 
-    auto *StrategyWidget = new QWidget(page);
-    auto *StrategyLayout = new QHBoxLayout(StrategyWidget);
-    StrategyLayout->setContentsMargins(0, 0, 0, 0);
-    StrategyLayout->setSpacing(8);
-
-    strategyCombo = new QComboBox(StrategyWidget);
+    strategyCombo = new QComboBox(page);
     strategyCombo->setMinimumWidth(150);
-
-    // Наполняем комбобокс элементами, привязывая enum в качестве скрытых UserRole данных
     strategyCombo->addItem(tr("Только XZ (.bin.xz)"),  0);
     strategyCombo->addItem(tr("Только BIN (.bin)"),    1);
     strategyCombo->addItem(tr("Сначала XZ"),           2);
     strategyCombo->addItem(tr("Сначала BIN"),          3);
     strategyCombo->setCurrentIndex(AppSettings::getFirmwareStrtegy());
-
-    auto *resetDefaultStrategy = new QPushButton(tr("Сбросить..."), StrategyWidget);
-
-    StrategyLayout->addWidget(strategyCombo);
-    StrategyLayout->addWidget(resetDefaultStrategy);
-    StrategyLayout->addStretch();
-
-    formLayout->addRow(tr("Стратегия:"), StrategyWidget);
-
+    QPushButton *resetDefaultStrategy = nullptr;
+    auto strategyRow = createSettingsLine(strategyCombo, &resetDefaultStrategy);
+    formLayout->addRow(tr("Стратегия:"), strategyRow);
     connect(resetDefaultStrategy, &QPushButton::clicked, this, [this](){
         AppSettings::clearFirmwareStrtegy();
         strategyCombo->setCurrentIndex(AppSettings::getFirmwareStrtegy());
     });
 
-    auto *CpuIgnoreWidget = new QWidget(page);
-    auto *CpuIgnoreLayout = new QHBoxLayout(CpuIgnoreWidget);
-    CpuIgnoreLayout->setContentsMargins(0, 0, 0, 0);
-    CpuIgnoreLayout->setSpacing(8);
-
-    ignoreCpuModuleCheck = new QCheckBox(tr("Игнорировать процессорный модуль при групповой прошивке"), CpuIgnoreWidget);
+    ignoreCpuModuleCheck = new QCheckBox(tr("Игнорировать процессорный модуль при групповой прошивке"), page);
     ignoreCpuModuleCheck->setChecked(AppSettings::getFirmwareIgnoreCPU());
-
-    auto *resetDefaultCpuIgnore = new QPushButton(tr("Сбросить..."), CpuIgnoreWidget);
-    resetDefaultCpuIgnore->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-
-    CpuIgnoreLayout->addWidget(ignoreCpuModuleCheck);
-    CpuIgnoreLayout->addWidget(resetDefaultCpuIgnore);
-    CpuIgnoreLayout->addStretch();
-
-    // Добавляем пустую текстовую метку слева, чтобы чекбокс выровнялся строго по одной линии с комбобоксом
-    formLayout->addRow(QString(), CpuIgnoreWidget);
-
+    QPushButton *resetDefaultCpuIgnore = nullptr;
+    auto ignoreCpuModuleRow = createSettingsLine(ignoreCpuModuleCheck, &resetDefaultCpuIgnore);
+    formLayout->addRow(QString(), ignoreCpuModuleRow);
     connect(resetDefaultCpuIgnore, &QPushButton::clicked, this, [this](){
         AppSettings::clearFirmwareIgnoreCPU();
         ignoreCpuModuleCheck->setChecked(AppSettings::getFirmwareIgnoreCPU());
     });
 
-    // Добавляем форму в основной макет страницы
     layout->addLayout(formLayout);
-
     layout->addStretch();
     return page;
 }
@@ -261,30 +222,33 @@ QWidget *SettingsDialog::createYAMLSettings()
     formLayout->setSpacing(8);
     formLayout->setFieldGrowthPolicy(QFormLayout::FieldsStayAtSizeHint);
 
-    auto *flowLevelWidget = new QWidget(page);
-    auto *flowLevelLayout = new QHBoxLayout(flowLevelWidget);
-    flowLevelLayout->setContentsMargins(0, 0, 0, 0);
-    flowLevelLayout->setSpacing(8);
-
-    flowLevelCombo = new QComboBox(flowLevelWidget);
+    flowLevelCombo = new QComboBox(page);
     flowLevelCombo->setMinimumWidth(150);
-
-    for (int i = 1; i <= 5; ++i) {
+    for (int i = 1; i <= 5; ++i)
         flowLevelCombo->addItem(QString::number(i), i);
-    }
-    strategyCombo->setCurrentIndex(AppSettings::getMaxFlowLevel());
+    flowLevelCombo->setCurrentIndex(flowLevelCombo->findData(AppSettings::getMaxFlowLevel()));
+    QPushButton *resetFlowLevelButton = nullptr;
+    auto resetFlowLevelRow = createSettingsLine(flowLevelCombo, &resetFlowLevelButton);
+    formLayout->addRow(tr("Уровень компактного представления"), resetFlowLevelRow);
+    connect(resetFlowLevelButton, &QPushButton::clicked, this, [this](){
+        AppSettings::clearMaxFlowLevel();
+        flowLevelCombo->setCurrentIndex(flowLevelCombo->findData(AppSettings::getMaxFlowLevel()));
+    });
 
-    auto *resetFlowLevelButton = new QPushButton(tr("Сбросить..."), flowLevelWidget);
-    resetFlowLevelButton->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-
-    flowLevelLayout->addWidget(flowLevelCombo);
-    flowLevelLayout->addWidget(resetFlowLevelButton);
-    flowLevelLayout->addStretch();
-
-    formLayout->addRow(tr(""), flowLevelWidget);
+    styleYamlCombo = new QComboBox(page);
+    styleYamlCombo->setMinimumWidth(150);
+    styleYamlCombo->addItem(tr("Блочный"),   1);
+    styleYamlCombo->addItem(tr("Компактный"),2);
+    styleYamlCombo->setCurrentIndex(styleYamlCombo->findData(AppSettings::getStyleYamlArray()));
+    QPushButton *resetStyleYamlButton = nullptr;
+    auto resetStyleYamlRow = createSettingsLine(styleYamlCombo, &resetStyleYamlButton);
+    formLayout->addRow(tr("Тип представления списков"), resetStyleYamlRow);
+    connect(resetStyleYamlButton, &QPushButton::clicked, this, [this](){
+        AppSettings::clearStyleYamlArray();
+        styleYamlCombo->setCurrentIndex(styleYamlCombo->findData(AppSettings::getStyleYamlArray()));
+    });
 
     layout->addLayout(formLayout);
-
     layout->addStretch();
     return page;
 }
@@ -320,4 +284,29 @@ void SettingsDialog::updateRepoStatusLabel(QLabel *label)
     } else {
         label->setText(tr("Текущий путь: %1").arg(QDir::toNativeSeparators(currentPath)));
     }
+}
+
+QWidget *SettingsDialog::createSettingsLine(QWidget *mainWidget, QPushButton **outResetButton, QLabel **outStatusLabel)
+{
+    auto *container = new QWidget(this);
+    auto *hLayout = new QHBoxLayout(container);
+    hLayout->setContentsMargins(0, 0, 0, 0);
+    hLayout->setSpacing(8);
+
+    hLayout->addWidget(mainWidget);
+
+    if (outResetButton) {
+        auto *resetBtn = new QPushButton(tr("Сбросить..."), container);
+        resetBtn->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+        hLayout->addWidget(resetBtn);
+        *outResetButton = resetBtn;
+    }
+
+    if (outStatusLabel) {
+        auto *statusLabel = new QLabel(container);
+        hLayout->addWidget(statusLabel);
+        *outStatusLabel = statusLabel;
+    }
+    hLayout->addStretch();
+    return container;
 }
