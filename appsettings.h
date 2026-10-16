@@ -26,6 +26,7 @@ public:
     static int getColorLists();
     static int getColorStrings();
     static int getColorComments();
+    static bool getAutoIndentYaml();
 
 private:
     static inline const QLatin1StringView FirmwareRepositoryKey{"Firmware/repositoryRoot"};
@@ -47,6 +48,10 @@ private:
     static inline const QLatin1StringView styleYamlArray{"YAML/styleYamlArray"};
     static void setStyleYamlArray(const int style);
     static void clearStyleYamlArray();
+
+    static inline const QLatin1StringView autoIndentYaml{"YAML/autoIndent"};
+    static void setAutoIndentYaml(const bool v);
+    static void clearAutoIndentYaml();
 
     static inline const QLatin1StringView colorRootKeys{"YAML_Color/rootKeys"};
     static void setColorRootKeys(const int color);

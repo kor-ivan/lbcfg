@@ -57,6 +57,13 @@ void SettingsDialog::saveSettings()
                        AppSettings::setStyleYamlArray);
     }
 
+    if(autoIndentCheck){
+        updateSettings(autoIndentCheck,
+                       autoIndentCheck->isChecked(),
+                       AppSettings::getAutoIndentYaml(),
+                       AppSettings::setAutoIndentYaml);
+    }
+
     if (colorRootKeysCombo) {
         updateSettings(colorRootKeysCombo, colorRootKeysCombo->currentData().toInt(),
                        AppSettings::getColorRootKeys(), AppSettings::setColorRootKeys);
@@ -276,6 +283,16 @@ QWidget *SettingsDialog::createYAMLSettings()
     connect(resetStyleYamlButton, &QPushButton::clicked, this, [this](){
         AppSettings::clearStyleYamlArray();
         styleYamlCombo->setCurrentIndex(styleYamlCombo->findData(AppSettings::getStyleYamlArray()));
+    });
+
+    autoIndentCheck = new QCheckBox(tr("Авто отступ по Enter"), page);
+    autoIndentCheck->setChecked(AppSettings::getAutoIndentYaml());
+    QPushButton *resetAutoIndentCheck = nullptr;
+    auto autoIndentCheckRow = createSettingsLine(autoIndentCheck, &resetAutoIndentCheck);
+    formLayout->addRow(QString(), autoIndentCheckRow);
+    connect(resetAutoIndentCheck, &QPushButton::clicked, this, [this](){
+        AppSettings::clearAutoIndentYaml();
+        autoIndentCheck->setChecked(AppSettings::getAutoIndentYaml());
     });
 
     auto *colorGroupBox = new QGroupBox(tr("Цвета подсветки синтаксиса"), page);

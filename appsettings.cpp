@@ -116,6 +116,23 @@ void AppSettings::clearStyleYamlArray()
     clear(styleYamlArray);
 }
 
+// --- YAML Auto-indent ---
+bool AppSettings::getAutoIndentYaml()
+{
+    return get<bool>(autoIndentYaml, true);
+}
+
+void AppSettings::setAutoIndentYaml(const bool v)
+{
+    set(autoIndentYaml, v);
+}
+
+void AppSettings::clearAutoIndentYaml()
+{
+    clear(autoIndentYaml);
+}
+
+
 // Валидатор для проверки, что число соответствует диапазону перечисления Qt::GlobalColor
 bool isValidQtColor(int val)
 {

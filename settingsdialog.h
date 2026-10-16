@@ -39,6 +39,7 @@ private:
     QComboBox *colorListsCombo = nullptr;
     QComboBox *colorStringsCombo = nullptr;
     QComboBox *colorCommentsCombo = nullptr;
+    QCheckBox *autoIndentCheck = nullptr;
 
     QWidget* createFirmwareSettings();
     QWidget* createYAMLSettings();

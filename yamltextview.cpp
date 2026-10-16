@@ -5,6 +5,7 @@
 #include "logmanager.h"
 #include "commandmanager.h"
 #include "yamlhighlighter.h"
+#include "appsettings.h"
 
 yamlTextView::yamlTextView(QWidget *parent)
     : QWidget{parent}
@@ -280,7 +281,7 @@ void yamlTextView::toggleComment()
 bool yamlTextView::eventFilter(QObject *watched, QEvent *event)
 {
     // Проверяем, что событие пришло именно от нашего текстового редактора и это нажатие клавиши
-    if (watched == editor && event->type() == QEvent::KeyPress) {
+    if (watched == editor && event->type() == QEvent::KeyPress && AppSettings::getAutoIndentYaml()) {
         QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
 
         // Перехватываем Enter (обе клавиши: на основной клавиатуре и на цифровой)
