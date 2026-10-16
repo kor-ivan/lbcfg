@@ -1,55 +1,56 @@
 #include "yamlhighlighter.h"
+#include "appsettings.h"
 
 YamlHighlighter::YamlHighlighter(QTextDocument *parent)
     : QSyntaxHighlighter(parent)
 {
     HighlightRule rule;
 
-    // 1. КОРНЕВЫЕ КЛЮЧИ (строго в начале строки: forte:, slot-1:) — ТЕМНО-ЗЕЛЕНЫЙ
+    // 1. КОРНЕВЫЕ КЛЮЧИ (строго в начале строки: forte:, slot-1:)
     rule.pattern = QRegularExpression(QStringLiteral("^[ \t]*[^#:\\s{}]+(?=\\s*:)"));
-    rule.format.setForeground(Qt::darkGreen);
+    rule.format.setForeground(static_cast<Qt::GlobalColor>(AppSettings::getColorRootKeys()));
     rule.format.setFontWeight(QFont::Bold);
     rules.append(rule);
 
     // 2. ВНУТРЕННИЕ КЛЮЧИ ЛЮБОЙ ВЛОЖЕННОСТИ
     rule.pattern = QRegularExpression(QStringLiteral("(?<=[{,])\\s*([^#:\\s{}]+)(?=\\s*:)"));
-    rule.format.setForeground(Qt::blue);
+    rule.format.setForeground(static_cast<Qt::GlobalColor>(AppSettings::getColorInnerKeys()));
     rule.format.setFontWeight(QFont::Normal);
     rules.append(rule);
 
     // 3. РАЗДЕЛИТЕЛИ (двоеточие, фигурные и квадратные скобки, запятые)
     rule.pattern = QRegularExpression(QStringLiteral("[:{},\\[\\]]"));
-    rule.format.setForeground(Qt::black);
+    rule.format.setForeground(static_cast<Qt::GlobalColor>(AppSettings::getColorPunctuation()));
     rule.format.setFontWeight(QFont::Bold);
     rules.append(rule);
 
     // 4. ОБЫЧНЫЕ ОДИНОЧНЫЕ ЗНАЧЕНИЯ (после двоеточия: MSK, y, bcbase, 502)
     rule.pattern = QRegularExpression(QStringLiteral(":\\s*([^\\[\\{#,\\s][^#,\\s{}]*)"));
-    rule.format.setForeground(Qt::darkRed);
+    rule.format.setForeground(static_cast<Qt::GlobalColor>(AppSettings::getColorValues()));
     rule.format.setFontWeight(QFont::Normal);
     rules.append(rule);
 
     // 5. БЛОЧНЫЕ СПИСКИ ЧЕРЕЗ ДЕФИС (в начале строки: - EM, - cmd)
     rule.pattern = QRegularExpression(QStringLiteral("^[ \t]*-\\s+([^#\\s]+)"));
-    rule.format.setForeground(Qt::magenta);
+    rule.format.setForeground(static_cast<Qt::GlobalColor>(AppSettings::getColorLists()));
     rule.format.setFontWeight(QFont::Normal);
     rules.append(rule);
 
     // 6. ЭЛЕМЕНТЫ ИНЛАЙНОВЫХ СПИСКОВ (внутри квадратных скобок [ ... ])
     rule.pattern = QRegularExpression(QStringLiteral("\\b[\\w\\.]+(?=[^\\[\\]]*\\])"));
-    rule.format.setForeground(Qt::magenta);
+    rule.format.setForeground(static_cast<Qt::GlobalColor>(AppSettings::getColorLists()));
     rule.format.setFontWeight(QFont::Normal);
     rules.append(rule);
 
     // 7. СТРОКОВЫЕ ЗНАЧЕНИЯ В КАВЫЧКАХ
     rule.pattern = QRegularExpression(QStringLiteral("\".*?\"|'.*?'"));
-    rule.format.setForeground(Qt::darkCyan);
+    rule.format.setForeground(static_cast<Qt::GlobalColor>(AppSettings::getColorStrings()));
     rule.format.setFontWeight(QFont::Normal);
     rules.append(rule);
 
     // 8. КОММЕНТАРИИ (начинаются с #)
     rule.pattern = QRegularExpression(QStringLiteral("#.*"));
-    rule.format.setForeground(Qt::gray);
+    rule.format.setForeground(static_cast<Qt::GlobalColor>(AppSettings::getColorComments()));
     rule.format.setFontItalic(true);
     rule.format.setFontWeight(QFont::Normal);
     rules.append(rule);

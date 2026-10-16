@@ -32,6 +32,13 @@ private:
     QCheckBox *ignoreCpuModuleCheck = nullptr;
     QComboBox *flowLevelCombo = nullptr;
     QComboBox *styleYamlCombo = nullptr;
+    QComboBox *colorRootKeysCombo = nullptr;
+    QComboBox *colorInnerKeysCombo = nullptr;
+    QComboBox *colorPunctuationCombo = nullptr;
+    QComboBox *colorValuesCombo = nullptr;
+    QComboBox *colorListsCombo = nullptr;
+    QComboBox *colorStringsCombo = nullptr;
+    QComboBox *colorCommentsCombo = nullptr;
 
     QWidget* createFirmwareSettings();
     QWidget* createYAMLSettings();
@@ -39,6 +46,13 @@ private:
     QWidget* createLanguageSettings();
 
     void updateRepoStatusLabel(QLabel *label);
+
+    struct ColorItem {
+        QString name;
+        Qt::GlobalColor color;
+    };
+    void populateColorComboBox(QComboBox *combo, int currentSelectedColor, const QList<ColorItem> &colors);
+
 
     QWidget* createSettingsLine(QWidget *mainWidget,
                                 QPushButton **outResetButton = nullptr,

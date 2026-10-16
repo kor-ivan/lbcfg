@@ -19,6 +19,14 @@ public:
     static int getMaxFlowLevel();
     static int getStyleYamlArray();
 
+    static int getColorRootKeys();
+    static int getColorInnerKeys();
+    static int getColorPunctuation();
+    static int getColorValues();
+    static int getColorLists();
+    static int getColorStrings();
+    static int getColorComments();
+
 private:
     static inline const QLatin1StringView FirmwareRepositoryKey{"Firmware/repositoryRoot"};
     static void setFirmwareRepositoryRoot(const QString &path);
@@ -39,6 +47,34 @@ private:
     static inline const QLatin1StringView styleYamlArray{"YAML/styleYamlArray"};
     static void setStyleYamlArray(const int style);
     static void clearStyleYamlArray();
+
+    static inline const QLatin1StringView colorRootKeys{"YAML_Color/rootKeys"};
+    static void setColorRootKeys(const int color);
+    static void clearColorRootKeys();
+
+    static inline const QLatin1StringView colorInnerKeys{"YAML_Color/innerKeys"};
+    static void setColorInnerKeys(const int color);
+    static void clearColorInnerKeys();
+
+    static inline const QLatin1StringView colorPunctuation{"YAML_Color/punctuation"};
+    static void setColorPunctuation(const int color);
+    static void clearColorPunctuation();
+
+    static inline const QLatin1StringView colorValues{"YAML_Color/values"};
+    static void setColorValues(const int color);
+    static void clearColorValues();
+
+    static inline const QLatin1StringView colorLists{"YAML_Color/lists"};
+    static void setColorLists(const int color);
+    static void clearColorLists();
+
+    static inline const QLatin1StringView colorStrings{"YAML_Color/strings"};
+    static void setColorStrings(const int color);
+    static void clearColorStrings();
+
+    static inline const QLatin1StringView colorComments{"YAML_Color/comments"};
+    static void setColorComments(const int color);
+    static void clearColorComments();
 
     static QSettings getSettings();
 

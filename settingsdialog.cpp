@@ -8,6 +8,7 @@
 #include <QFormLayout>
 #include <QDir>
 #include <QCheckBox>
+#include <QGroupBox>
 #include "appsettings.h"
 #include "mainwindow.h"
 #include "commandmanager.h"
@@ -54,6 +55,35 @@ void SettingsDialog::saveSettings()
                        styleYamlCombo->currentData().toInt(),
                        AppSettings::getStyleYamlArray(),
                        AppSettings::setStyleYamlArray);
+    }
+
+    if (colorRootKeysCombo) {
+        updateSettings(colorRootKeysCombo, colorRootKeysCombo->currentData().toInt(),
+                       AppSettings::getColorRootKeys(), AppSettings::setColorRootKeys);
+    }
+    if (colorInnerKeysCombo) {
+        updateSettings(colorInnerKeysCombo, colorInnerKeysCombo->currentData().toInt(),
+                       AppSettings::getColorInnerKeys(), AppSettings::setColorInnerKeys);
+    }
+    if (colorPunctuationCombo) {
+        updateSettings(colorPunctuationCombo, colorPunctuationCombo->currentData().toInt(),
+                       AppSettings::getColorPunctuation(), AppSettings::setColorPunctuation);
+    }
+    if (colorValuesCombo) {
+        updateSettings(colorValuesCombo, colorValuesCombo->currentData().toInt(),
+                       AppSettings::getColorValues(), AppSettings::setColorValues);
+    }
+    if (colorListsCombo) {
+        updateSettings(colorListsCombo, colorListsCombo->currentData().toInt(),
+                       AppSettings::getColorLists(), AppSettings::setColorLists);
+    }
+    if (colorStringsCombo) {
+        updateSettings(colorStringsCombo, colorStringsCombo->currentData().toInt(),
+                       AppSettings::getColorStrings(), AppSettings::setColorStrings);
+    }
+    if (colorCommentsCombo) {
+        updateSettings(colorCommentsCombo, colorCommentsCombo->currentData().toInt(),
+                       AppSettings::getColorComments(), AppSettings::setColorComments);
     }
 }
 
@@ -248,7 +278,55 @@ QWidget *SettingsDialog::createYAMLSettings()
         styleYamlCombo->setCurrentIndex(styleYamlCombo->findData(AppSettings::getStyleYamlArray()));
     });
 
+    auto *colorGroupBox = new QGroupBox(tr("Цвета подсветки синтаксиса"), page);
+    // Внутри GroupBox создаем свой собственный FormLayout для выравнивания
+    auto *groupFormLayout = new QFormLayout(colorGroupBox);
+    groupFormLayout->setContentsMargins(10, 15, 10, 10); // Внутренние отступы от рамки
+    groupFormLayout->setSpacing(8);
+    groupFormLayout->setFieldGrowthPolicy(QFormLayout::FieldsStayAtSizeHint);
+
+    QList<ColorItem> colors = {
+        { tr("Черный"), Qt::black },
+        { tr("Белый"), Qt::white },
+        { tr("Темно-серый"), Qt::darkGray },
+        { tr("Серый"), Qt::gray },
+        { tr("Светло-серый"), Qt::lightGray },
+        { tr("Красный"), Qt::red },
+        { tr("Темно-красный"), Qt::darkRed },
+        { tr("Зеленый"), Qt::green },
+        { tr("Темно-зеленый"), Qt::darkGreen },
+        { tr("Синий"), Qt::blue },
+        { tr("Темно-синий"), Qt::darkBlue },
+        { tr("Голубой/Бирюзовый"), Qt::cyan },
+        { tr("Темно-бирюзовый"), Qt::darkCyan },
+        { tr("Пурпурный"), Qt::magenta },
+        { tr("Темно-пурпурный"), Qt::darkMagenta },
+        { tr("Желтый"), Qt::yellow },
+        { tr("Темно-желтый (Горчичный)"), Qt::darkYellow }
+    };
+    auto createColorRow = [this, page, groupFormLayout, &colors](const QString &label, QComboBox **combo, int (*getter)(), void (*clearer)()) {
+        *combo = new QComboBox(page);
+        (*combo)->setMinimumWidth(200);
+        populateColorComboBox(*combo, getter(), colors);
+        QPushButton *resetBtn = nullptr;
+        groupFormLayout->addRow(label, createSettingsLine(*combo, &resetBtn));
+        connect(resetBtn, &QPushButton::clicked, this, [this, combo, getter, clearer](){
+            clearer();
+            int idx = (*combo)->findData(getter());
+            if (idx != -1) (*combo)->setCurrentIndex(idx);
+        });
+    };
+    createColorRow(tr("Корневые ключи:"), &colorRootKeysCombo, AppSettings::getColorRootKeys, AppSettings::clearColorRootKeys);
+    createColorRow(tr("Внутренние ключи:"), &colorInnerKeysCombo, AppSettings::getColorInnerKeys, AppSettings::clearColorInnerKeys);
+    createColorRow(tr("Разделители:"), &colorPunctuationCombo, AppSettings::getColorPunctuation, AppSettings::clearColorPunctuation);
+    createColorRow(tr("Одиночные значения:"), &colorValuesCombo, AppSettings::getColorValues, AppSettings::clearColorValues);
+    createColorRow(tr("Списки и массивы:"), &colorListsCombo, AppSettings::getColorLists, AppSettings::clearColorLists);
+    createColorRow(tr("Строки в кавычках:"), &colorStringsCombo, AppSettings::getColorStrings, AppSettings::clearColorStrings);
+    createColorRow(tr("Комментарии:"), &colorCommentsCombo, AppSettings::getColorComments, AppSettings::clearColorComments);
+
     layout->addLayout(formLayout);
+    layout->addWidget(colorGroupBox);
+
     layout->addStretch();
     return page;
 }
@@ -285,6 +363,35 @@ void SettingsDialog::updateRepoStatusLabel(QLabel *label)
         label->setText(tr("Текущий путь: %1").arg(QDir::toNativeSeparators(currentPath)));
     }
 }
+
+#include <QPixmap>
+#include <QPainter>
+
+void SettingsDialog::populateColorComboBox(QComboBox *combo, int currentSelectedColor, const QList<ColorItem> &colors)
+{
+    if (!combo) return;
+
+    for (const auto &item : colors) {
+        // Создаем маленькую квадратную иконку 16x16
+        QPixmap pixmap(16, 16);
+        pixmap.fill(item.color);
+
+        // Отрисовка черной рамки
+        QPainter painter(&pixmap);
+        painter.setPen(Qt::black);
+        painter.drawRect(0, 0, 15, 15);
+        painter.end();
+
+        combo->addItem(QIcon(pixmap), item.name, static_cast<int>(item.color));
+    }
+
+    // Выставляем текущий сохраненный цвет
+    int targetIndex = combo->findData(currentSelectedColor);
+    if (targetIndex != -1) {
+        combo->setCurrentIndex(targetIndex);
+    }
+}
+
 
 QWidget *SettingsDialog::createSettingsLine(QWidget *mainWidget, QPushButton **outResetButton, QLabel **outStatusLabel)
 {
