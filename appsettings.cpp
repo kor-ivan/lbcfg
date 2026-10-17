@@ -258,3 +258,35 @@ void AppSettings::clearColorComments()
 {
     clear(colorComments);
 }
+
+// Валидатор для проверки корректности индекса Level (от Critical=0 до Debug=4)
+bool isValidLogLevel(int val) {
+    return val >= 0 && val <= 4;
+}
+
+// --- AppMinLogLevel ---
+int AppSettings::getAppMinLogLevel() {
+    return get<int>(appMinLogLevelKey, 4, isValidLogLevel);
+}
+
+void AppSettings::setAppMinLogLevel(const int level) {
+    set<int>(appMinLogLevelKey, level, isValidLogLevel);
+}
+
+void AppSettings::clearAppMinLogLevel() {
+    clear(appMinLogLevelKey);
+}
+
+// --- PlcMinLogLeve ---
+int AppSettings::getPlcMinLogLevel() {
+    return get<int>(plcMinLogLevelKey, 4, isValidLogLevel);
+}
+
+void AppSettings::setPlcMinLogLevel(const int level) {
+    set<int>(plcMinLogLevelKey, level, isValidLogLevel);
+}
+
+void AppSettings::clearPlcMinLogLevel() {
+    clear(plcMinLogLevelKey);
+}
+

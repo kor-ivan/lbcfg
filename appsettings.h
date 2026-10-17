@@ -27,6 +27,8 @@ public:
     static int getColorStrings();
     static int getColorComments();
     static bool getAutoIndentYaml();
+    static int getAppMinLogLevel();
+    static int getPlcMinLogLevel();
 
 private:
     static inline const QLatin1StringView FirmwareRepositoryKey{"Firmware/repositoryRoot"};
@@ -80,6 +82,14 @@ private:
     static inline const QLatin1StringView colorComments{"YAML_Color/comments"};
     static void setColorComments(const int color);
     static void clearColorComments();
+
+    static inline const QLatin1StringView appMinLogLevelKey{"Logging/appMinLevel"};
+    static void setAppMinLogLevel(const int level);
+    static void clearAppMinLogLevel();
+
+    static inline const QLatin1StringView plcMinLogLevelKey{"Logging/plcMinLevel"};
+    static void setPlcMinLogLevel(const int level);
+    static void clearPlcMinLogLevel();
 
     static QSettings getSettings();
 

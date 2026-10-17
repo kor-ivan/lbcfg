@@ -1,6 +1,10 @@
 #include "logmanager.h"
 #include <QRegularExpression>
 #include <qtimezone.h>
+#include "appsettings.h"
+
+LogManager::Level LogManager::appMinLevel = static_cast<LogManager::Level>(-1);
+LogManager::Level LogManager::plcMinLevel = static_cast<LogManager::Level>(-1);
 
 LogManager::LogManager(const plc::CommandContext &ctx, bool parse, Source source)
     : m_ctx(ctx), m_parse(parse), m_source(source), m_level(LogCatcher::Debug)
@@ -15,70 +19,83 @@ LogManager::LogManager(const plc::CommandContext &ctx, Source source, Level leve
     m_wrap(wrap), m_timestamp(QDateTime::currentDateTime())
 {}
 
+void LogManager::setAppMinLevel(Level level) { appMinLevel = level; }
+void LogManager::setPlcMinLevel(Level level) { plcMinLevel = level; }
+
+LogManager::Level LogManager::getAppMinLevel() {
+    // Если еще не загружено из файла — лениво загружаем
+    if (static_cast<int>(appMinLevel) == -1) {
+        appMinLevel = static_cast<LogManager::Level>(AppSettings::getAppMinLogLevel());
+    }
+    return appMinLevel;
+}
+
+LogManager::Level LogManager::getPlcMinLevel() {
+    // Если еще не загружено из файла — лениво загружаем
+    if (static_cast<int>(plcMinLevel) == -1) {
+        plcMinLevel = static_cast<LogManager::Level>(AppSettings::getPlcMinLogLevel());
+    }
+    return plcMinLevel;
+}
+
 
 LogManager::~LogManager()
 {
-    if (m_level <= loglevel){
-        if (m_parse){
-            // Регулярное выражение с альтернативными группами:
-            // Вариант 1 (Группы 1, 2, 3): ^\s*([IWE])\s*\(([^)]+)\)\s*(.*)$  --> I (12345) message
-            // Вариант 2 (Группы 4, 5):    ^\s*([0-9]+)\s+(.*)$               --> 12345 message
-            static const QRegularExpression logRegex(
-                R"(^\s*(?:([IWE])\s*\(([^)]+)\)\s*(.*)|([0-9]+)\s+(.*))$)",
-                QRegularExpression::DotMatchesEverythingOption
-                );
-            QRegularExpressionMatch match = logRegex.match(m_buffer);
+    if (m_parse){
+        // Регулярное выражение с альтернативными группами:
+        // Вариант 1 (Группы 1, 2, 3): ^\s*([IWE])\s*\(([^)]+)\)\s*(.*)$  --> I (12345) message
+        // Вариант 2 (Группы 4, 5):    ^\s*([0-9]+)\s+(.*)$               --> 12345 message
+        static const QRegularExpression logRegex(
+            R"(^\s*(?:([IWE])\s*\(([^)]+)\)\s*(.*)|([0-9]+)\s+(.*))$)",
+            QRegularExpression::DotMatchesEverythingOption
+            );
+        QRegularExpressionMatch match = logRegex.match(m_buffer);
 
-            if (match.hasMatch()) {
-                QString timeContent;
-                if (!match.captured(4).isEmpty()){
-                    timeContent = match.captured(4);  // Миллисекунды
+        if (match.hasMatch()) {
+            QString timeContent;
+            if (!match.captured(4).isEmpty()){
+                timeContent = match.captured(4);  // Миллисекунды
+                bool ok;
+                qint64 us = timeContent.toLongLong(&ok);
+                if (ok) {
+                    m_timestamp = QDateTime::fromMSecsSinceEpoch(us/1000, QTimeZone::UTC);
+                    m_timetype = LogCatcher::TimeUptime;
+                }
+                m_buffer = match.captured(5);  // Оставшийся текст сообщения
+            }else{
+                QString levelLetter = match.captured(1);
+                if (levelLetter == "I")      m_level = LogCatcher::Info;
+                else if (levelLetter == "W") m_level = LogCatcher::Warning;
+                else if (levelLetter == "E") m_level = LogCatcher::Alarm;
+
+                timeContent = match.captured(2);
+                if (timeContent.contains(':')) {
+                    QTime parsedTime = QTime::fromString(timeContent, "HH:mm:ss.zzz");
+                    if (parsedTime.isValid()) {
+                        m_timestamp = QDateTime(QDate::currentDate(), parsedTime);
+                    }
+                    m_timetype = LogCatcher::TimeReal;
+                }else{
                     bool ok;
-                    qint64 us = timeContent.toLongLong(&ok);
+                    qint64 ms = timeContent.toLongLong(&ok);
                     if (ok) {
-                        m_timestamp = QDateTime::fromMSecsSinceEpoch(us/1000, QTimeZone::UTC);
+                        m_timestamp = QDateTime::fromMSecsSinceEpoch(ms, QTimeZone::UTC);
                         m_timetype = LogCatcher::TimeUptime;
                     }
-                    m_buffer = match.captured(5);  // Оставшийся текст сообщения
-                }else{
-                    QString levelLetter = match.captured(1);
-                    if (levelLetter == "I")      m_level = LogCatcher::Info;
-                    else if (levelLetter == "W") m_level = LogCatcher::Warning;
-                    else if (levelLetter == "E") m_level = LogCatcher::Alarm;
-
-                    timeContent = match.captured(2);
-                    if (timeContent.contains(':')) {
-                        QTime parsedTime = QTime::fromString(timeContent, "HH:mm:ss.zzz");
-                        if (parsedTime.isValid()) {
-                            m_timestamp = QDateTime(QDate::currentDate(), parsedTime);
-                        }
-                        m_timetype = LogCatcher::TimeReal;
-                    }else{
-                        bool ok;
-                        qint64 ms = timeContent.toLongLong(&ok);
-                        if (ok) {
-                            m_timestamp = QDateTime::fromMSecsSinceEpoch(ms, QTimeZone::UTC);
-                            m_timetype = LogCatcher::TimeUptime;
-                        }
-                    }
-                    m_buffer = match.captured(3).trimmed();
                 }
-                m_buffer.remove('\r');
-                if (m_buffer.contains('{') || m_buffer.contains('\n')) {
-                    m_wrap = LogCatcher::wrapYes;
-                }
+                m_buffer = match.captured(3).trimmed();
+            }
+            m_buffer.remove('\r');
+            if (m_buffer.contains('{') || m_buffer.contains('\n')) {
+                m_wrap = LogCatcher::wrapYes;
             }
         }
-        emit catcher()->newLogEntry(m_timestamp, m_source, m_level, m_buffer, m_ctx, m_wrap, m_timetype);
     }
+    if (m_level <= (m_source == LogCatcher::App) ? getAppMinLevel() : getPlcMinLevel())
+        emit catcher()->newLogEntry(m_timestamp, m_source, m_level, m_buffer, m_ctx, m_wrap, m_timetype);
 }
 LogCatcher *LogManager::catcher()
 {
     static LogCatcher instanse;
     return &instanse;
-}
-
-void LogManager::setLoglevel(const Level &newLoglevel)
-{
-    loglevel = newLoglevel;
 }

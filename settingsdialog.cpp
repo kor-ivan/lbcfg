@@ -12,6 +12,7 @@
 #include "appsettings.h"
 #include "mainwindow.h"
 #include "commandmanager.h"
+#include "logmanager.h"
 
 
 SettingsDialog::SettingsDialog(QWidget *parent)
@@ -91,6 +92,24 @@ void SettingsDialog::saveSettings()
     if (colorCommentsCombo) {
         updateSettings(colorCommentsCombo, colorCommentsCombo->currentData().toInt(),
                        AppSettings::getColorComments(), AppSettings::setColorComments);
+    }
+    if (appLogLevelCombo) {
+        updateSettings(appLogLevelCombo,
+                       appLogLevelCombo->currentData().toInt(),
+                       AppSettings::getAppMinLogLevel(),
+                       [](int newValue) {
+                           AppSettings::setAppMinLogLevel(newValue);
+                           LogManager::setAppMinLevel(static_cast<LogManager::Level>(newValue));
+                       });
+    }
+    if (plcLogLevelCombo) {
+        updateSettings(plcLogLevelCombo,
+                       plcLogLevelCombo->currentData().toInt(),
+                       AppSettings::getPlcMinLogLevel(),
+                       [](int newValue) {
+                           AppSettings::setPlcMinLogLevel(newValue);
+                           LogManager::setPlcMinLevel(static_cast<LogManager::Level>(newValue));
+                       });
     }
 }
 
@@ -354,6 +373,52 @@ QWidget *SettingsDialog::createLogSettings()
     auto *layout = new QVBoxLayout(page);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(new QLabel(tr("<h3>Настройки логирвания</h3>"), page));
+
+    auto *formLayout = new QFormLayout();
+    formLayout->setContentsMargins(0, 5, 0, 5);
+    formLayout->setSpacing(8);
+    formLayout->setFieldGrowthPolicy(QFormLayout::FieldsStayAtSizeHint);
+
+    auto setupLogLevelCombo = [page](QComboBox **combo, int currentLevel) {
+        *combo = new QComboBox(page);
+        (*combo)->setMinimumWidth(150);
+        (*combo)->addItem(tr("Критический (Critical)"), 0);
+        (*combo)->addItem(tr("Авария (Alarm)"),       1);
+        (*combo)->addItem(tr("Предупреждение (Warning)"), 2);
+        (*combo)->addItem(tr("Инфо (Info)"),          3);
+        (*combo)->addItem(tr("Отладка (Debug)"),       4);
+
+        int idx = (*combo)->findData(currentLevel);
+        if (idx != -1) (*combo)->setCurrentIndex(idx);
+    };
+
+    // 1. Настройка для Application
+    setupLogLevelCombo(&appLogLevelCombo, AppSettings::getAppMinLogLevel());
+    QPushButton *resetAppLogBtn = nullptr;
+    auto appLogRow = createSettingsLine(appLogLevelCombo, &resetAppLogBtn);
+    formLayout->addRow(tr("Логи Приложения (App):"), appLogRow);
+
+    connect(resetAppLogBtn, &QPushButton::clicked, this, [this](){
+        AppSettings::clearAppMinLogLevel();
+        // После сброса в ini-файле вернется дефолтное значение (обычно Info = 3)
+        int idx = appLogLevelCombo->findData(AppSettings::getAppMinLogLevel());
+        if (idx != -1) appLogLevelCombo->setCurrentIndex(idx);
+    });
+
+    // 2. Настройка для PLC
+    setupLogLevelCombo(&plcLogLevelCombo, AppSettings::getPlcMinLogLevel());
+    QPushButton *resetPlcLogBtn = nullptr;
+    auto plcLogRow = createSettingsLine(plcLogLevelCombo, &resetPlcLogBtn);
+    formLayout->addRow(tr("Логи Контроллера (PLC):"), plcLogRow);
+
+    connect(resetPlcLogBtn, &QPushButton::clicked, this, [this](){
+        AppSettings::clearPlcMinLogLevel();
+        int idx = plcLogLevelCombo->findData(AppSettings::getPlcMinLogLevel());
+        if (idx != -1) plcLogLevelCombo->setCurrentIndex(idx);
+    });
+
+    layout->addLayout(formLayout);
+
     layout->addStretch();
     return page;
 }

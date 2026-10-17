@@ -40,6 +40,8 @@ private:
     QComboBox *colorStringsCombo = nullptr;
     QComboBox *colorCommentsCombo = nullptr;
     QCheckBox *autoIndentCheck = nullptr;
+    QComboBox *appLogLevelCombo = nullptr;
+    QComboBox *plcLogLevelCombo = nullptr;
 
     QWidget* createFirmwareSettings();
     QWidget* createYAMLSettings();
