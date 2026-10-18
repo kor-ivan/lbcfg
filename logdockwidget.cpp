@@ -4,6 +4,7 @@
 #include <QVBoxLayout>
 #include <QScrollBar>
 #include <QFileDialog>
+#include "appsettings.h"
 
 LogDockWidget::LogDockWidget(QWidget *parent)
     : QDockWidget{"LogViewer", parent}
@@ -17,7 +18,7 @@ LogDockWidget::LogDockWidget(QWidget *parent)
     logViewer->setMinimumHeight(50); // Минумум, чтобы совсем не пропал
     logViewer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     this->setMinimumSize(QSize(0, 50)); // Сбрасываем ограничения самого дока
-    logViewer->setMaximumBlockCount(10000);
+    logViewer->setMaximumBlockCount(AppSettings::getMaxLogBlockCount());
 
     logViewer->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(logViewer, &QPlainTextEdit::customContextMenuRequested,
@@ -67,6 +68,11 @@ void LogDockWidget::onLogStarted()
 void LogDockWidget::onLogFinished()
 {
     stopButton->hide();
+}
+
+void LogDockWidget::setLogMaximumBlockCount(const int count)
+{
+    logViewer->setMaximumBlockCount(count);
 }
 
 bool LogDockWidget::eventFilter(QObject *obj, QEvent *event)
@@ -167,17 +173,17 @@ void LogDockWidget::appendLogEntry(const QDateTime &timestamp,
 
     QString htmlLine = QString("<font color='%7'>%1</font> "
                                "<b><font color='%2'>%3 %8</font> <font color='%4'>%5:</font></b> %6")
-                           .arg(timeStr)
-                           .arg(sourceColor)
-                           .arg(sourceStr)
-                           .arg(levelColor)
-                           .arg(levelStr)
-                           // .arg(message.toHtmlEscaped());
-                           .arg((wrap == LogCatcher::wrapYes)?
-                                    QString("<br><span style='white-space: pre-wrap;'>%1</span>")
-                                        .arg(message.toHtmlEscaped()):message.toHtmlEscaped())
-                           .arg(timeColor)
-                           .arg(ctx.isSlot()?QString("%1 slot %2").arg(ctx.name).arg(ctx.slot):ctx.name);
+                           .arg(timeStr,
+                                sourceColor,
+                                sourceStr,
+                                levelColor,
+                                levelStr,
+                                ((wrap == LogCatcher::wrapYes) ?
+                                     QString("<br><span style='white-space: pre-wrap;'>%1</span>").arg(message.toHtmlEscaped()) :
+                                     message.toHtmlEscaped()),
+                                timeColor,
+                                (ctx.isSlot() ? QString("%1 slot %2").arg(ctx.name).arg(ctx.slot) : ctx.name));
+
     if (isAutoScrollEnabled) {
         logViewer->appendHtml(htmlLine);
     } else {

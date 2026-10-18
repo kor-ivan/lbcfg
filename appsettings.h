@@ -29,6 +29,7 @@ public:
     static bool getAutoIndentYaml();
     static int getAppMinLogLevel();
     static int getPlcMinLogLevel();
+    static int getMaxLogBlockCount();
 
 private:
     static inline const QLatin1StringView FirmwareRepositoryKey{"Firmware/repositoryRoot"};
@@ -90,6 +91,10 @@ private:
     static inline const QLatin1StringView plcMinLogLevelKey{"Logging/plcMinLevel"};
     static void setPlcMinLogLevel(const int level);
     static void clearPlcMinLogLevel();
+
+    static inline const QLatin1StringView maxLogBlockCountKey{"Logging/maxBlockCount"};
+    static void setMaxLogBlockCount(const int count);
+    static void clearMaxLogBlockCount();
 
     static QSettings getSettings();
 

@@ -10,6 +10,7 @@ class QListWidget;
 class QStackedWidget;
 class MainWindow;
 class QCheckBox;
+class QSpinBox;
 
 class SettingsDialog  : public QDialog
 {
@@ -42,6 +43,7 @@ private:
     QCheckBox *autoIndentCheck = nullptr;
     QComboBox *appLogLevelCombo = nullptr;
     QComboBox *plcLogLevelCombo = nullptr;
+    QSpinBox *maxLogBlockSpin = nullptr;
 
     QWidget* createFirmwareSettings();
     QWidget* createYAMLSettings();

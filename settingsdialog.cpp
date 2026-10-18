@@ -9,10 +9,12 @@
 #include <QDir>
 #include <QCheckBox>
 #include <QGroupBox>
+#include <QSpinBox>
 #include "appsettings.h"
 #include "mainwindow.h"
 #include "commandmanager.h"
 #include "logmanager.h"
+#include "logdockwidget.h"
 
 
 SettingsDialog::SettingsDialog(QWidget *parent)
@@ -109,6 +111,16 @@ void SettingsDialog::saveSettings()
                        [](int newValue) {
                            AppSettings::setPlcMinLogLevel(newValue);
                            LogManager::setPlcMinLevel(static_cast<LogManager::Level>(newValue));
+                       });
+    }
+    if (maxLogBlockSpin) {
+        updateSettings(maxLogBlockSpin,
+                       maxLogBlockSpin->value(),
+                       AppSettings::getMaxLogBlockCount(),
+                       [this](int newValue) {
+                           AppSettings::setMaxLogBlockCount(newValue);
+                           if (p_mainWindow && p_mainWindow->getLogDock())
+                               p_mainWindow->getLogDock()->setLogMaximumBlockCount(newValue);
                        });
     }
 }
@@ -417,8 +429,22 @@ QWidget *SettingsDialog::createLogSettings()
         if (idx != -1) plcLogLevelCombo->setCurrentIndex(idx);
     });
 
-    layout->addLayout(formLayout);
+    // 3. Настройка максимального количества строк
+    maxLogBlockSpin = new QSpinBox(page);
+    maxLogBlockSpin->setMinimumWidth(150);
+    maxLogBlockSpin->setRange(100, 500000);
+    maxLogBlockSpin->setSingleStep(1000);
+    maxLogBlockSpin->setValue(AppSettings::getMaxLogBlockCount());
+    QPushButton *resetMaxLogBtn = nullptr;
+    auto maxLogRow = createSettingsLine(maxLogBlockSpin, &resetMaxLogBtn);
+    formLayout->addRow(tr("Макс. количество строк:"), maxLogRow);
 
+    connect(resetMaxLogBtn, &QPushButton::clicked, this, [this](){
+        AppSettings::clearMaxLogBlockCount();
+        maxLogBlockSpin->setValue(AppSettings::getMaxLogBlockCount());
+    });
+
+    layout->addLayout(formLayout);
     layout->addStretch();
     return page;
 }

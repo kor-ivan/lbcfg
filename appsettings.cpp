@@ -290,3 +290,21 @@ void AppSettings::clearPlcMinLogLevel() {
     clear(plcMinLogLevelKey);
 }
 
+// --- LogBlockCount ---
+bool isValidLogBlockCount(int val) {
+    return val >= 100 && val <= 500000;
+}
+
+int AppSettings::getMaxLogBlockCount() {
+    return get<int>(maxLogBlockCountKey, 10000, isValidLogBlockCount); // 10000 — дефолтное значение
+}
+
+void AppSettings::setMaxLogBlockCount(const int count) {
+    set<int>(maxLogBlockCountKey, count, isValidLogBlockCount);
+}
+
+void AppSettings::clearMaxLogBlockCount() {
+    clear(maxLogBlockCountKey);
+}
+
+
