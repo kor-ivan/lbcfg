@@ -133,7 +133,7 @@ WatchDockWidget::WatchDockWidget(const plc::CommandContext &ctx, QWidget *parent
             if (session && session->isConnected())
             {
                 session->setQuery({get, set});
-                debugApp() << "WatchDockWidget: Список переменных для записи:" << get << set;
+                debugApp() << tr("WatchDockWidget: list of variables for recording:") << get << set;
                 watchModel->blockSignals(true);
                 watchModel->item(row, 2)->setText("");
                 watchModel->blockSignals(false);
@@ -151,7 +151,7 @@ WatchDockWidget::WatchDockWidget(const plc::CommandContext &ctx, QWidget *parent
                                                   .arg(val)};
                 if (session && session->isConnected()){
                     session->setQuery({get, force});
-                    debugApp() << "WatchDockWidget: Список переменных для FORCE:" << get << force;
+                    debugApp() << tr("WatchDockWidget: list of variables for FORCE:") << get << force;
                     forcedVar.insert(varName);
                     updateTableColors();
                 }
@@ -179,7 +179,7 @@ WatchDockWidget::WatchDockWidget(const plc::CommandContext &ctx, QWidget *parent
         if (session) {
             int msec = static_cast<int>(intervalSpin->value() * 1000);
             session->setTimeOut(msec);
-            debugApp() << "Интервал опроса изменен на:" << msec << "мс";
+            debugApp() << tr("The survey interval has been changed to:") << msec << tr("ms");
         }
     });
 }

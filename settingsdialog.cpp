@@ -444,6 +444,23 @@ QWidget *SettingsDialog::createLogSettings()
         maxLogBlockSpin->setValue(AppSettings::getMaxLogBlockCount());
     });
 
+    static int lastValue = AppSettings::getMaxLogBlockCount();
+    connect(maxLogBlockSpin, &QSpinBox::valueChanged, this, [this](int value){
+        maxLogBlockSpin->blockSignals(true);
+
+        if (lastValue == 1000){
+            if (value > 1000){
+                maxLogBlockSpin->setSingleStep(1000);
+                maxLogBlockSpin->setValue(2000);
+            }else{
+                maxLogBlockSpin->setSingleStep(100);
+                maxLogBlockSpin->setValue(900);
+            }
+        }
+        lastValue = maxLogBlockSpin->value();
+    });
+
+
     layout->addLayout(formLayout);
     layout->addStretch();
     return page;
