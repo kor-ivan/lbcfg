@@ -318,7 +318,7 @@ bool WatchDockWidget::eventFilter(QObject *watched, QEvent *event)
 
 void WatchDockWidget::receiveData(const QStringList &data)
 {
-    debugApp()<<"data receive from:"<< m_ctx.name << data;
+    debugApp()<<tr("data receive from:")<< m_ctx.name << data;
     for (int i = 0; i < data.size(); ++i) {
         if (i < watchModel->rowCount()) {
             QStandardItem *valueItem = watchModel->item(i, 1);

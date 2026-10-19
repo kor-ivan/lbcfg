@@ -25,7 +25,7 @@ public:
         // Вытаскиваем метаданные, которые вы прикрепили к ячейке в parseSchemaNode
         QJsonObject meta = index.data(deviceView::SchemaMetaRole).toJsonObject();
         QString type = meta.value("type").toString();
-        qDebug() << type << meta;
+        // qDebug() << type << meta;
 
         // Если это enum — строим выпадающий список
         if (type == "enum") {
@@ -33,7 +33,7 @@ public:
             comboBox->setFrame(false);
 
             QJsonArray enumArray = meta.value("values").toArray();
-            qDebug() << enumArray;
+            // qDebug() << enumArray;
             for (const QJsonValue &val : enumArray) {
                 if (val.isDouble()) {
                     comboBox->addItem(QString::number(val.toVariant().toLongLong()));
@@ -1296,8 +1296,8 @@ deviceView::ContextMenuContext deviceView::analyzeMenuContext(const QModelIndex 
         }
     }
 
-    qDebug() << "Финишируем с targetSectionItem:" << ctx.targetSectionItem->text();
-    qDebug() << meta;
+    // qDebug() << "Финишируем с targetSectionItem:" << ctx.targetSectionItem->text();
+    // qDebug() << meta;
     return ctx;
 }
 
@@ -1505,7 +1505,7 @@ void deviceView::buildRestoreMenu(QMenu *parentMenu, QStandardItem *menuTargetIt
                 } else {
                     singleSchema.insert(missingKey, activeStruct.value(missingKey).toObject());
                 }
-                qDebug() << "buildRestoreMenu" << "А) Восстановление фиксированных свойств (init, holdtime, wires, modbus_server...)";
+                // qDebug() << "buildRestoreMenu" << "А) Восстановление фиксированных свойств (init, holdtime, wires, modbus_server...)";
                 // ИСПРАВЛЕНО: Передаем true в качестве второго аргумента forceCreateAll!
                 parseSchemaNode(menuTargetItem, singleSchema, QJsonValue(createDefaultData(singleSchema, true)));
 
@@ -1520,7 +1520,7 @@ void deviceView::buildRestoreMenu(QMenu *parentMenu, QStandardItem *menuTargetIt
         for (const MissingLinkOption &opt : missingLinkOptions) {
             addMissingMenu->addAction(opt.menuLabel, this, [this, menuTargetItem, opt, activeStruct]() {
                 QJsonObject subStruct = opt.linkMeta.value("structure").toObject();
-                qDebug() << "buildRestoreMenu" << "Б) Восстановление стертых динамических каналов";
+                // qDebug() << "buildRestoreMenu" << "Б) Восстановление стертых динамических каналов";
 
                 QJsonObject defaultSubData = createDefaultData(subStruct, false);
 

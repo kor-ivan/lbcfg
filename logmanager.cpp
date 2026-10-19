@@ -91,7 +91,7 @@ LogManager::~LogManager()
             }
         }
     }
-    if (m_level <= (m_source == LogCatcher::App) ? getAppMinLevel() : getPlcMinLevel())
+    if (m_level <= ((m_source == LogCatcher::App) ? getAppMinLevel() : getPlcMinLevel()))
         emit catcher()->newLogEntry(m_timestamp, m_source, m_level, m_buffer, m_ctx, m_wrap, m_timetype);
 }
 LogCatcher *LogManager::catcher()

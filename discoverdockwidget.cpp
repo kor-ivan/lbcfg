@@ -189,6 +189,7 @@ void DiscoverDockWidget::discoverReceived(const QMap<QString, discover::lbinfo> 
         row++;
     }
     table->setSortingEnabled(true); // Возвращаем возможность сортировки
+    logApp() << tr("Discover completed");
 }
 
 // QMap<QString, discover::lbinfo> DiscoverDockWidget::getLdmap() const

@@ -5,7 +5,7 @@
 WatchSession::WatchSession(const plc::CommandContext &ctx, const QStringList &arg, QObject *parent)
     : QObject{parent}, m_key(ctx.name)
 {
-    debugApp() << "WatchSession::Starting process for:" << m_key << ctx.ipv6;
+    logApp() << tr("WatchSession::Starting process for:") << m_key << ctx.ipv6;
     QStringList m_arg = {"get"};
     m_arg.append(arg);
     lbc = new LBclient(this, m_arg);
@@ -39,13 +39,13 @@ WatchSession::WatchSession(const plc::CommandContext &ctx, const QStringList &ar
     });
     connect(lbc, &LBclient::lbConnected, this, [this]
             (const QString& lbhost){
-        debugApp() << "WatchSession::Connected:" << lbhost;
+        logApp() << tr("WatchSession::Connected:") << lbhost;
         m_connected = true;
         emit connected();
     });
     connect(lbc, &LBclient::lbDisconnect, this, [this, ctx]
             (const QString& lbhost, const QString& message, const QModbusDevice::Error error){
-        debugApp() << "WatchSession::disconnect:" << m_key << ctx.ipv6 << message;
+        logApp() << tr("WatchSession::Disconnect:") << m_key << ctx.ipv6 << message;
         if (!message.isEmpty()) {
             emit watchErrorOccurred(message);
         }

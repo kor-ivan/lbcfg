@@ -13,12 +13,12 @@ plcManager::plcManager()
 
 void plcManager::scanDevice(const plc::CommandContext &ctx)
 {
-    debugApp() << "plcManager::Starting process for:"<<ctx.ipv6str()<<ctx.ipv6.scopeId()<<ctx.name;
+    logApp() << QString(tr("Starting scan process for: %1; IF = %2; name = %3")).arg(ctx.ipv6str(), ctx.ipv6.scopeId(), ctx.name);
     LBclient *lbc = new LBclient(this);
     lbc->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
     connect(lbc, &LBclient::lbDisconnect, this,
             [lbc](const QString& lbhost, const QString& message, const QModbusDevice::Error error){
-                debugPLC(lbhost)<<message<<"disconnect";
+                logApp() << message << tr("disconnect") << lbhost;
                 lbc->deleteLater();
             }
             );
@@ -46,7 +46,7 @@ void plcManager::scanDevice(const plc::CommandContext &ctx)
 
 void plcManager::requestConfig(const plc::CommandContext &ctx)
 {
-    debugApp()<<"plcManager::getlbcfg: "<<ctx.ipv6str()<<ctx.ipv6.scopeId()<<ctx.name;
+    logApp()<<QString(tr("Starting request config process for: %1; IF = %2; name = %3")).arg(ctx.ipv6str(), ctx.ipv6.scopeId(), ctx.name);
     LBclient *lbc = new LBclient(this, {"getconf"});
     lbc->setTCPaddr(ctx.ipv6str(), 502, ctx.ipv6.scopeId());
     connect(lbc, &LBclient::ExecuteCompletedJson, this,
@@ -56,16 +56,14 @@ void plcManager::requestConfig(const plc::CommandContext &ctx)
                                                             lbyaml::retainY,
                                                             AppSettings::getMaxFlowLevel(),
                                                             static_cast<YAML::EmitterStyle::value>(AppSettings::getStyleYamlArray()));
-                    debugApp()<<"# BEGIN YAML";
+                    logPLC(ctx.name, LogCatcher::Debug) << "# BEGIN YAML";
                     logPLC(ctx.name, LogCatcher::Debug, LogCatcher::wrapYes)<<yamlContent;
-                    // lbyaml::printlbconf(Qjo);
-                    debugApp()<<"# END YAML";
-                    // Получаем YAML-текст один раз, чтобы использовать его для сравнения
-
+                    logPLC(ctx.name, LogCatcher::Debug) << "# END YAML";
+                    logApp() << tr("Request config is completed for:") << lbhost;
                     emit configReceived(ctx, yamlContent);
                 }
                 else{
-                    debugPLC()<<message;
+                    logPLC(ctx.name) << message;
                     emit errorOccurred(message);
                 }
                 lbc->deleteLater();
@@ -76,9 +74,11 @@ void plcManager::requestConfig(const plc::CommandContext &ctx)
 
 void plcManager::startDiscover()
 {
-    debugApp()<<"startDiscover "<<discoverRunning;
-    if (discoverRunning)
+    if (discoverRunning){
+        logApp() << tr("Discover allready runing");
         return;
+    }
+    logApp() << tr("Discover runing");
     emit discoverStarting();
     discover *wgtdiscover = new discover(this);
     connect(wgtdiscover, &discover::discoverCompleted, this,
@@ -146,7 +146,7 @@ void plcManager::stopFirmware()
 
 void plcManager::startConf(const plc::CommandContext &ctx, const QString &yamlFilePath)
 {
-    debugApp()<<"plcManager::startConf for "<<ctx.name;
+    logApp() << tr("Starting conf process for:") << ctx.name;
     LBclient *lbc = new LBclient(this, {"conf"});
     QString ifce = getIf(ctx.ipv6str());
     lbc->setlbHost(ctx.name, yamlFilePath, ifce);
@@ -160,6 +160,7 @@ void plcManager::startConf(const plc::CommandContext &ctx, const QString &yamlFi
             });
     connect(lbc, &LBclient::lbDisconnect, this, [lbc, ctx, ifce, this]
             (const QString& lbhost, const QString& message, const QModbusDevice::Error error){
+                logApp() << message << tr("disconnect") << lbhost;
                 plc::CommandContext m_ctx;
                 m_ctx = ctx;
                 m_ctx.ipv6.setScopeId(ifce);
@@ -175,8 +176,8 @@ void plcManager::startFirmwareAll(const plc::CommandContext &ctx, const QString 
         emit eventOccurred(checkMessage);
         return;
     }
-    logPLC() << QString(tr("Команда прошить все модули запущена %1")).
-                arg(AppSettings::getFirmwareIgnoreCPU()?tr("с опцией: игнорировать процессорный модуль"):"");
+    logPLC() << QString(tr("The command to flash all modules has been launched %1")).
+                arg(AppSettings::getFirmwareIgnoreCPU()?tr("with the option: ignore the processor module"):"");
     activeOtaClient = new LBclient(this);
     activeOtaClient->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
     prcActiveOtaClient = new lbprocess(this, activeOtaClient,
@@ -230,10 +231,10 @@ void plcManager::startRestartAll(const plc::CommandContext &ctx)
 void plcManager::startLog(const plc::CommandContext &ctx, const QString &flag, const QString &fileName)
 {
     if (activeLogClient){
-        debugApp() << "Log is already running, stop the current log one first";
+        logApp() << tr("Log is already running, stop the current log one first");
         return;
     }
-    debugApp()<<QString("plcManager::startLog for %1 if %3 slot %2")
+    logApp()<<QString(tr("StartLog for %1 if %3 slot %2"))
                       .arg(ctx.ipv6str()).arg(ctx.slot).arg(ctx.ipv6.scopeId())
                << activeLogClient.get();
 
@@ -247,7 +248,7 @@ void plcManager::startLog(const plc::CommandContext &ctx, const QString &flag, c
     if (!fileName.isEmpty()) {
         logFile = new QFile(fileName, activeLogClient);
         if (!logFile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
-            debugApp() << "Failed to open log file for writing:" << fileName;
+            debugApp() << tr("Failed to open log file for writing:") << fileName;
             if (activeLogClient)
                 activeLogClient->deleteLater();
             return;
@@ -255,7 +256,7 @@ void plcManager::startLog(const plc::CommandContext &ctx, const QString &flag, c
             QTextStream stream(logFile);
             stream << QString("--- Log started at %1 ---\n")
                           .arg(QDateTime::currentDateTime().toString(Qt::ISODate));
-            logApp() << "Log started:" << fileName;
+            logApp() << tr("Log started:") << fileName;
         }
     }
 
@@ -270,7 +271,7 @@ void plcManager::startLog(const plc::CommandContext &ctx, const QString &flag, c
                         stream << '\n' << lbstr;
                         lineCount++;
                         if (lineCount % 100 == 0)
-                            logApp() << QString("[%1] Записано строк в файл: %2").arg(ctx.ipv6str()).arg(lineCount);
+                            logApp() << QString(tr("[%1] Write line to file: %2")).arg(ctx.ipv6str()).arg(lineCount);
                     }
                 }
                 else
@@ -282,10 +283,10 @@ void plcManager::startLog(const plc::CommandContext &ctx, const QString &flag, c
                     debugPLC()<<message;
                 if (logFile && logFile->isOpen()){
                     QTextStream stream(logFile);
-                    stream << QString("--- Log finished at %1 ---\n")
+                    stream << QString("\n--- Log finished at %1 ---")
                                   .arg(QDateTime::currentDateTime().toString(Qt::ISODate));
                     logFile->close();
-                    logApp() << "Log finished:" << fileName;
+                    logApp() << tr("Log finished:") << fileName;
                 }
                 if (activeLogClient)
                     activeLogClient->deleteLater();
@@ -297,7 +298,6 @@ void plcManager::startLog(const plc::CommandContext &ctx, const QString &flag, c
 
 void plcManager::stopLog()
 {
-    // qDebug()<<"into stopLog"<<activeLogClient.get() << activeLogClient.isNull();
     if (!activeLogClient)
         return;
     if (activeLogClient)
@@ -308,11 +308,11 @@ void plcManager::stopLog()
 WatchSession *plcManager::startWatch(const plc::CommandContext &ctx, const QStringList &arg, QObject *p_watchDock)
 {
     if (activeWatchSessions.contains(ctx.name)) {
-        debugApp() << "WatchSession for key" << ctx.name << "already exists. Returning existing session.";
+        logApp() << tr("WatchSession for key") << ctx.name << tr("already exists. Returning existing session");
         return activeWatchSessions.value(ctx.name);
     }
 
-    debugApp() << "Creating new WatchSession for key:" << ctx.name;
+    logApp() << tr("Creating new WatchSession for key:") << ctx.name;
     WatchSession *session = new WatchSession(ctx, arg, p_watchDock);
     activeWatchSessions.insert(ctx.name, session);
     emit activeWatchChanged(activeWatchSessions.keys());
@@ -320,7 +320,7 @@ WatchSession *plcManager::startWatch(const plc::CommandContext &ctx, const QStri
     connect(session, &QObject::destroyed, this, [this, ctx]() {
         activeWatchSessions.remove(ctx.name);
         emit activeWatchChanged(activeWatchSessions.keys());
-        debugApp() << "WatchSession removed from manager for key:" << ctx.name;
+        debugApp() << tr("WatchSession removed from manager for key:") << ctx.name;
     });
     return session;
 }
@@ -336,7 +336,7 @@ QString plcManager::getFastIfce(const discover::lbinfo &val)
     auto minIndex = std::distance(val.delay.constBegin(), minIt);
     if (SearchDiscoverRuning) SearchDiscoverRuning = false;
     QString ifce = QString::number(val.ifindex.at(minIndex));
-    debugApp() << QString("preferred interface is %1 whith %2 ms").arg(ifce).arg(val.delay.at(minIndex));
+    debugApp() << QString(tr("preferred interface is %1 whith %2 ms")).arg(ifce).arg(val.delay.at(minIndex));
     return ifce;
 }
 
@@ -366,7 +366,7 @@ QString plcManager::getIf(const QString &ipv6)
     }else if (!SearchDiscoverRuning){
         //Если discover ни разу не запускали или ничего не нашли
         startDiscover();
-        debugApp() << "interface search runing...";
+        debugApp() << tr("interface search runing...");
         SearchDiscoverRuning = true;
         QEventLoop loop;
         connect(this, &plcManager::discoverCompleted, &loop, &QEventLoop::quit);
@@ -375,7 +375,7 @@ QString plcManager::getIf(const QString &ipv6)
         return getIf(ipv6);
     }else{
         SearchDiscoverRuning = false;
-        debugApp() << "The interface was not found";
+        debugApp() << tr("The interface was not found");
     }
     return QString();
 }

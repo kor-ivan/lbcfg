@@ -1,5 +1,5 @@
 #include "appsettings.h"
-
+#include "version.h"
 #include <QDir>
 #include <QStandardPaths>
 
@@ -266,7 +266,9 @@ bool isValidLogLevel(int val) {
 
 // --- AppMinLogLevel ---
 int AppSettings::getAppMinLogLevel() {
-    return get<int>(appMinLogLevelKey, 4, isValidLogLevel);
+    return get<int>(appMinLogLevelKey,
+                    (QString(APP_BUILD_TYPE) == "Debug")?4:3,
+                    isValidLogLevel);
 }
 
 void AppSettings::setAppMinLogLevel(const int level) {
@@ -279,7 +281,9 @@ void AppSettings::clearAppMinLogLevel() {
 
 // --- PlcMinLogLeve ---
 int AppSettings::getPlcMinLogLevel() {
-    return get<int>(plcMinLogLevelKey, 4, isValidLogLevel);
+    return get<int>(plcMinLogLevelKey,
+                    (QString(APP_BUILD_TYPE) == "Debug")?4:3,
+                    isValidLogLevel);
 }
 
 void AppSettings::setPlcMinLogLevel(const int level) {
