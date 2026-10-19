@@ -458,6 +458,7 @@ QWidget *SettingsDialog::createLogSettings()
             }
         }
         lastValue = maxLogBlockSpin->value();
+        maxLogBlockSpin->blockSignals(false);
     });
 
 
