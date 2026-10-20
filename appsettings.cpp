@@ -1,7 +1,12 @@
 #include "appsettings.h"
-#include "version.h"
 #include <QDir>
 #include <QStandardPaths>
+
+#ifdef QT_DEBUG
+int AppSettings::defaultLogLevel = 4;
+#else
+int AppSettings::defaultLogLevel = 3;
+#endif
 
 QSettings AppSettings::getSettings(){
     QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
@@ -266,9 +271,7 @@ bool isValidLogLevel(int val) {
 
 // --- AppMinLogLevel ---
 int AppSettings::getAppMinLogLevel() {
-    return get<int>(appMinLogLevelKey,
-                    (QString(APP_BUILD_TYPE) == "Debug")?4:3,
-                    isValidLogLevel);
+    return get<int>(appMinLogLevelKey, defaultLogLevel, isValidLogLevel);
 }
 
 void AppSettings::setAppMinLogLevel(const int level) {
@@ -281,9 +284,7 @@ void AppSettings::clearAppMinLogLevel() {
 
 // --- PlcMinLogLeve ---
 int AppSettings::getPlcMinLogLevel() {
-    return get<int>(plcMinLogLevelKey,
-                    (QString(APP_BUILD_TYPE) == "Debug")?4:3,
-                    isValidLogLevel);
+    return get<int>(plcMinLogLevelKey, defaultLogLevel, isValidLogLevel);
 }
 
 void AppSettings::setPlcMinLogLevel(const int level) {
@@ -311,4 +312,17 @@ void AppSettings::clearMaxLogBlockCount() {
     clear(maxLogBlockCountKey);
 }
 
+// --- AppLanguage ---
+QString AppSettings::getAppLanguage() {
+    // По умолчанию возвращаем "ru" (или "system" для системного)
+    return get<QString>(appLanguageKey, QStringLiteral("system"));
+}
+
+void AppSettings::setAppLanguage(const QString &lang) {
+    set<QString>(appLanguageKey, lang);
+}
+
+void AppSettings::clearAppLanguage() {
+    clear(appLanguageKey);
+}
 

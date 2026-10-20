@@ -30,7 +30,7 @@ public:
     void setSaveAsAction(QAction *newSaveAsAction);
 
     void getLogMenu(const plc::CommandContext &ctx, QMenu *parentMenu,
-                    const QString &text = "Запросить лог");
+                    const QString &text = tr("Запросить лог"));
 
     QAction *getConfAction() const;
     void setConfAction(QAction *newConfAction);

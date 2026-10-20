@@ -1,6 +1,4 @@
 #include "mainwindow.h"
-#include <QTranslator>
-#include <QLibraryInfo>
 #include <QApplication>
 
 int main(int argc, char *argv[])
@@ -10,11 +8,8 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationName(QStringLiteral("LogicBox"));
     QCoreApplication::setApplicationName(QStringLiteral("lbcfg"));
     QCoreApplication::setApplicationVersion(MainWindow::getLibraryVersion());
-    // QSettings::setDefaultFormat(QSettings::NativeFormat);
+    MainWindow::initLanguage(a);
 
-    QTranslator qtTranslator;
-    if (qtTranslator.load("qtbase_ru", QLibraryInfo::path(QLibraryInfo::TranslationsPath)))
-        a.installTranslator(&qtTranslator);
     MainWindow w;
     w.show();
     return a.exec();

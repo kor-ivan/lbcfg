@@ -13,7 +13,7 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
     QWidget *content = new QWidget(this);
     setWidget(content);
     QVBoxLayout *vbox = new QVBoxLayout(content);
-    btnDiscover = new QPushButton("Send Discover");
+    btnDiscover = new QPushButton(tr("Send Discover"));
     QHBoxLayout *hbox = new QHBoxLayout();
 
     vbox->setSpacing(0);
@@ -24,7 +24,7 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
     // Создаем таблицу
     table = new QTableWidget(this);
     table->setColumnCount(7);
-    table->setHorizontalHeaderLabels({"Name", "Type", "IPv4", "MAC", "Delays (ms)", "IF"});
+    table->setHorizontalHeaderLabels({tr("Name"), tr("Type"), tr("IPv4"), tr("MAC"), tr("Delays (ms)"), tr("IF")});
     // Выделять строку целиком при клике на любую ячейку
     table->setSelectionBehavior(QAbstractItemView::SelectRows);
     // разрешить выбирать только одну строку за раз
@@ -103,17 +103,17 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
                              table->item(item->row(), 0)->text());
 
     QMenu menu(this);
-    QAction *AddDivice = menu.addAction("Добавить");
+    QAction *AddDivice = menu.addAction(tr("Добавить"));
     // 2. Делаем его жирным
     QFont font = AddDivice->font();
     font.setBold(true);
     AddDivice->setFont(font);
-    QAction *getConf = menu.addAction("Запросить конфигурацию");
-    QAction *newConf = menu.addAction("Создать новую конфигурацию");
-    QAction *copy = menu.addAction("Копировать строку");
-    QAction *Allcopy = menu.addAction("Копировать всё");
-    QAction *MacCopy = menu.addAction("Копировать MAC");
-    QAction *ipv6Copy = menu.addAction("Копировать IPv6");
+    QAction *getConf = menu.addAction(tr("Запросить конфигурацию"));
+    QAction *newConf = menu.addAction(tr("Создать новую конфигурацию"));
+    QAction *copy = menu.addAction(tr("Копировать строку"));
+    QAction *Allcopy = menu.addAction(tr("Копировать всё"));
+    QAction *MacCopy = menu.addAction(tr("Копировать MAC"));
+    QAction *ipv6Copy = menu.addAction(tr("Копировать IPv6"));
     menu.addSeparator();
     CommandManager::instance()->getUptimeAction(ctx, &menu);
     CommandManager::instance()->getRestartAction(ctx, &menu);
@@ -131,7 +131,7 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
         clipboard->setText(ldmap.value(ctx.ipv6str()).toString());
     }else if (selectedItem == Allcopy) {
         QStringList qstr;
-        for (auto i : ldmap) {
+        for (const auto &i : ldmap) {
             qstr << i.toString();
         }
         clipboard->setText(qstr.join("\n"));

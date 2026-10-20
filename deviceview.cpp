@@ -89,7 +89,7 @@ deviceView::deviceView(QWidget *parent)
     deviceTreeView->setSelectionBehavior(QAbstractItemView::SelectRows);
 
     deviceModel = new QStandardItemModel(this);
-    QStringList headers = {"Parameter", "Value", "Description"};
+    QStringList headers = {tr("Parameter"), tr("Value"), tr("Description")};
     deviceModel->setHorizontalHeaderLabels(headers);
     deviceTreeView->setModel(deviceModel);
     deviceTreeView->setItemDelegateForColumn(1, new DeviceNodeDelegate(this));
@@ -947,7 +947,7 @@ void deviceView::showContextMenu(const QPoint &pos)
 
             if (ctx.isSequenceMode && ctx.allowAddSequenceItem) {
                 menu.addSeparator();
-                menu.addAction("Добавить элемент списка", this, [this, ctx]() { insertAndEditNewRow(ctx.targetSectionItem); });
+                menu.addAction(tr("Добавить элемент списка"), this, [this, ctx]() { insertAndEditNewRow(ctx.targetSectionItem); });
             }
 
             if (ctx.allowRestoreSchemaParams && !ctx.anyStruct.isEmpty()) {
@@ -1013,8 +1013,8 @@ void deviceView::showContextMenu(const QPoint &pos)
                         if (forteSection->child(j, 0)->text() == "var_out") fVarOut = forteSection->child(j, 0);
                     }
 
-                    QAction *actVar = tryAddVarToForteArray(fVar, "Добавить в forte/var");
-                    QAction *actVarOut = tryAddVarToForteArray(fVarOut, "Добавить в forte/var_out");
+                    QAction *actVar = tryAddVarToForteArray(fVar, tr("Добавить в forte/var"));
+                    QAction *actVarOut = tryAddVarToForteArray(fVarOut, tr("Добавить в forte/var_out"));
 
                     if (actVar) {
                         menu.addAction(actVar);

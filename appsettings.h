@@ -30,6 +30,7 @@ public:
     static int getAppMinLogLevel();
     static int getPlcMinLogLevel();
     static int getMaxLogBlockCount();
+    static QString getAppLanguage();
 
 private:
     static inline const QLatin1StringView FirmwareRepositoryKey{"Firmware/repositoryRoot"};
@@ -96,6 +97,10 @@ private:
     static void setMaxLogBlockCount(const int count);
     static void clearMaxLogBlockCount();
 
+    static inline const QLatin1StringView appLanguageKey{"Application/Language"};
+    static void setAppLanguage(const QString &lang);
+    static void clearAppLanguage();
+
     static QSettings getSettings();
 
     template <typename T, typename Predicate = std::nullptr_t>
@@ -134,6 +139,7 @@ private:
         settings.remove(key);
         settings.sync();
     }
+    static int defaultLogLevel;
 };
 
 #endif // APPSETTINGS_H

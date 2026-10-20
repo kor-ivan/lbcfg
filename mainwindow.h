@@ -41,6 +41,7 @@ public:
     void editFirmwareRepositorySettings(const bool whithOutDialog = false);
 
     static QString getLibraryVersion();
+    static void initLanguage(QApplication &app);
 
 protected:
     void showEvent(QShowEvent *event) override;

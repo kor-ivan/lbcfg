@@ -10,6 +10,8 @@
 #include <QHBoxLayout>
 #include <QMessageBox>
 #include <QDir>
+#include <QTranslator>
+#include <QLibraryInfo>
 #include "firmwarewidget.h"
 #include "devicetreedockwidget.h"
 #include "discoverdockwidget.h"
@@ -192,13 +194,13 @@ MainWindow::MainWindow(QWidget *parent)
     p->menu = new MainMenu(this);
 
     connect(p->menu, &MainMenu::openFileRequested, this, [this](){
-        QString filePath = QFileDialog::getOpenFileName(this, "Открыть конфигурацию", "", "YAML Files (*.yaml *.yml);;All Files (*)");
+        QString filePath = QFileDialog::getOpenFileName(this, tr("Открыть конфигурацию"), "", tr("YAML Files (*.yaml *.yml);;All Files (*)"));
         if (!filePath.isEmpty()) {
             QString fileName = QFileInfo(filePath).fileName();
             ConfigDockWidget* dock = p->CreateConfDockWidget(filePath, fileName);
 
             if (!dock->openFile(filePath)) {
-                QMessageBox::critical(this, "Ошибка", "Не удалось открыть файл");
+                QMessageBox::critical(this, tr("Ошибка"), tr("Не удалось открыть файл"));
                 delete dock;
                 return;
             }
@@ -209,7 +211,7 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     connect(p->menu, &MainMenu::newConfigurationRequested, this, [this]{
-        ConfigDockWidget* dock = p->CreateConfDockWidget(QUuid::createUuid().toString(), "noname");
+        ConfigDockWidget* dock = p->CreateConfDockWidget(QUuid::createUuid().toString(), tr("noname"));
         dock->show();
         dock->raise();
         dock->setFocus();
@@ -224,9 +226,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(p->repo, &firmwareAnalyzer::updated, this, [this, repStatusLabel, statusBar](const QString &hash) {
         bool hasHash = !hash.isEmpty();
-        QString text = hasHash ? QString("logicbox: %1").arg(hash) : "logicbox: Not found";
-        QString tip = hasHash ? p->repo->path() : "Репозиторий прошивок не настроен";
-        statusBar->showMessage("Репозиторий прошивок обновлен", 3000);
+        QString text = hasHash ? QString("logicbox: %1").arg(hash) : QString("logicbox: %1").arg(tr("Not found"));
+        QString tip = hasHash ? p->repo->path() : tr("Репозиторий прошивок не настроен");
+        statusBar->showMessage(tr("Репозиторий прошивок обновлен"), 3000);
         p->setupStatusLabel(repStatusLabel, hasHash, text, tip);
     });
     p->repo->update();
@@ -242,8 +244,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(p->lbplc, &plcManager::activeWatchChanged, this, [this, watchStatusLabel](const QStringList &keys) {
         int count = keys.size();
         bool hasConnections = count > 0;
-        QString text = hasConnections ? QString("Connected: %1").arg(count) : "No Connections";
-        QString tip = hasConnections ? keys.join("\n") : "No active watch lists";
+        QString text = hasConnections ? QString(tr("Connected: %1")).arg(count) : tr("No Connections");
+        QString tip = hasConnections ? keys.join("\n") : tr("No active watch lists");
 
         p->setupStatusLabel(watchStatusLabel, hasConnections, text, tip);
     });
@@ -357,35 +359,35 @@ DeviceTreeDockWidget *MainWindow::createTreeDockWidget()
             (const plc::CommandContext &ctx){
                 QString filePath = QFileDialog::getOpenFileName(
                     this,
-                    "Загрузить прошивку ...",
+                    tr("Загрузить прошивку ..."),
                     "",
-                    "LogicBox Firmware (*.bin *.bin.xz *.xz);;BIN Files (*.bin);;XZ compressed (*.xz);;All Files (*)");
+                    tr("LogicBox Firmware (*.bin *.bin.xz *.xz);;BIN Files (*.bin);;XZ compressed (*.xz);;All Files (*)"));
                 if (!filePath.isEmpty()) {
                     p->lbplc->startFirmware(ctx, filePath,
-                                         "Загрузка уже выполняется, дождитесь окончания",
-                                         QString("Загрузка прошивки в %1 ...").arg(ctx.displayName()));
+                                            tr("Загрузка уже выполняется, дождитесь окончания"),
+                                            QString(tr("Загрузка прошивки в %1 ...")).arg(ctx.displayName()));
                 }
             });
     connect(p->treeDock, &DeviceTreeDockWidget::requestFlashAll, this, [this]
             (const plc::CommandContext &ctx, const QStringList &otaSlots, const bool pathRequest){
         QString filePath;
         if (pathRequest)
-            filePath = QFileDialog::getExistingDirectory(this, "Выберите директорию для прошивки ...", "", QFileDialog::DontResolveSymlinks);
+            filePath = QFileDialog::getExistingDirectory(this, tr("Выберите директорию для прошивки ..."), "", QFileDialog::DontResolveSymlinks);
         else
             filePath = AppSettings::firmwareRepositoryRoot();
                 if (!filePath.isEmpty()) {
                     p->lbplc->startFirmwareAll(ctx, filePath,
-                                            "Загрузка уже выполняется, дождитесь окончания",
-                                            QString("Загрузка прошивки в %1 ...").arg(ctx.displayName()), otaSlots);
+                                               tr("Загрузка уже выполняется, дождитесь окончания"),
+                                               QString(tr("Загрузка прошивки в %1 ...")).arg(ctx.displayName()), otaSlots);
                 }
             });
     connect(p->treeDock, &DeviceTreeDockWidget::requestFboot, this, [this]
             (const plc::CommandContext &ctx){
-                QString filePath = QFileDialog::getOpenFileName(this, "Загрузить fboot ...", "", "Fboot Files (*.fboot);;All Files (*)");                if (!filePath.isEmpty()) {
+                QString filePath = QFileDialog::getOpenFileName(this, tr("Загрузить fboot ..."), "", tr("Fboot Files (*.fboot);;All Files (*)"));                if (!filePath.isEmpty()) {
                     p->lbplc->startFirmware(ctx, filePath,
-                                         "Загрузка уже выполняется, дождитесь окончания",
-                                         QString("Загрузка fboot в %1 ...").arg(ctx.displayName()),
-                                         "fboot");
+                                            tr("Загрузка уже выполняется, дождитесь окончания"),
+                                            QString(tr("Загрузка fboot в %1 ...")).arg(ctx.displayName()),
+                                            "fboot");
                 }
             });
     connect(p->treeDock, &DeviceTreeDockWidget::requestUpdate,
@@ -501,7 +503,7 @@ void MainWindow::editFirmwareRepositorySettings(const bool whithOutDialog)
         }
 
         statusBar()->showMessage(
-            QStringLiteral("Путь к репозиторию прошивок сброшен"),
+            tr("Путь к репозиторию прошивок сброшен"),
             5000);
 
         return;
@@ -512,7 +514,7 @@ void MainWindow::editFirmwareRepositorySettings(const bool whithOutDialog)
     }
 
     statusBar()->showMessage(
-        QStringLiteral("Репозиторий прошивок: %1")
+        tr("Репозиторий прошивок: %1")
             .arg(QDir::toNativeSeparators(repositoryRoot)),
         5000);
 }
@@ -520,6 +522,34 @@ void MainWindow::editFirmwareRepositorySettings(const bool whithOutDialog)
 QString MainWindow::getLibraryVersion()
 {
     return QStringLiteral(APP_VERSION_STRING);
+}
+
+void MainWindow::initLanguage(QApplication &app)
+{
+    QString currentLang = AppSettings::getAppLanguage();
+    if (currentLang == QStringLiteral("system")) {
+        currentLang = QLocale::system().name().left(2);
+        if (currentLang != QStringLiteral("ru") && currentLang != QStringLiteral("en")) {
+            currentLang = QStringLiteral("en");
+        }
+    }
+    // 1. Загрузка системных переводов Qt (ОК, Отмена и т.д.)
+    if (currentLang != QStringLiteral("en")) {
+        QTranslator *qtTranslator = new QTranslator(&app);
+        QString qtBaseFileName = QString("qtbase_") + currentLang;
+
+        if (qtTranslator->load(qtBaseFileName, QLibraryInfo::path(QLibraryInfo::TranslationsPath))) {
+            app.installTranslator(qtTranslator);
+        }
+    }
+    if (currentLang == QStringLiteral("none")) {
+        return;
+    }
+    // 2. Загрузка перевода самого приложения lbcfg
+    QTranslator *appTranslator = new QTranslator(&app);
+    if (appTranslator->load(QString("lbcfg_") + currentLang, QCoreApplication::applicationDirPath())) {
+        app.installTranslator(appTranslator);
+    }
 }
 
 QList<ConfigDockWidget *> MainWindow::getConfigDocks() const

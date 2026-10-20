@@ -10,6 +10,7 @@
 #include <QCheckBox>
 #include <QGroupBox>
 #include <QSpinBox>
+#include <QMessageBox>
 #include "appsettings.h"
 #include "mainwindow.h"
 #include "commandmanager.h"
@@ -121,6 +122,17 @@ void SettingsDialog::saveSettings()
                            AppSettings::setMaxLogBlockCount(newValue);
                            if (p_mainWindow && p_mainWindow->getLogDock())
                                p_mainWindow->getLogDock()->setLogMaximumBlockCount(newValue);
+                       });
+    }
+
+    if (languageCombo) {
+        updateSettings(languageCombo,
+                       languageCombo->currentData().toString(),
+                       AppSettings::getAppLanguage(),
+                       [this](const QString &newLang){
+                           AppSettings::setAppLanguage(newLang);
+                           QMessageBox::information(this, tr("Смена языка"),
+                                                    tr("Язык интерфейса изменен. Пожалуйста, перезапустите приложение для применения изменений."));
                        });
     }
 }
@@ -473,6 +485,47 @@ QWidget *SettingsDialog::createLanguageSettings()
     auto *layout = new QVBoxLayout(page);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(new QLabel(tr("<h3>Настройки языка</h3>"), page));
+
+    auto *formLayout = new QFormLayout();
+    formLayout->setContentsMargins(0, 5, 0, 5);
+    formLayout->setSpacing(8);
+    formLayout->setFieldGrowthPolicy(QFormLayout::FieldsStayAtSizeHint);
+
+    languageCombo = new QComboBox(page);
+    languageCombo->setMinimumWidth(200);
+
+    QString sysLangCode = QLocale::system().name().left(2);
+    QString sysLangText = (sysLangCode == QStringLiteral("ru")) ? tr("Русский") : tr("English");
+
+    languageCombo->addItem(tr("По умолчанию (%1)").arg(sysLangText), QStringLiteral("system"));
+    languageCombo->addItem(tr("Русский (Russian)"), QStringLiteral("ru"));
+    languageCombo->addItem(tr("English"), QStringLiteral("en"));
+#ifdef QT_DEBUG
+    languageCombo->addItem(tr("Оригинальный текст (только Debug)"), QStringLiteral("none"));
+#endif
+
+    QString currentLang = AppSettings::getAppLanguage();
+    int targetIdx = languageCombo->findData(currentLang);
+    if (targetIdx != -1) {
+        languageCombo->setCurrentIndex(targetIdx);
+    }
+
+    QPushButton *resetLangBtn = nullptr;
+    auto langRow = createSettingsLine(languageCombo, &resetLangBtn);
+    formLayout->addRow(tr("Язык интерфейса:"), langRow);
+
+    connect(resetLangBtn, &QPushButton::clicked, this, [this](){
+        AppSettings::clearAppLanguage();
+        int idx = languageCombo->findData(AppSettings::getAppLanguage());
+        if (idx != -1) languageCombo->setCurrentIndex(idx);
+    });
+
+    layout->addLayout(formLayout);
+
+    auto *warningLabel = new QLabel(tr("<i>* Изменения вступят в силу после перезапуска приложения.</i>"), page);
+    warningLabel->setStyleSheet("color: #6c757d;");
+    layout->addWidget(warningLabel);
+
     layout->addStretch();
     return page;
 }

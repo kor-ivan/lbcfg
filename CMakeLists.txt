@@ -13,7 +13,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools)
 # Проверяем тип сборки для Single-config генераторов (Ninja, Make)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(BUILD_LBMBC_EXE OFF)
@@ -55,6 +55,8 @@ set(LIB_SOURCES
         deviceview.h deviceview.cpp
         watchdockwidget.h watchdockwidget.cpp
         watchsession.h watchsession.cpp
+        settingsdialog.h settingsdialog.cpp
+        yamlhighlighter.h yamlhighlighter.cpp
         resources.qrc
         version.h.in
         lbcfg_global.h
@@ -72,9 +74,7 @@ add_custom_target(lbcfg_version_check ALL
     COMMENT "Checking Git repository status and build type for version.h..."
 )
 
-add_library(lbcfg_lib SHARED ${LIB_SOURCES}
-    settingsdialog.h settingsdialog.cpp
-    yamlhighlighter.h yamlhighlighter.cpp)
+add_library(lbcfg_lib SHARED ${LIB_SOURCES})
 
 # Передаем макрос компилятора, сигнализирующий о сборке библиотеки
 target_compile_definitions(lbcfg_lib PRIVATE MY_SHARED_LIB_LIBRARY)
@@ -116,6 +116,18 @@ endif()
 
 target_link_libraries(lbcfg PRIVATE lbcfg_lib Qt${QT_VERSION_MAJOR}::Widgets)
 target_include_directories(lbcfg PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+
+# === Перевод ===
+set(TS_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/translations/lbcfg_ru.ts"
+    "${CMAKE_CURRENT_SOURCE_DIR}/translations/lbcfg_en.ts"
+)
+qt_create_translation(QM_FILES
+    ${EXE_SOURCES}
+    ${LIB_SOURCES}
+    ${TS_FILES}
+)
+target_sources(lbcfg_lib PRIVATE ${QM_FILES})
 
 
 # === АВТО-ВЕРСИЯ: Подключаем сгенерированные заголовочные файлы к lbcfg ===

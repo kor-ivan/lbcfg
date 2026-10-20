@@ -22,17 +22,17 @@ WatchDockWidget::WatchDockWidget(const plc::CommandContext &ctx, QWidget *parent
     const int elementHeight = 22;
     QPushButton *addBtn = new QPushButton(this);
     addBtn->setFixedSize(elementHeight, elementHeight);
-    addBtn->setToolTip("Добавить переменную вручную");
+    addBtn->setToolTip(tr("Добавить переменную вручную"));
     addBtn->setText("+");
 
     QPushButton *remBtn = new QPushButton(this);
     remBtn->setFixedSize(elementHeight, elementHeight);
-    remBtn->setToolTip("Удалить выбранную переменную");
+    remBtn->setToolTip(tr("Удалить выбранную переменную"));
     remBtn->setText("-");
 
     ipBtn = new QPushButton(this);
     ipBtn->setFixedSize(elementHeight, elementHeight);
-    ipBtn->setToolTip(QString("Указать IP адрес\n%1").arg(ctx.ipv6.toString()));
+    ipBtn->setToolTip(QString(tr("Указать IP адрес\n%1")).arg(ctx.ipv6.toString()));
     ipBtn->setText("IP");
 
     intervalSpin = new QDoubleSpinBox(this);
@@ -41,15 +41,15 @@ WatchDockWidget::WatchDockWidget(const plc::CommandContext &ctx, QWidget *parent
     intervalSpin->setValue(1.0);               // Значение по умолчанию (1 секунда)
     intervalSpin->setSingleStep(0.1);          // Начальный шаг
     intervalSpin->setDecimals(1);              // Один знак после запятой (для 0.1)
-    intervalSpin->setSuffix(" s");             // Красивый суффикс "s" (секунды)
-    intervalSpin->setToolTip("Интервал опроса");
+    intervalSpin->setSuffix(tr(" s", "seconds"));             // Красивый суффикс "s" (секунды)
+    intervalSpin->setToolTip(tr("Интервал опроса"));
     intervalSpin->setEnabled(false);
 
     connBtn = new QPushButton(this);
     connBtn->setFixedHeight(elementHeight);
     connBtn->setFixedWidth(70);
-    connBtn->setToolTip("Подключиться к PLC для отладки");
-    connBtn->setText("Connect");
+    connBtn->setToolTip(tr("Подключиться к PLC для отладки"));
+    connBtn->setText(tr("Connect"));
 
     QHBoxLayout *buttonLayout = new QHBoxLayout();
     buttonLayout->setContentsMargins(0, 0, 0, 0);
@@ -88,7 +88,7 @@ WatchDockWidget::WatchDockWidget(const plc::CommandContext &ctx, QWidget *parent
 
     watchModel = new QStandardItemModel(this);
     watch->setModel(watchModel);
-    watchModel->setHorizontalHeaderLabels({"var name","value","set value", "force value"});
+    watchModel->setHorizontalHeaderLabels({tr("var name"),tr("value"),tr("set value"), tr("force value")});
 
     layout->addWidget(watch);
     setWidget(container);
@@ -204,7 +204,7 @@ void WatchDockWidget::setIpv6(const QString &newIpv6)
         int slot = splitstr.value(1).toInt(&ok);
         if (ok) m_ctx.slot = slot;
     }
-    ipBtn->setToolTip("Указать IP адрес" +
+    ipBtn->setToolTip(tr("Указать IP адрес") +
                       (m_ctx.ipv6str().isEmpty() ? "" : "\n" + m_ctx.ipv6str()) +
                       (m_ctx.isSlot() ? "\nslot " + QString::number(m_ctx.slot) : ""));
     debugApp()<<"WatchDockWidget set IP:"<<m_ctx.ipv6str()<<"slot"<<m_ctx.slot;
@@ -216,7 +216,7 @@ void WatchDockWidget::showIpEditDialog(QPushButton *anchorButton)
     ipEdit->setWindowFlags(Qt::Popup | Qt::FramelessWindowHint);
     ipEdit->setAttribute(Qt::WA_DeleteOnClose);
     ipEdit->setText(m_ctx.ipv6str());
-    ipEdit->setPlaceholderText("Enter IP...");
+    ipEdit->setPlaceholderText(tr("Enter IP..."));
     ipEdit->setMinimumWidth(150);
 
     // ipEdit->setStyleSheet("QLineEdit { border: 1px solid #999; padding: 2px; background: white; }");
@@ -257,14 +257,14 @@ void WatchDockWidget::toggleConnection()
     if (session != old_session){
         connect(session, &WatchSession::watchExeComleted, this, &WatchDockWidget::receiveData);
         connect(session, &WatchSession::connected, this, [this](){
-            connBtn->setToolTip("Отключиться от PLC для отладки");
-            connBtn->setText("Disconnect");
+            connBtn->setToolTip(tr("Отключиться от PLC для отладки"));
+            connBtn->setText(tr("Disconnect"));
             intervalSpin->setEnabled(true);
             updateTableColors();
         });
         connect(session, &WatchSession::disconnected, this, [this](){
-            connBtn->setToolTip("Подключиться к PLC для отладки");
-            connBtn->setText("Connect");
+            connBtn->setToolTip(tr("Подключиться к PLC для отладки"));
+            connBtn->setText(tr("Connect"));
             intervalSpin->setEnabled(false);
             updateTableColors();
             session->deleteLater();
@@ -344,7 +344,7 @@ void WatchDockWidget::updateSessionVariables()
     if (session && session->isConnected()) {
         QStringList param = collectVariables();
         session->setQuery(collectVariables());
-        debugApp() << "WatchDockWidget: Список переменных опроса динамически обновлен:" << param;
+        debugApp() << tr("WatchDockWidget: Список переменных опроса динамически обновлен:") << param;
     }
 }
 
@@ -365,7 +365,7 @@ void WatchDockWidget::showContextMenu(const QPoint &pos)
 
     QMenu menu(this);
 
-    QAction *unforce = menu.addAction("Unforce");
+    QAction *unforce = menu.addAction(tr("Unforce"));
     unforce->setEnabled(session && session->isConnected());
 
     connect(unforce, &QAction::triggered, this, [this,varName, row](){
@@ -375,7 +375,7 @@ void WatchDockWidget::showContextMenu(const QPoint &pos)
 
             QStringList unforce = {"unforce", varName};
             session->setQuery({get, unforce});
-            debugApp() << "WatchDockWidget: Сброс FORCE для:" << varName;
+            debugApp() << tr("WatchDockWidget: Сброс FORCE для:") << varName;
             forcedVar.remove(varName);
             updateTableColors();
 
