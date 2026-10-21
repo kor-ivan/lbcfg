@@ -575,6 +575,11 @@ File: %6</translation>
 <context>
     <name>FirmwareWidget</name>
     <message>
+        <location filename="../firmwarewidget.cpp" line="19"/>
+        <source>Прошивка: %p%</source>
+        <translation>Flashing</translation>
+    </message>
+    <message>
         <location filename="../firmwarewidget.cpp" line="33"/>
         <source>Остановить</source>
         <translation>Stop</translation>
@@ -890,7 +895,7 @@ File: %6</translation>
         <location filename="../mainwindow.cpp" line="380"/>
         <location filename="../mainwindow.cpp" line="388"/>
         <source>Загрузка уже выполняется, дождитесь окончания</source>
-        <translation>An upload is already in progress. Please wait for it to finish.</translation>
+        <translation>An upload is already in progress. Please wait for it to finish</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="368"/>
@@ -1599,7 +1604,7 @@ File: %6</translation>
     <message>
         <location filename="../plcmanager.cpp" line="234"/>
         <source>Log is already running, stop the current log one first</source>
-        <translation>Logging is already running. Stop the current log first.</translation>
+        <translation>Logging is already running. Stop the current log first</translation>
     </message>
     <message>
         <location filename="../plcmanager.cpp" line="237"/>
@@ -1660,6 +1665,76 @@ File: %6</translation>
         <location filename="../plcmanager.cpp" line="378"/>
         <source>The interface was not found</source>
         <translation>Interface not found</translation>
+    </message>
+</context>
+<context>
+    <name>varView</name>
+    <message>
+        <location filename="../varview.cpp" line="109"/>
+        <source>Name</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="109"/>
+        <source>Multi</source>
+        <translation>Multi</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="109"/>
+        <source>Retain</source>
+        <translation>Retain</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="109"/>
+        <source>Init</source>
+        <translation>Init</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="109"/>
+        <source>Var</source>
+        <translation>Var</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="109"/>
+        <source>Var_out</source>
+        <translation>Var_out</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="123"/>
+        <source>Number of variables :</source>
+        <translation>Number of variables :</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="124"/>
+        <source>Must Multisource :</source>
+        <translation>Must Multisource :</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="124"/>
+        <location filename="../varview.cpp" line="125"/>
+        <location filename="../varview.cpp" line="126"/>
+        <source>none</source>
+        <translation>none</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="125"/>
+        <source>Hanging variables :</source>
+        <translation>Hanging variables :</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="126"/>
+        <source>not added Forte :</source>
+        <translation>not added Forte :</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="127"/>
+        <source>Error :</source>
+        <translation>Error :</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="221"/>
+        <source>Добавить в Watch</source>
+        <translation>Add to Watch</translation>
     </message>
 </context>
 <context>

@@ -16,7 +16,7 @@ FirmwareWidget::FirmwareWidget(QWidget *parent)
     progressBar = new QProgressBar(this);
     progressBar->setRange(0, 100);
     progressBar->setValue(0);
-    progressBar->setFormat("Прошивка: %p%");
+    progressBar->setFormat(tr("Прошивка: %p%"));
     progressBar->setMaximumWidth(200);
     progressBar->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     progressBar->setFixedHeight(elementHeight);

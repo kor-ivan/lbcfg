@@ -47,7 +47,7 @@ WatchDockWidget::WatchDockWidget(const plc::CommandContext &ctx, QWidget *parent
 
     connBtn = new QPushButton(this);
     connBtn->setFixedHeight(elementHeight);
-    connBtn->setFixedWidth(70);
+    connBtn->setMinimumWidth(70);
     connBtn->setToolTip(tr("Подключиться к PLC для отладки"));
     connBtn->setText(tr("Connect"));
 

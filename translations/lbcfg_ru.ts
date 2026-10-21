@@ -110,7 +110,7 @@
     <message>
         <location filename="../configdockwidget.cpp" line="92"/>
         <source>IO View</source>
-        <translation>Вид входов/выходов</translation>
+        <translation>Ввод/Вывод</translation>
     </message>
     <message>
         <location filename="../configdockwidget.cpp" line="127"/>
@@ -451,7 +451,7 @@
     <message>
         <location filename="../discoverdockwidget.cpp" line="27"/>
         <source>Delays (ms)</source>
-        <translation>Задержки (мс)</translation>
+        <translation>Задержка (мс)</translation>
     </message>
     <message>
         <location filename="../discoverdockwidget.cpp" line="27"/>
@@ -574,6 +574,11 @@
 </context>
 <context>
     <name>FirmwareWidget</name>
+    <message>
+        <location filename="../firmwarewidget.cpp" line="19"/>
+        <source>Прошивка: %p%</source>
+        <translation>Прошивка</translation>
+    </message>
     <message>
         <location filename="../firmwarewidget.cpp" line="33"/>
         <source>Остановить</source>
@@ -1328,22 +1333,22 @@
     <message>
         <location filename="../watchdockwidget.cpp" line="91"/>
         <source>var name</source>
-        <translation>имя переменной</translation>
+        <translation>Имя</translation>
     </message>
     <message>
         <location filename="../watchdockwidget.cpp" line="91"/>
         <source>value</source>
-        <translation>значение</translation>
+        <translation>Значение</translation>
     </message>
     <message>
         <location filename="../watchdockwidget.cpp" line="91"/>
         <source>set value</source>
-        <translation>установить значение</translation>
+        <translation>Новое значение</translation>
     </message>
     <message>
         <location filename="../watchdockwidget.cpp" line="91"/>
         <source>force value</source>
-        <translation>принудительное значение</translation>
+        <translation>Принудительно</translation>
     </message>
     <message>
         <location filename="../watchdockwidget.cpp" line="135"/>
@@ -1599,7 +1604,7 @@
     <message>
         <location filename="../plcmanager.cpp" line="234"/>
         <source>Log is already running, stop the current log one first</source>
-        <translation>Журнал уже ведётся. Сначала остановите текущую запись.</translation>
+        <translation>Журнал уже ведётся. Сначала остановите текущую запись</translation>
     </message>
     <message>
         <location filename="../plcmanager.cpp" line="237"/>
@@ -1660,6 +1665,76 @@
         <location filename="../plcmanager.cpp" line="378"/>
         <source>The interface was not found</source>
         <translation>Интерфейс не найден</translation>
+    </message>
+</context>
+<context>
+    <name>varView</name>
+    <message>
+        <location filename="../varview.cpp" line="109"/>
+        <source>Name</source>
+        <translation>Имя</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="109"/>
+        <source>Multi</source>
+        <translation>Multi</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="109"/>
+        <source>Retain</source>
+        <translation>Retain</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="109"/>
+        <source>Init</source>
+        <translation>Начальное значение</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="109"/>
+        <source>Var</source>
+        <translation>Входная переменная</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="109"/>
+        <source>Var_out</source>
+        <translation>Выходная переменная</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="123"/>
+        <source>Number of variables :</source>
+        <translation>Количество переменных :</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="124"/>
+        <source>Must Multisource :</source>
+        <translation>Должна быть Multisource :</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="124"/>
+        <location filename="../varview.cpp" line="125"/>
+        <location filename="../varview.cpp" line="126"/>
+        <source>none</source>
+        <translation>отсутствуют</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="125"/>
+        <source>Hanging variables :</source>
+        <translation>Висячие переменные :</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="126"/>
+        <source>not added Forte :</source>
+        <translation>Не добавлены в Forte :</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="127"/>
+        <source>Error :</source>
+        <translation>Ошибки :</translation>
+    </message>
+    <message>
+        <location filename="../varview.cpp" line="221"/>
+        <source>Добавить в Watch</source>
+        <translation>Добавить в монитринг</translation>
     </message>
 </context>
 <context>
