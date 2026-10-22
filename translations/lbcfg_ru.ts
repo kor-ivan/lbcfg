@@ -577,7 +577,7 @@
     <message>
         <location filename="../firmwarewidget.cpp" line="19"/>
         <source>Прошивка: %p%</source>
-        <translation>Прошивка</translation>
+        <translation>Прошивка: %p%</translation>
     </message>
     <message>
         <location filename="../firmwarewidget.cpp" line="33"/>
