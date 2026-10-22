@@ -128,7 +128,7 @@ WatchDockWidget::WatchDockWidget(const plc::CommandContext &ctx, QWidget *parent
             get.append(collectVariables());
 
             QStringList set = {"set", QString("%1=%2")
-                                          .arg(watchModel->item(row, 0)->text()), val};
+                                          .arg(watchModel->item(row, 0)->text()).arg(val)};
             if (session && session->isConnected())
             {
                 session->setQuery({get, set});
@@ -146,7 +146,7 @@ WatchDockWidget::WatchDockWidget(const plc::CommandContext &ctx, QWidget *parent
             if (val != "")
             {
                 QStringList force = {"force", QString("%1=%2")
-                                                  .arg(varName, val)};
+                                                  .arg(varName).arg(val)};
                 if (session && session->isConnected()){
                     session->setQuery({get, force});
                     debugApp() << tr("WatchDockWidget: list of variables for FORCE:") << get << force;
