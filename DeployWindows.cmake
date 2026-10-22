@@ -24,6 +24,12 @@ endif()
 get_target_property(QT_BINARY_DIR Qt${QT_VERSION_MAJOR}::Core LOCATION)
 get_filename_component(QT_BINARY_DIR "${QT_BINARY_DIR}" DIRECTORY)
 
+# Поиск всех .qm файлов в директории сборки (или укажите их явно)
+file(GLOB TRANSLATION_FILES "${CMAKE_CURRENT_BINARY_DIR}/*.qm")
+
+# Правило установки файлов перевода в корень DEPLOY_DIR (или в подпапку, например, "translations")
+install(FILES ${TRANSLATION_FILES} DESTINATION ".")
+
 add_custom_command(TARGET lbcfg POST_BUILD
     COMMAND ${CMAKE_COMMAND} --install "${CMAKE_CURRENT_BINARY_DIR}" --config Release --prefix "${DEPLOY_DIR}"
     COMMAND "${QT_BINARY_DIR}/windeployqt.exe" "${DEPLOY_DIR}/lbcfg.exe"
