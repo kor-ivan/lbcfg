@@ -31,11 +31,7 @@ endif()
 
 set(CURRENT_QMAKE_EXE "${QT_QMAKE_EXECUTABLE}")
 
-# Поиск всех .qm файлов в директории сборки (или укажите их явно)
-file(GLOB TRANSLATION_FILES "${CMAKE_CURRENT_BINARY_DIR}/*.qm")
-
-# Правило установки файлов перевода в корень DEPLOY_DIR (или в подпапку, например, "translations")
-install(FILES ${TRANSLATION_FILES} DESTINATION "translations")
+install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/translations" DESTINATION ".")
 
 add_custom_command(TARGET lbcfg POST_BUILD
     # Шаг 1: Стандартная инсталляция бинарников
