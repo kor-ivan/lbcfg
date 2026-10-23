@@ -122,10 +122,20 @@ set(TS_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/translations/lbcfg_ru.ts"
     "${CMAKE_CURRENT_SOURCE_DIR}/translations/lbcfg_en.ts"
 )
-qt_create_translation(QM_FILES
-    ${EXE_SOURCES}
-    ${LIB_SOURCES}
-    ${TS_FILES}
+
+set_source_files_properties(${TS_FILES}
+    PROPERTIES OUTPUT_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/translations"
+)
+
+qt_add_translations(lbcfg_lib
+    TS_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/translations/lbcfg_ru.ts"
+        "${CMAKE_CURRENT_SOURCE_DIR}/translations/lbcfg_en.ts"
+    SOURCES
+        ${EXE_SOURCES}
+        ${LIB_SOURCES}
+    QM_OUTPUT_DIRECTORY
+        "${CMAKE_CURRENT_BINARY_DIR}/translations"
 )
 target_sources(lbcfg_lib PRIVATE ${QM_FILES})
 

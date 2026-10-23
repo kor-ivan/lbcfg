@@ -545,9 +545,10 @@ void MainWindow::initLanguage(QApplication &app)
     if (currentLang == QStringLiteral("none")) {
         return;
     }
+    QString translationsDir = QCoreApplication::applicationDirPath() + "/translations";
     // 2. Загрузка перевода самого приложения lbcfg
     QTranslator *appTranslator = new QTranslator(&app);
-    if (appTranslator->load(QString("lbcfg_") + currentLang, QCoreApplication::applicationDirPath())) {
+    if (appTranslator->load(QString("lbcfg_") + currentLang,  translationsDir)) {
         app.installTranslator(appTranslator);
     }
 }
