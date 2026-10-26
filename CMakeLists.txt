@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(lbcfg VERSION 0.1.0 LANGUAGES CXX)
+project(lbcfg VERSION 0.1.1 LANGUAGES CXX)
 option(ENABLE_AUTO_DEPLOY "Enable automated windeployqt packaging after build" OFF)
 option(ENABLE_INSTALLER_BUILD "Run binarycreator to build the installer .exe after deploy" OFF)
 
