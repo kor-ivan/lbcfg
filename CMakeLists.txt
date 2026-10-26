@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(lbcfg VERSION 0.1.0 LANGUAGES CXX)
+project(lbcfg VERSION 0.1.1 LANGUAGES CXX)
 option(ENABLE_AUTO_DEPLOY "Enable automated windeployqt packaging after build" OFF)
 option(ENABLE_INSTALLER_BUILD "Run binarycreator to build the installer .exe after deploy" OFF)
 
@@ -13,7 +13,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools)
 # Проверяем тип сборки для Single-config генераторов (Ninja, Make)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(BUILD_LBMBC_EXE OFF)
@@ -55,6 +55,8 @@ set(LIB_SOURCES
         deviceview.h deviceview.cpp
         watchdockwidget.h watchdockwidget.cpp
         watchsession.h watchsession.cpp
+        settingsdialog.h settingsdialog.cpp
+        yamlhighlighter.h yamlhighlighter.cpp
         resources.qrc
         version.h.in
         lbcfg_global.h
@@ -115,6 +117,36 @@ endif()
 target_link_libraries(lbcfg PRIVATE lbcfg_lib Qt${QT_VERSION_MAJOR}::Widgets)
 target_include_directories(lbcfg PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
+# === Перевод ===
+set(TS_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/translations/lbcfg_ru.ts"
+    "${CMAKE_CURRENT_SOURCE_DIR}/translations/lbcfg_en.ts"
+)
+
+# 1. Получаем реальный абсолютный путь к lupdate через нативный таргет Qt6
+get_target_property(LUPDATE_EXE Qt6::lupdate LOCATION)
+
+option(UPDATE_TRANSLATIONS "Обновлять исходные файлы перевода .ts при конфигурации" OFF)
+
+# 2. НАДЕЖНЫЙ ЗАПУСК LUPDATE: сканируем только папки вашего проекта
+if(UPDATE_TRANSLATIONS)
+    execute_process(
+        COMMAND "${LUPDATE_EXE}" ${LIB_SOURCES} -ts ${TS_FILES} -extensions cpp -no-obsolete
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        COMMAND_ERROR_IS_FATAL ANY
+    )
+endif()
+
+# 3. Указываем lrelease, куда сохранять скомпилированные .qm
+set_source_files_properties(${TS_FILES}
+    PROPERTIES OUTPUT_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/translations"
+)
+
+# 4. Вызываем макрос Qt только для компиляции (без параметров поиска, чтобы Ninja не путался)
+qt_add_translations(lbcfg_lib
+    TS_FILES
+        ${TS_FILES}
+)
 
 # === АВТО-ВЕРСИЯ: Подключаем сгенерированные заголовочные файлы к lbcfg ===
 if(${QT_VERSION} VERSION_LESS 6.1.0)

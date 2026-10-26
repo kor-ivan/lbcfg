@@ -16,6 +16,8 @@ public:
     void onLogStarted();
     void onLogFinished();
 
+    void setLogMaximumBlockCount(const int count);
+
 signals:
     void stopButtonPressed();
 

@@ -4,6 +4,8 @@
 #include <QWidget>
 #include <QTextEdit>
 
+class YamlHighlighter;
+
 class yamlTextView : public QWidget
 {
     Q_OBJECT
@@ -20,9 +22,15 @@ signals:
     void TextChanged();
     void isReplaceComplete();
 
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
 private:
     void showCustomContextMenu(const QPoint &pos);
     QTextEdit *editor = nullptr;
+    YamlHighlighter *highlighter = nullptr;
+    QAction *toggleCommentAction = nullptr;
+    void toggleComment();
 };
 
 #endif // YAMLTEXTVIEW_H

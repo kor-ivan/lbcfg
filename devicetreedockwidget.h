@@ -8,6 +8,8 @@
 #include "plcmanager.h"
 #include "firmwareanalyzer.h"
 
+class MainWindow;
+
 class DeviceTreeDockWidget : public QDockWidget
 {
     Q_OBJECT
@@ -24,7 +26,7 @@ signals:
     void requestConfig(const plc::CommandContext &ctx);
     void requestUpdate(const plc::CommandContext &ctx);
     // void requestFlash(const plc::CommandContext &ctx);
-    void requestFlashAll(const plc::CommandContext &ctx, const QStringList &otaSlots = {});
+    void requestFlashAll(const plc::CommandContext &ctx, const QStringList &otaSlots = {}, const bool pathRequest = true);
     void requestFboot(const plc::CommandContext &ctx);
 
 private slots:
@@ -32,6 +34,7 @@ private slots:
     void onTreeExpanded(const QModelIndex &index);
 
 private:
+    MainWindow *p_mainWindow;
     enum ItemRole {
         ModuleTypeRole = Qt::UserRole + 1,
         InstalledVersionRole,
@@ -48,6 +51,7 @@ private:
     bool m_firmwareLoaded = false;
     QString m_repositoryRoot;
     QStringList getMismatchedSlots(const QModelIndex &plcIndex) const;
+    QStringList getIgnoreCPUslots(const QModelIndex &plcIndex, const QStringList &mismatched = {}) const;
 
     QStandardItem *findPlcRoot(const QHostAddress& ipv6);
     QStandardItem *versionInfoItem(QStandardItem *moduleItem) const;

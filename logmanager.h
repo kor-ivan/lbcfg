@@ -65,7 +65,10 @@ public:
 
     static LogCatcher* catcher();
 
-    void setLoglevel(const Level &newLoglevel);
+    static void setAppMinLevel(Level level);
+    static void setPlcMinLevel(Level level);
+    static Level getAppMinLevel();
+    static Level getPlcMinLevel();
 
 private:
     Source m_source = LogCatcher::App;
@@ -75,8 +78,11 @@ private:
     QString m_buffer;
     TimeType m_timetype = LogCatcher::TimeReal;
     bool m_parse = false;
-    Level loglevel = LogCatcher::Debug;
+    // Level loglevel = LogCatcher::Debug;
     plc::CommandContext m_ctx;
+
+    static Level appMinLevel;
+    static Level plcMinLevel;
 };
 
 inline LogManager logApp(LogCatcher::Level level = LogCatcher::Info) {

@@ -14,10 +14,11 @@
 #include "logmanager.h"
 #include "mainwindow.h"
 #include "watchdockwidget.h"
+#include "appsettings.h"
 
 
 ConfigDockWidget::ConfigDockWidget(const QString &name, MainWindow *parent)
-    : QDockWidget(QString("Конфигурация: %1").arg(name), parent),
+    : QDockWidget(QString(tr("Конфигурация: %1")).arg(name), parent),
     lbplc(plcManager::instanse()),
     p_mainWindow(parent)
 {
@@ -35,12 +36,12 @@ ConfigDockWidget::ConfigDockWidget(const QString &name, MainWindow *parent)
 
     // 1. Оставляем верхнюю панель управления
     QHBoxLayout* topLayout = new QHBoxLayout();
-    configButton = new QPushButton("Сконфигурировать", this);
+    configButton = new QPushButton(tr("Сконфигурировать"), this);
     configButton->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     topLayout->addWidget(configButton,1);
 
     plcSelector = new QComboBox(this);
-    plcSelector->setPlaceholderText("Выберите ПЛК..."); // Подсказка, если список пуст
+    plcSelector->setPlaceholderText(tr("Выберите ПЛК...")); // Подсказка, если список пуст
     QTableView* tableView = new QTableView(this);
     tableView->setSelectionBehavior(QAbstractItemView::SelectRows); // Выделять всю строку целиком
     tableView->setSelectionMode(QAbstractItemView::SingleSelection); // Только один ПЛК за раз
@@ -86,9 +87,9 @@ ConfigDockWidget::ConfigDockWidget(const QString &name, MainWindow *parent)
         "}"
         );
 
-    sidebarMenu->addItem(new QListWidgetItem("Text View"));
-    sidebarMenu->addItem(new QListWidgetItem("Var View"));
-    sidebarMenu->addItem(new QListWidgetItem("IO View"));
+    sidebarMenu->addItem(new QListWidgetItem(tr("Text View")));
+    sidebarMenu->addItem(new QListWidgetItem(tr("Var View")));
+    sidebarMenu->addItem(new QListWidgetItem(tr("IO View")));
 
     // 4. Инициализируем стек-контейнер для страниц
     stackedContainer = new QStackedWidget(this);
@@ -123,7 +124,7 @@ ConfigDockWidget::ConfigDockWidget(const QString &name, MainWindow *parent)
     connect(plcSelector, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &ConfigDockWidget::scrollToSelectedPlc);
 
-    confAction = new QAction(QString("Сконфигурировать %1")
+    confAction = new QAction(QString(tr("Сконфигурировать %1"))
                                  .arg(getPlcName()), this);
     connect(confAction, &QAction::triggered, this, [this](){
         onConfigureClicked();
@@ -225,9 +226,9 @@ bool ConfigDockWidget::saveFileAs()
         return false;
     }
 
-    QString filePath = QFileDialog::getSaveFileName(this, "Сохранить конфигурацию как...",
+    QString filePath = QFileDialog::getSaveFileName(this, tr("Сохранить конфигурацию как..."),
                                                     plcName,
-                                                    "YAML Files (*.yaml *.yml);;All Files (*)");
+                                                    tr("YAML Files (*.yaml *.yml);;All Files (*)"));
     if (filePath.isEmpty())
         return false;
 
@@ -238,7 +239,7 @@ bool ConfigDockWidget::writeFile(const QString &filePath)
 {
     QFile file(filePath);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        QMessageBox::critical(this, "Ошибка", "Не удалось сохранить файл");
+        QMessageBox::critical(this, tr("Ошибка"), tr("Не удалось сохранить файл"));
         return false;
     }
     QTextStream out(&file);
@@ -286,8 +287,8 @@ void ConfigDockWidget::onConfigureClicked()
     // int currentRow = plcSelector->currentIndex();
     if (index < 0) {
         QMessageBox::warning(this,
-                             "Внимание",
-                             "Не выбрана конфигурация");
+                             tr("Внимание"),
+                             tr("Не выбрана конфигурация"));
         return;
     }
     // QString selectedPlc = plcSelector->currentText();
@@ -295,14 +296,14 @@ void ConfigDockWidget::onConfigureClicked()
     QString mac;
     if (model) {
         mac = model->item(index, 1)->text();
-        debugApp() << "Запуск конфигурации для:" << currentSelected << "с MAC-адресом:" << mac;
+        debugApp() << tr("Запуск конфигурации для:") << currentSelected << tr("с MAC-адресом:") << mac;
     }
 
     if (modified || currentFilePath.isEmpty()){
         QMessageBox msgBox(QMessageBox::Question,
-                           "Внимание",
-                           "Конфигурация была изменена или не сохранена.\n"
-                           "Сохранить и сконфигурировать?",
+                           tr("Внимание"),
+                           tr("Конфигурация была изменена или не сохранена.\n"
+                           "Сохранить и сконфигурировать?"),
                            QMessageBox::Ok | QMessageBox::Cancel,
                            this);
         // Запускаем в синхронном режиме и получаем результат
@@ -402,14 +403,14 @@ void ConfigDockWidget::closeEvent(QCloseEvent *event)
     if (modified) {
         QMessageBox msgBox(this);
         msgBox.setIcon(QMessageBox::Question);
-        msgBox.setWindowTitle("Закрытие конфигурации");
-        msgBox.setText(QString("Конфигурация \"%1\" была изменена.").arg(plcName));
-        msgBox.setInformativeText("Хотите сохранить изменения перед закрытием?");
+        msgBox.setWindowTitle(tr("Закрытие конфигурации"));
+        msgBox.setText(QString(tr("Конфигурация \"%1\" была изменена.")).arg(plcName));
+        msgBox.setInformativeText(tr("Хотите сохранить изменения перед закрытием?"));
 
         // Создаем кнопки с понятным текстом
-        QPushButton *saveButton = msgBox.addButton("Сохранить", QMessageBox::AcceptRole);
-        QPushButton *discardButton = msgBox.addButton("Закрыть без сохранения", QMessageBox::DestructiveRole);
-        QPushButton *cancelButton = msgBox.addButton("Отмена", QMessageBox::RejectRole);
+        QPushButton *saveButton = msgBox.addButton(tr("Сохранить"), QMessageBox::AcceptRole);
+        QPushButton *discardButton = msgBox.addButton(tr("Закрыть без сохранения"), QMessageBox::DestructiveRole);
+        QPushButton *cancelButton = msgBox.addButton(tr("Отмена"), QMessageBox::RejectRole);
 
         msgBox.setDefaultButton(cancelButton);
         msgBox.exec();
@@ -442,7 +443,7 @@ QString ConfigDockWidget::getPlcName() const
 void ConfigDockWidget::updateTitle()
 {
     QString prefix = modified ? "* " : "";
-    setWindowTitle(QString("%1Конфигурация: %2").arg(prefix, plcName));
+    setWindowTitle(QString(tr("%1Конфигурация: %2")).arg(prefix, plcName));
 }
 
 QStandardItemModel *ConfigDockWidget::createPlcModel(const QString &yamlText)
@@ -504,13 +505,13 @@ void ConfigDockWidget::onAddVariableToWatch(const QString &varName)
     QString currentPlc = plcSelector->currentText();
     if (currentPlc.isEmpty()) {
         QMessageBox::warning(this,
-                             "Внимание",
-                             "Не выбрана конфигурация");
+                             tr("Внимание"),
+                             tr("Не выбрана конфигурация"));
         return;
     }
     int index = plcSelector->findText(currentPlc);
     QStandardItemModel* model = qobject_cast<QStandardItemModel*>(plcSelector->model());
-    QString ipv6 = lbyaml::MacToIPv6(model->item(index, 1)->text());
+    QString ipv6 = QHostAddress(lbyaml::MacToIPv6(model->item(index, 1)->text())).toString();
     auto watches = p_mainWindow->getWatchDocks();
     WatchDockWidget* watch = nullptr;
     if (!watches.isEmpty())
@@ -528,8 +529,7 @@ void ConfigDockWidget::onAddVariableToWatch(const QString &varName)
         // ctx.ipv6 = QHostAddress(ipv6);
         // ctx.ipv6.setScopeId(plcManager::instanse()->getIf(ipv6));
         // ctx.name = plcName;
-        watch = p_mainWindow->createWatchDockWidget(lbplc->getctx(ipv6, plcName,
-                                                                  lbplc->getIf(ipv6)));
+        watch = p_mainWindow->createWatchDockWidget(lbplc->getctx(ipv6, plcName));
         watch->addVar(varName);
         watch->toggleConnection();
     }else{
@@ -574,9 +574,9 @@ bool ConfigDockWidget::replacePlcBlockInYaml(const QString &newPlcBlockText)
     int endLine = 0;
 
     if (targetIt == plcLineMap.end()) {
-        auto reply = QMessageBox::question(this, "Конфигурация не найдена",
-                                           QString("ПЛК %1 (MAC: %2) не найден в файле.\n"
-                                                   "Хотите создать для него новую конфигурацию в начале файла?")
+        auto reply = QMessageBox::question(this, tr("Конфигурация не найдена"),
+                                           QString(tr("ПЛК %1 (MAC: %2) не найден в файле.\n"
+                                                    "Хотите создать для него новую конфигурацию в начале файла?"))
                                                .arg(plcName, currentMac),
                                            QMessageBox::Yes | QMessageBox::No);
 
@@ -664,10 +664,10 @@ int ConfigDockWidget::isModifiedPages(bool allowCancel)
 
     // Показываем диалог
     QMessageBox::StandardButton reply = QMessageBox::question(
-        this, "Изменение конфигурации",
-        "Данные в визуальных вкладках были изменены.\n"
+        this, tr("Изменение конфигурации"),
+        tr("Данные в визуальных вкладках были изменены.\n"
         "Пользовательские комментарии будут удалены.\n"
-        "Обновить исходный YAML?",
+        "Обновить исходный YAML?"),
         buttons
         );
 
@@ -691,8 +691,8 @@ int ConfigDockWidget::isModifiedPages(bool allowCancel)
                 debugApp() << "SYNC: replacePlcBlockInYaml returned false";
                 QMessageBox::critical(
                     this,
-                    "Ошибка синхронизации",
-                    "Не удалось заменить блок ПЛК в YAML."
+                    tr("Ошибка синхронизации"),
+                    tr("Не удалось заменить блок ПЛК в YAML.")
                 );
                 return QMessageBox::No;
             }
@@ -704,13 +704,16 @@ int ConfigDockWidget::isModifiedPages(bool allowCancel)
             QJsonObject updatedJson = devicePage->getUpdateData();
             debugApp() << "SYNC: devicePage getlbconf";
             // Генерируем текст измененного блока модулей ПЛК
-            QString updatedYamlText = yamlParser->getlbconf(updatedJson);
+            QString updatedYamlText = yamlParser->getlbconf(updatedJson,
+                                                            lbyaml::raw,
+                                                            AppSettings::getMaxFlowLevel(),
+                                                            static_cast<YAML::EmitterStyle::value>(AppSettings::getStyleYamlArray()));
             debugApp() << "SYNC: devicePage replacePlcBlockInYaml";
             if (!replacePlcBlockInYaml(updatedYamlText)) {
                 QMessageBox::critical(
                     this,
-                    "Ошибка синхронизации",
-                    "Не удалось заменить блок ПЛК в YAML."
+                    tr("Ошибка синхронизации"),
+                    tr("Не удалось заменить блок ПЛК в YAML.")
                 );
 
                 return QMessageBox::No;
@@ -721,14 +724,14 @@ int ConfigDockWidget::isModifiedPages(bool allowCancel)
     }
     catch (const std::exception &e) {
         QString errorText =
-            QString("Ошибка преобразования конфигурации: %1")
+            QString(tr("Ошибка преобразования конфигурации: %1"))
                 .arg(QString::fromUtf8(e.what()));
 
         debugApp() << "SYNC EXCEPTION:" << errorText;
 
         QMessageBox::critical(
             this,
-            "Ошибка синхронизации YAML",
+            tr("Ошибка синхронизации YAML"),
             errorText
         );
 
@@ -739,8 +742,8 @@ int ConfigDockWidget::isModifiedPages(bool allowCancel)
 
         QMessageBox::critical(
             this,
-            "Ошибка синхронизации YAML",
-            "Возникло неизвестное исключение при обновлении YAML."
+            tr("Ошибка синхронизации YAML"),
+            tr("Возникло неизвестное исключение при обновлении YAML.")
         );
 
         return QMessageBox::No;

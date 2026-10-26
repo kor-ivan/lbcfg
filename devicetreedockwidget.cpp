@@ -6,14 +6,17 @@
 #include <QFileInfo>
 #include <QBrush>
 #include <QColor>
+#include <QStatusBar>
 #include "logmanager.h"
 #include "commandmanager.h"
 #include "appsettings.h"
+#include "mainwindow.h"
 
 
 DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent)
-    : QDockWidget("Tree View", parent), lbplc(plcManager::instanse()),
-    m_firmwareAnalyzer(CommandManager::instance()->getFirmwareAnalyzer())
+    : QDockWidget(tr("Tree View"), parent), lbplc(plcManager::instanse()),
+    m_firmwareAnalyzer(CommandManager::instance()->getFirmwareAnalyzer()),
+    p_mainWindow(static_cast<MainWindow*>(parent))
 {
     QWidget *content = new QWidget(this);
     setWidget(content);
@@ -51,8 +54,8 @@ DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent)
     });
     connect(lbplc, &plcManager::restartAllCompleted, this, [this]
             (const plc::CommandContext &ctx){
-                QMessageBox::information(this, "Перезагрузить все",
-                                         QString("Команда на перезагрузку всех модулей %1 отправлена").arg(ctx.name));
+                QMessageBox::information(this, tr("Перезагрузить все"),
+                                         QString(tr("Команда на перезагрузку всех модулей %1 отправлена")).arg(ctx.name));
             });
     // qRegisterMetaType<QHostAddress>("QHostAddress");
 }
@@ -101,11 +104,11 @@ void DeviceTreeDockWidget::updateDevice(const plc::CommandContext &ctx, const QM
         col1->appendRow(new QStandardItem("MAC: " + info.mac));
 
         QStandardItem *versionItem =
-            new QStandardItem("Version: " + info.version);
+            new QStandardItem(tr("Version: ") + info.version);
         versionItem->setData(true, VersionInfoRole);
         col1->appendRow(versionItem);
 
-        col1->appendRow(new QStandardItem("Serial: " + info.data.value(0)));
+        col1->appendRow(new QStandardItem(tr("Serial: ") + info.data.value(0)));
 
         if (m_firmwareLoaded || ensureFirmwareRepository())
         {
@@ -159,7 +162,7 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
     QMenu menu(this);
     // --- Только для Устройства ---
     if (isRoot) {
-        QAction *getConfigAction = menu.addAction(QString("Запросить конфигурацию у %1").arg(ctx.name));
+        QAction *getConfigAction = menu.addAction(QString(tr("Запросить конфигурацию у %1")).arg(ctx.name));
         QFont font = getConfigAction->font();
         font.setBold(true);
         getConfigAction->setFont(font);
@@ -167,60 +170,83 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
             emit requestConfig(ctx);
         });
 
-        QAction *update = menu.addAction("Обновить");
+        QAction *update = menu.addAction(tr("Обновить"));
         connect(update, &QAction::triggered, this, [this, ctx](){
             emit requestUpdate(ctx);
         });
 
-        QAction *removeAction = menu.addAction(QString("Удалить %1").arg(ctx.name));
+        QAction *removeAction = menu.addAction(QString(tr("Удалить %1")).arg(ctx.name));
         connect(removeAction, &QAction::triggered, this, [this, index]() {
             treeModel->removeRow(index.row());
         });
 
-        QAction *restartAll = menu.addAction("Перезагрузить все");
+        QAction *restartAll = menu.addAction(tr("Перезагрузить все"));
         connect(restartAll, &QAction::triggered, this,
                 [this, ctx](){
-                    debugApp()<<"Перезагрузить все команда отправлена";
+                    debugApp()<<tr("Перезагрузить все команда отправлена");
                     lbplc->startRestartAll(ctx);
                 });
 
-        QAction *fsformat = menu.addAction("Сбросить к заводским");
+        QAction *fsformat = menu.addAction(tr("Сбросить к заводским"));
         connect(fsformat, &QAction::triggered, this, [this, ctx](){
             auto reply = QMessageBox::question(this,
-                                               "Подтверждение сброса",
-                                               QString("Вы уверены, что хотите сбросить устройство %1 к заводским настройкам?").arg(ctx.name),
+                                               tr("Подтверждение сброса"),
+                                               QString(tr("Вы уверены, что хотите сбросить устройство %1 к заводским настройкам?")).arg(ctx.name),
                                                QMessageBox::Yes | QMessageBox::No,
                                                QMessageBox::No); // Кнопка по умолчанию
             if (reply == QMessageBox::Yes)
                 lbplc->lbc_executeCommand(ctx, {"fsformat"}, "Сброс к заводским", [ctx, this] (const QStringList& res){
-                    return QString("%1 сброшено к заводским настройкам. Требуется перезагрузка.")
+                    return QString(tr("%1 сброшено к заводским настройкам. Требуется перезагрузка."))
                         .arg(ctx.name);
                 });
         });
 
-        QAction *flashAll = menu.addAction(QString("Прошить все модули %1").arg(ctx.name));
-        connect(flashAll, &QAction::triggered, this, [this, ctx](){
-            emit requestFlashAll(ctx);
+        QAction *flashAll = menu.addAction(QString(tr("Прошить все модули %1")).arg(ctx.name));
+        connect(flashAll, &QAction::triggered, this, [this, ctx, index](){
+            if (AppSettings::getFirmwareIgnoreCPU())
+                emit requestFlashAll(ctx, getIgnoreCPUslots(index));
+            else
+                emit requestFlashAll(ctx);
         });
 
-        QAction *flashAllNeed = menu.addAction(QString("Прошить необходимые модули %1").arg(ctx.name));
-        if (index.data(PlcUpToDateRole).toBool()) {
+        QAction *flashAllNeed = menu.addAction(QString(tr("Прошить необходимые модули %1")).arg(ctx.name));
+        QStringList need;
+        if (AppSettings::getFirmwareIgnoreCPU())
+            need = getIgnoreCPUslots(index, getMismatchedSlots(index));
+        else
+            need = getMismatchedSlots(index);
+        if (index.data(PlcUpToDateRole).toBool() || AppSettings::firmwareRepositoryRoot().isEmpty() ||
+            need.isEmpty()) {
             flashAllNeed->setEnabled(false);
+            if (need.isEmpty() && !index.data(PlcUpToDateRole).toBool())
+                flashAllNeed->setStatusTip(tr("Включена опция: Игнорировать процессорный модуль при групповой прошивке"));
         }
-        connect(flashAllNeed, &QAction::triggered, this, [this, ctx, index](){
-            QStringList need = getMismatchedSlots(index);
-            emit requestFlashAll(ctx, need);
+        connect(flashAllNeed, &QAction::triggered, this, [this, ctx, index, need](){
+            emit requestFlashAll(ctx, need, false);
         });
 
-        QAction *fboot = menu.addAction(QString("Загрузить fboot в %1").arg(ctx.name));
+        if (p_mainWindow) {
+            // Отслеживаем, над каким пунктом меню сейчас находится курсор мыши
+            connect(&menu, &QMenu::hovered, this, [this](QAction *action) {
+                if (action && !action->statusTip().isEmpty()) {
+                    // Отправляем подсказку в StatusBar главного окна приложения
+                    p_mainWindow->statusBar()->showMessage(action->statusTip());
+                } else {
+                    // Очищаем статус-бар, если у элемента нет подсказки
+                    p_mainWindow->statusBar()->clearMessage();
+                }
+            });
+        }
+
+        QAction *fboot = menu.addAction(QString(tr("Загрузить fboot в %1")).arg(ctx.name));
         connect(fboot, &QAction::triggered, this, [this, ctx](){
             emit requestFboot(ctx);
         });
 
-        QAction *nofboot = menu.addAction(QString("Удалить fboot в %1").arg(ctx.name));
+        QAction *nofboot = menu.addAction(QString(tr("Удалить fboot в %1")).arg(ctx.name));
         connect(nofboot, &QAction::triggered, this, [this, ctx]() {
-            lbplc->lbc_executeCommand(ctx, {"nofboot"}, "Удалить fboot", [ctx](const QStringList&) {
-                return QString("Команда на удаление fboot %1 отправлена").arg(ctx.displayName());
+            lbplc->lbc_executeCommand(ctx, {"nofboot"}, tr("Удалить fboot"), [ctx](const QStringList&) {
+                return QString(tr("Команда на удаление fboot %1 отправлена")).arg(ctx.displayName());
             });
         });
     }
@@ -263,9 +289,9 @@ void DeviceTreeDockWidget::onTreeExpanded(const QModelIndex &index)
             versionItem->setBackground(QBrush());
 
             versionItem->setToolTip(
-                QStringLiteral(
-                    "Тип модуля не определён, "
-                    "сравнение версии недоступно"));
+                tr("Тип модуля не определён, ") +
+                tr("сравнение версии недоступно")
+                );
         }
 
         return;
@@ -278,8 +304,7 @@ void DeviceTreeDockWidget::onTreeExpanded(const QModelIndex &index)
             versionItem->setBackground(QBrush());
 
             versionItem->setToolTip(
-                QStringLiteral(
-                    "Репозиторий прошивок не настроен"));
+                tr("Репозиторий прошивок не настроен"));
         }
         return;
     }
@@ -341,6 +366,27 @@ QStringList DeviceTreeDockWidget::getMismatchedSlots(const QModelIndex &plcIndex
     }
 
     return mismatchedSlots;
+}
+
+QStringList DeviceTreeDockWidget::getIgnoreCPUslots(const QModelIndex &plcIndex, const QStringList &mismatched) const
+{
+    QStringList ignoreCPUslots;
+    QStandardItem *plcRoot = treeModel->itemFromIndex(plcIndex);
+    if (!plcRoot)
+        return ignoreCPUslots;
+
+    for (int row = 0; row < plcRoot->rowCount(); ++row) {
+        QStandardItem *moduleItem = plcRoot->child(row);
+        const QString moduleType = moduleItem->data(ModuleTypeRole).toString().trimmed();
+        QString slotNumber = moduleItem->data(Qt::UserRole).toString();
+        if (!mismatched.isEmpty() && !mismatched.contains(slotNumber))
+            continue;
+        if (moduleType.compare("LB241CPU", Qt::CaseInsensitive) == 0){
+            continue;
+        }
+        ignoreCPUslots.append(slotNumber);
+    }
+    return ignoreCPUslots;
 }
 
 
@@ -423,7 +469,7 @@ bool DeviceTreeDockWidget::loadFirmwareRepository(const QString &repositoryRoot)
         != firmwareAnalyzer::ok) {
         QMessageBox::warning(
             this,
-            "Репозиторий прошивок",
+            tr("Репозиторий прошивок"),
             m_firmwareAnalyzer->errorString());
         return false;
     }
@@ -435,11 +481,11 @@ bool DeviceTreeDockWidget::loadFirmwareRepository(const QString &repositoryRoot)
     if (firmwareMap.isEmpty()) {
         QMessageBox::warning(
             this,
-            "Репозиторий прошивок",
+            tr("Репозиторий прошивок"),
             QString(
-                "В каталоге firmware "
-                "не найдено ни одной "
-                "распознанной прошивки:\n%1")
+                tr("В каталоге firmware "
+                 "не найдено ни одной "
+                 "распознанной прошивки:\n%1"))
                 .arg(repositoryRoot));
 
         return false;
@@ -512,9 +558,9 @@ bool DeviceTreeDockWidget::updateFirmwareStatus(
     if (it == firmwareMap.constEnd()) {
         versionItem->setToolTip(
             QString(
-                "Устройство: %1\n"
-                "В репозитории нет "
-                "распознанной прошивки для %2")
+                tr("Устройство: %1\n"
+                 "В репозитории нет "
+                 "распознанной прошивки для %2"))
                 .arg(
                     installedVersion,
                     moduleType));
@@ -534,10 +580,10 @@ bool DeviceTreeDockWidget::updateFirmwareStatus(
 
         versionItem->setToolTip(
             QString(
-                "Устройство: %1\n"
-                "Файл: %2\n"
-                "Версия прошивки в репозитории "
-                "не определена")
+                tr("Устройство: %1\n"
+                 "Файл: %2\n"
+                 "Версия прошивки в репозитории "
+                 "не определена"))
                 .arg(
                     installedVersion,
                     repositoryFirmware.sourcePath));
@@ -559,12 +605,12 @@ bool DeviceTreeDockWidget::updateFirmwareStatus(
 
     versionItem->setToolTip(
         QString(
-            "Модуль: %1\n"
-            "Устройство: %2\n"
-            "Для сравнения: %3\n"
-            "Репозиторий: %4\n"
-            "Статус: %5\n"
-            "Файл: %6")
+            tr("Модуль: %1\n"
+             "Устройство: %2\n"
+             "Для сравнения: %3\n"
+             "Репозиторий: %4\n"
+             "Статус: %5\n"
+             "Файл: %6"))
             .arg(
                 moduleType,
                 installedVersion,
@@ -572,10 +618,8 @@ bool DeviceTreeDockWidget::updateFirmwareStatus(
                     installedVersion),
                 repositoryVersion,
                 matches
-                    ? QStringLiteral(
-                          "версии совпадают")
-                    : QStringLiteral(
-                          "версии не совпадают"),
+                    ? tr("версии совпадают")
+                    : tr("версии не совпадают"),
                 repositoryFirmware.sourcePath));
     return matches;
 }
@@ -616,8 +660,7 @@ void DeviceTreeDockWidget::clearAllFirmwareStatuses()
                     QBrush());
 
                 versionItem->setToolTip(
-                    QStringLiteral(
-                        "Репозиторий прошивок "
+                    tr("Репозиторий прошивок "
                         "не настроен"));
             }
         }

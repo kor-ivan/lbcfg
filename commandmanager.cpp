@@ -2,6 +2,7 @@
 #include <QApplication>
 #include "logmanager.h"
 #include "qmenu.h"
+#include <QFileDialog>
 
 CommandManager::CommandManager() :
     lbplc(plcManager::instanse())
@@ -45,28 +46,28 @@ WatchDockWidget *CommandManager::getActiveWatchDockWidget() const
 
 void CommandManager::getUptimeAction(const plc::CommandContext &ctx, QMenu *menu)
 {
-    QAction *getUptime = menu->addAction("Время работы");
+    QAction *getUptime = menu->addAction(tr("Время работы"));
     connect(getUptime, &QAction::triggered, this, [this, ctx]() {
-        lbplc->lbc_executeCommand(ctx, {"get", "sys.uptime"}, "Время работы", [ctx, this](const QStringList& res) {
+        lbplc->lbc_executeCommand(ctx, {"get", "sys.uptime"}, tr("Время работы"), [ctx, this](const QStringList& res) {
             QString uptime = res.isEmpty() ? toBold("none") : toBold(res.at(0));
-            return QString("Время работы %1 %2 сек").arg(ctx.displayName(), uptime);
+            return QString(tr("Время работы %1 %2 сек")).arg(ctx.displayName(), uptime);
         });
     });
 }
 
 void CommandManager::getRestartAction(const plc::CommandContext &ctx, QMenu *menu)
 {
-    QAction *restart = menu->addAction("Перезагрузить");
+    QAction *restart = menu->addAction(tr("Перезагрузить"));
     connect(restart, &QAction::triggered, this, [this, ctx]() {
-        lbplc->lbc_executeCommand(ctx, {"set", "sys.restart=1"}, "Перезагрузка", [ctx](const QStringList&) {
-            return QString("Команда на перезагрузку %1 отправлена").arg(ctx.displayName());
+        lbplc->lbc_executeCommand(ctx, {"set", "sys.restart=1"}, tr("Перезагрузка"), [ctx](const QStringList&) {
+            return QString(tr("Команда на перезагрузку %1 отправлена")).arg(ctx.displayName());
         });
     });
 }
 
 void CommandManager::getFlashAction(const plc::CommandContext &ctx, QMenu *menu)
 {
-    QAction *flash = menu->addAction("Загрузить прошивку ...");
+    QAction *flash = menu->addAction(tr("Загрузить прошивку ..."));
     connect(flash, &QAction::triggered, this, [this, ctx](){
         emit requestFlash(ctx);
     });
@@ -95,19 +96,32 @@ void CommandManager::setSaveAsAction(QAction *newSaveAsAction)
 void CommandManager::getLogMenu(const plc::CommandContext &ctx, QMenu *parentMenu, const QString &text)
 {
     QMenu *logMenu = parentMenu->addMenu(text);
-    QAction *logAll = logMenu->addAction("Запросить весь лог");
+    QAction *logAll = logMenu->addAction(tr("Запросить весь лог"));
     connect(logAll, &QAction::triggered, logAll, [this, ctx](){
         lbplc->startLog(ctx, "a");
     });
 
-    QAction *logLast100 = logMenu->addAction("Запросить 100 сообщений");
+    QAction *logLast100 = logMenu->addAction(tr("Запросить 100 сообщений"));
     connect(logLast100, &QAction::triggered, logLast100, [this, ctx](){
         lbplc->startLog(ctx, "a100");
     });
 
-    QAction *logLast100f = logMenu->addAction("Запросить 100 и следовать");
+    QAction *logLast100f = logMenu->addAction(tr("Запросить 100 и следовать"));
     connect(logLast100f, &QAction::triggered, logLast100f, [this, ctx](){
         lbplc->startLog(ctx, "a100f");
+    });
+
+    QAction *logAllToFile = logMenu->addAction(tr("Запросить весь лог в файл..."));
+    connect(logAllToFile, &QAction::triggered, logLast100f, [this, ctx, parentMenu](){
+        QString fileName = QFileDialog::getSaveFileName(
+            parentMenu,
+            tr("Сохранить лог как..."),
+            QString("log_%1").arg(ctx.displayName()).replace('/', '_'),
+            tr("Log Files (*.log);;Text Files (*.txt);;All Files (*)")
+            );
+        if (fileName.isEmpty())
+            return;
+        lbplc->startLog(ctx, "a", fileName);
     });
 }
 
@@ -125,14 +139,14 @@ void CommandManager::checkDockWidget(QDockWidget *dock)
 {
     ConfigDockWidget *configDock = qobject_cast<ConfigDockWidget*>(dock);
     if (configDock) {
-        debugApp() << "Выбран ConfigDockWidget: " << configDock;
+        debugApp() << tr("Выбран ConfigDockWidget: ") << configDock;
         activeConfDockWidget = configDock;
         confAction = configDock->getConfigureAction();
         emit activeConfDockWidgetChanged(configDock);
     }
     WatchDockWidget *watchDock = qobject_cast<WatchDockWidget*>(dock);
     if (watchDock){
-        debugApp() << "Выбран WatchDockWidget: " << watchDock;
+        debugApp() << tr("Выбран WatchDockWidget: ") << watchDock;
         activeWatchDockWidget = watchDock;
     }
 }

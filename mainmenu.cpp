@@ -8,7 +8,10 @@
 #include "logdockwidget.h"
 #include <QProcess>
 #include <QDir>
+#include "settingsdialog.h"
+#ifdef Q_OS_LINUX
 #include "appsettings.h"
+#endif
 
 MainMenu::MainMenu(MainWindow *mainWindow)
     : QObject{mainWindow}, p_mainWindow(mainWindow), p_menuBar(mainWindow->menuBar())
@@ -35,24 +38,24 @@ void MainMenu::updateMenuState(ConfigDockWidget *activeWidget)
     }
     QString plcName = activeWidget->getPlcName();
     saveAction->setEnabled(true);
-    saveAction->setText(QString("&Сохранить %1").arg(plcName));
+    saveAction->setText(QString(tr("&Сохранить %1")).arg(plcName));
     saveAsAction->setEnabled(true);
-    saveAsAction->setText(QString("Сохранить %1 &как...").arg(plcName));
+    saveAsAction->setText(QString(tr("Сохранить %1 &как...")).arg(plcName));
 }
 
 void MainMenu::initFileMenu(QMenuBar *menuBar)
 {
-    QMenu *fileMenu = menuBar->addMenu("&Файл");
+    QMenu *fileMenu = menuBar->addMenu(tr("&Файл"));
 
-    QAction *newAction = fileMenu->addAction("&Новая конфигурация");
+    QAction *newAction = fileMenu->addAction(tr("&Новая конфигурация"));
     newAction->setShortcut(QKeySequence::New);
     connect(newAction, &QAction::triggered, this, &MainMenu::newConfigurationRequested);
 
-    QAction *openAction = fileMenu->addAction("&Открыть...");
+    QAction *openAction = fileMenu->addAction(tr("&Открыть..."));
     openAction->setShortcut(QKeySequence::Open);
     connect(openAction, &QAction::triggered, this, &MainMenu::openFileRequested);
 
-    saveAction = fileMenu->addAction("&Сохранить");
+    saveAction = fileMenu->addAction(tr("&Сохранить"));
     saveAction->setShortcut(QKeySequence::Save);
     saveAction->setEnabled(false);
     connect(saveAction, &QAction::triggered, [](){
@@ -75,7 +78,7 @@ void MainMenu::initFileMenu(QMenuBar *menuBar)
 
 #if defined(Q_OS_WIN)
 
-    QAction *openCmdAction = fileMenu->addAction("Открыть консоль cmd...");
+    QAction *openCmdAction = fileMenu->addAction(tr("Открыть консоль cmd..."));
     connect(openCmdAction, &QAction::triggered, this, [](){
         QString lbmbcDir = QCoreApplication::applicationDirPath();
         QDir dir(lbmbcDir);
@@ -96,7 +99,7 @@ void MainMenu::initFileMenu(QMenuBar *menuBar)
         QProcess::startDetached(program, arguments, lbmbcDir);
     });
 
-    QAction *openPowerShellAction = fileMenu->addAction("Открыть консоль PowerShell...");
+    QAction *openPowerShellAction = fileMenu->addAction(tr("Открыть консоль PowerShell..."));
     connect(openPowerShellAction, &QAction::triggered, this, [](){
         QString lbmbcDir = QCoreApplication::applicationDirPath();
         QDir dir(lbmbcDir);
@@ -119,7 +122,7 @@ void MainMenu::initFileMenu(QMenuBar *menuBar)
 
 #endif // Q_OS_WIN
 #ifdef Q_OS_LINUX
-    QAction *openTerminalAction = fileMenu->addAction("Открыть терминал...");
+    QAction *openTerminalAction = fileMenu->addAction(tr("Открыть терминал..."));
     connect(openTerminalAction, &QAction::triggered, this, [](){
         QString lbmbcDir = QCoreApplication::applicationDirPath();
 
@@ -129,7 +132,7 @@ void MainMenu::initFileMenu(QMenuBar *menuBar)
         arguments << "--working-directory" << lbmbcDir;
         QProcess::startDetached(program, arguments, lbmbcDir);
     });
-    QAction *openTerminalLbAction = fileMenu->addAction("Открыть терминал logicbox...");
+    QAction *openTerminalLbAction = fileMenu->addAction(tr("Открыть терминал logicbox..."));
     connect(openTerminalLbAction, &QAction::triggered, this, [](){
         QDir repoDir(AppSettings::firmwareRepositoryRoot());
         repoDir.cd("../bin");
@@ -156,13 +159,13 @@ void MainMenu::initFileMenu(QMenuBar *menuBar)
 
 void MainMenu::initEditMenu(QMenuBar *menuBar)
 {
-    editMenu = menuBar->addMenu("&Правка");
+    editMenu = menuBar->addMenu(tr("&Правка"));
     connect(editMenu, &QMenu::aboutToShow, this, &MainMenu::onEditMenuAboutToShow);
 }
 
 void MainMenu::initViewMenu(QMenuBar *menuBar)
 {
-    viewMenu = menuBar->addMenu("&Вид");
+    viewMenu = menuBar->addMenu(tr("&Вид"));
 
     treeAct = viewMenu->addAction(tr("Дерево устройств"));
     treeAct->setCheckable(true);
@@ -188,7 +191,7 @@ void MainMenu::initViewMenu(QMenuBar *menuBar)
         }
     });
 
-    logAct = viewMenu->addAction("Логи");
+    logAct = viewMenu->addAction(tr("Логи"));
     logAct->setCheckable(true);
     connect(logAct, &QAction::triggered, this, [this](){
         if (p_mainWindow->getLogDock() && p_mainWindow->getLogDock()->isVisible())
@@ -202,23 +205,23 @@ void MainMenu::initViewMenu(QMenuBar *menuBar)
 
     viewMenu->addSeparator();
 
-    watchMenu = new QMenu("Watch", viewMenu);
+    watchMenu = new QMenu(tr("Watch"), viewMenu);
     viewMenu->addMenu(watchMenu);
 
-    createWatch = new QAction("Создать новый", this);
+    createWatch = new QAction(tr("Создать новый"), this);
     createWatch->setShortcut(QKeySequence("Ctrl+W"));
     watchMenu->addAction(createWatch);
     connect(createWatch, &QAction::triggered, this, [this](){
         static QAtomicInt counter(0);
         plc::CommandContext ctx;
-        ctx.name = QString("new %1").arg(counter.fetchAndAddRelaxed(1) + 1);
+        ctx.name = QString(tr("new %1")).arg(counter.fetchAndAddRelaxed(1) + 1);
         WatchDockWidget* watch = p_mainWindow->createWatchDockWidget(ctx);
         watch->show();
         watch->raise();
         watch->setFocus();
     });
 
-    confMenu = new QMenu("Открытые конфигурации", viewMenu);
+    confMenu = new QMenu(tr("Открытые конфигурации"), viewMenu);
     confMenu->setEnabled(false);
     viewMenu->addMenu(confMenu);
 
@@ -227,14 +230,14 @@ void MainMenu::initViewMenu(QMenuBar *menuBar)
 
 void MainMenu::initPlcMenu(QMenuBar *menuBar)
 {
-    plcMenu = menuBar->addMenu("&ПЛК");
+    plcMenu = menuBar->addMenu(tr("&ПЛК"));
     connect(plcMenu, &QMenu::aboutToShow, this, &MainMenu::onPlcMenuAboutToShow);
 }
 
 
 void MainMenu::initHelpMenu(QMenuBar *menuBar)
 {
-QMenu *helpMenu = menuBar->addMenu("&Справка");
+    QMenu *helpMenu = menuBar->addMenu(tr("&Справка"));
 
     QAction *aboutAct = helpMenu->addAction(tr("&О программе..."));
     aboutAct->setStatusTip(tr("Показать информацию о приложении"));
@@ -266,10 +269,10 @@ QMenu *helpMenu = menuBar->addMenu("&Справка");
 
     });
 
-    QAction *aboutQtAct = helpMenu->addAction("О библиотеке &Qt...");
+    QAction *aboutQtAct = helpMenu->addAction(tr("О библиотеке &Qt..."));
 
     connect(aboutQtAct, &QAction::triggered, this, [this]() {
-        QMessageBox::aboutQt(p_mainWindow, "О библиотеке Qt");
+        QMessageBox::aboutQt(p_mainWindow, tr("О библиотеке Qt"));
     });
 }
 
@@ -279,7 +282,7 @@ void MainMenu::onEditMenuAboutToShow()
     QList<QAction*> actions = activeTextActions();
 
     if (actions.isEmpty()) {
-        QAction *emptyAct = editMenu->addAction("Нет активного редактора");
+        QAction *emptyAct = editMenu->addAction(tr("Нет активного редактора"));
         emptyAct->setEnabled(false);
         // return;
     }
@@ -293,10 +296,10 @@ void MainMenu::onEditMenuAboutToShow()
 
     QAction *firmwareRepositoryAction =
         editMenu->addAction(
-            "Репозиторий прошивок...");
+        tr("Репозиторий прошивок..."));
 
     firmwareRepositoryAction->setStatusTip(
-        "Изменить корневой каталог репозитория LogicBox с папкой firmware");
+        tr("Изменить корневой каталог репозитория LogicBox с папкой firmware"));
 
     connect(
         firmwareRepositoryAction,
@@ -306,13 +309,20 @@ void MainMenu::onEditMenuAboutToShow()
             p_mainWindow->editFirmwareRepositorySettings();
         });
 
-    QAction *firmwareReposiporyUpdate = editMenu->addAction("Сканировать репозиторий...");
-    firmwareReposiporyUpdate->setStatusTip("Сканировать репозиторий прошивок после git pull");
+    QAction *firmwareReposiporyUpdate = editMenu->addAction(tr("Сканировать репозиторий..."));
+    firmwareReposiporyUpdate->setStatusTip(tr("Сканировать репозиторий прошивок после git pull"));
     connect(firmwareReposiporyUpdate, &QAction::triggered, this, [this](){
         CommandManager::instance()->getFirmwareAnalyzer()->update();
         p_mainWindow->getTreeDock()->reloadFirmwareRepositoryFromSettings();
     });
 
+    editMenu->addSeparator();
+
+    QAction *SettingsAction = editMenu->addAction(tr("Параметры"));
+    connect(SettingsAction, &QAction::triggered, this, [this](){
+        SettingsDialog dialog(p_mainWindow);
+        dialog.exec();
+    });
 }
 
 void MainMenu::onViewMenuAboutToShow()
@@ -381,21 +391,20 @@ void MainMenu::onPlcMenuAboutToShow()
 
     if (logMenu)
         logMenu->deleteLater();
-    logMenu = new QMenu("Запросить лог у...", plcMenu);
+    logMenu = new QMenu(tr("Запросить лог у..."), plcMenu);
     connect(logMenu, &QMenu::aboutToShow, this, [this](){
         const auto &ldmap = plcManager::instanse()->getldmap();
         for (auto it = ldmap.begin(); it != ldmap.end(); ++it){
-            auto ctx = plcManager::instanse()->getctx(it.key(), it.value().name,
-                                                      plcManager::instanse()->getIf(it.key()));
+            auto ctx = plcManager::instanse()->getctx(it.key(), it.value().name);
             CommandManager::instance()->getLogMenu(ctx, logMenu, it.value().name);
         }
     });
     if (connectMenu)
         connectMenu->deleteLater();
-    connectMenu = new QMenu("Подключиться к...", plcMenu);
+    connectMenu = new QMenu(tr("Подключиться к..."), plcMenu);
 
 
-    QAction *discoverAction = plcMenu->addAction("Сканироавть");
+    QAction *discoverAction = plcMenu->addAction(tr("Сканироавть"));
     connect(discoverAction, &QAction::triggered, this, [this](){
         if (!p_mainWindow->getDiscoverDock().get()){
             auto dock = p_mainWindow->createDiscoverDockWidget();
@@ -415,7 +424,7 @@ void MainMenu::onPlcMenuAboutToShow()
         plcMenu->addAction(confAction);
     }
     else{
-        confAction = plcMenu->addAction("Сконфигурировать");
+        confAction = plcMenu->addAction(tr("Сконфигурировать"));
         confAction->setEnabled(false);
     }
 
@@ -447,7 +456,7 @@ void MainMenu::onPlcMenuAboutToShow()
             });
         }
         if (!connectedWatch.isEmpty()){
-            auto disconnectAll = connectMenu->addAction("Отключить все");
+            auto disconnectAll = connectMenu->addAction(tr("Отключить все"));
             connect(disconnectAll, &QAction::triggered, this, [connectedWatch](){
                 for (auto w : connectedWatch)
                     w->toggleConnection();

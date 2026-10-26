@@ -14,14 +14,14 @@
 FirmwareRepositoryDialog::FirmwareRepositoryDialog(QWidget *parent)
     : QDialog(parent)
 {
-    setWindowTitle(QStringLiteral("Репозиторий прошивок LogicBox"));
+    setWindowTitle(tr("Репозиторий прошивок LogicBox"));
     setModal(true);
     setMinimumWidth(650);
 
     auto *layout = new QVBoxLayout(this);
 
     auto *description = new QLabel(
-        QStringLiteral("Укажите корневой каталог репозитория LogicBox. "
+        tr("Укажите корневой каталог репозитория LogicBox. "
                        "Внутри него должна находиться папка firmware. "
                        "Путь можно ввести вручную или выбрать через кнопку «Обзор…»."),
         this);
@@ -30,12 +30,12 @@ FirmwareRepositoryDialog::FirmwareRepositoryDialog(QWidget *parent)
 
     auto *pathLayout = new QHBoxLayout;
     m_pathEdit = new QLineEdit(this);
-    m_pathEdit->setText(QDir::toNativeSeparators(AppSettings::firmwareRepositoryRoot()));
-    m_pathEdit->setPlaceholderText(QStringLiteral("Например: C:\\git\\logicbox"));
+    m_pathEdit->setText(QDir::toNativeSeparators(QFileInfo(AppSettings::firmwareRepositoryRoot()).absolutePath()));
+    m_pathEdit->setPlaceholderText(tr("Например: C:\\git\\logicbox"));
     m_pathEdit->setClearButtonEnabled(true);
     pathLayout->addWidget(m_pathEdit, 1);
 
-    auto *browseButton = new QPushButton(QStringLiteral("Обзор…"), this);
+    auto *browseButton = new QPushButton(tr("Обзор…"), this);
     connect(browseButton, &QPushButton::clicked,
             this, &FirmwareRepositoryDialog::browse);
     pathLayout->addWidget(browseButton);
@@ -43,7 +43,7 @@ FirmwareRepositoryDialog::FirmwareRepositoryDialog(QWidget *parent)
 
     // if (m_allowEmpty) {
         auto *hint = new QLabel(
-            QStringLiteral("Чтобы сбросить сохранённый путь, очистите поле и нажмите «Сохранить»."),
+            tr("Чтобы сбросить сохранённый путь, очистите поле и нажмите «Сохранить»."),
             this);
         hint->setWordWrap(true);
         layout->addWidget(hint);
@@ -52,8 +52,8 @@ FirmwareRepositoryDialog::FirmwareRepositoryDialog(QWidget *parent)
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel,
                                          Qt::Horizontal,
                                          this);
-    buttons->button(QDialogButtonBox::Save)->setText(QStringLiteral("Сохранить"));
-    buttons->button(QDialogButtonBox::Cancel)->setText(QStringLiteral("Отмена"));
+    buttons->button(QDialogButtonBox::Save)->setText(tr("Сохранить"));
+    buttons->button(QDialogButtonBox::Cancel)->setText(tr("Отмена"));
     connect(buttons, &QDialogButtonBox::accepted,
             this, &FirmwareRepositoryDialog::validateAndAccept);
     connect(buttons, &QDialogButtonBox::rejected,
@@ -81,7 +81,7 @@ void FirmwareRepositoryDialog::browse()
 
     const QString selected = QFileDialog::getExistingDirectory(
         this,
-        QStringLiteral("Выберите каталог репозитория LogicBox"),
+        tr("Выберите каталог репозитория LogicBox"),
         initialPath,
         QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
 
@@ -109,8 +109,8 @@ void FirmwareRepositoryDialog::validateAndAccept()
     const QFileInfo repositoryInfo(selected);
     if (!repositoryInfo.exists() || !repositoryInfo.isDir()) {
         QMessageBox::warning(this,
-                             QStringLiteral("Репозиторий прошивок"),
-                             QStringLiteral("Каталог не найден:\n%1")
+                             tr("Репозиторий прошивок"),
+                             tr("Каталог не найден:\n%1")
                                  .arg(QDir::toNativeSeparators(selected)));
         return;
     }
@@ -121,8 +121,8 @@ void FirmwareRepositoryDialog::validateAndAccept()
     if (!firmwareInfo.exists() || !firmwareInfo.isDir()) {
         QMessageBox::warning(
             this,
-            QStringLiteral("Репозиторий прошивок"),
-            QStringLiteral("В выбранном каталоге не найдена папка firmware:\n%1")
+            tr("Репозиторий прошивок"),
+            tr("В выбранном каталоге не найдена папка firmware:\n%1")
                 .arg(QDir::toNativeSeparators(firmwarePath)));
         return;
     }

@@ -106,7 +106,7 @@ varView::varView(QWidget *parent)
     // 4. Создаем модель данных и привязываем её к таблице
     varModel = new QStandardItemModel(this);
     varTableView->setModel(varModel);
-    QStringList headers = {"Name", "Var", "Var_out", "Multi", "Retain", "Init"};
+    QStringList headers = {tr("Name"), tr("Var"), tr("Var_out"), tr("Multi"), tr("Retain"), tr("Init")};
 
     varModel->setHorizontalHeaderLabels(headers);
     varLayout->addWidget(varTableView);
@@ -120,11 +120,11 @@ void varView::updateData(lbyaml *parser)
 
     lbyaml::lbvarstat statstr = parser->getVarStat();
     logPLC(parser->getlbhost(), LogCatcher::Info, LogCatcher::wrapYes)<<
-        "Number of variables :"<<statstr.quantity<<Qt::endl<<
-        "Must Multisource :" << (statstr.mustMultisource.empty() ? "none" : statstr.mustMultisource.join(", "))<<Qt::endl<<
-        "Handling Var :" << (statstr.handlingVar.empty() ? "none" : statstr.handlingVar.join(", "))<<Qt::endl<<
-        "not added Forte :" << (statstr.noaddedForte.empty() ? "none" : statstr.noaddedForte.join(", "))<<Qt::endl<<
-        "Error :" << parser->getErr();
+        tr("Number of variables :")<<statstr.quantity<<Qt::endl<<
+        tr("Must Multisource :") << (statstr.mustMultisource.empty() ? tr("none") : statstr.mustMultisource.join(", "))<<Qt::endl<<
+        tr("Hanging variables :") << (statstr.handlingVar.empty() ? tr("none") : statstr.handlingVar.join(", "))<<Qt::endl<<
+        tr("not added Forte :") << (statstr.noaddedForte.empty() ? tr("none") : statstr.noaddedForte.join(", "))<<Qt::endl<<
+        tr("Error :") << parser->getErr();
     m_lbVarMap = parser->getLbVarMap();
 
 
@@ -218,7 +218,7 @@ void varView::showContextMenu(const QPoint &pos)
     if (varName.isEmpty()) return;
 
     QMenu menu(this);
-    QAction *addToWatchAction = menu.addAction("Добавить в Watch");
+    QAction *addToWatchAction = menu.addAction(tr("Добавить в Watch"));
 
     connect(addToWatchAction, &QAction::triggered, this, [this, varName]() {
         emit addVariableToWatch(varName);

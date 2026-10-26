@@ -56,7 +56,7 @@ public:
                           const QStringList &otaSlots);
     void startRestartAll (const plc::CommandContext &ctx);
     void startFbootDownload(const plc::CommandContext &ctx, const QString &filePath);
-    void startLog (const plc::CommandContext &ctx, const QString &flag);
+    void startLog (const plc::CommandContext &ctx, const QString &flag, const QString &fileName = {});
     void stopLog();
 
     template <typename F>
@@ -85,8 +85,7 @@ public:
     WatchSession* startWatch(const plc::CommandContext &ctx, const QStringList &arg, QObject *p_watchDock = nullptr);
     QStringList activeWatchKeys() const;
 
-    QString getIf(const QString &ipv6);
-    plc::CommandContext getctx(const QString &ipv6, const QString &name = {}, const QString &ifce = {});
+    plc::CommandContext getctx(const QString &ipv6, const QString &name = {});
     plc::CommandContext getctx(const QHostAddress &host, const QString &name = {});
     const QMap<QString, discover::lbinfo>& getldmap() const;
 
@@ -117,12 +116,13 @@ private:
     QPointer<LBclient> activeOtaClient;
     QPointer<lbprocess> prcActiveOtaClient;
     QPointer<LBclient> activeLogClient;
-    void prcOtaSender(const QString &lbhost, const QStringList &result, const QString &message, const QModbusDevice::Error error);
+    void prcOtaSender(const plc::CommandContext &ctx, const QStringList &result, const QString &message, const QModbusDevice::Error error);
 
     QMap<QString, WatchSession*> activeWatchSessions;
     QMap<QString, discover::lbinfo> last_ldmap;
     bool SearchDiscoverRuning = false;
     QString getFastIfce(const discover::lbinfo &val);
+    QString getIf(const QString &ipv6);
 };
 
 #endif // PLCMANAGER_H
