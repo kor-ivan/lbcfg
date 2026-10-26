@@ -126,12 +126,16 @@ set(TS_FILES
 # 1. Получаем реальный абсолютный путь к lupdate через нативный таргет Qt6
 get_target_property(LUPDATE_EXE Qt6::lupdate LOCATION)
 
+option(UPDATE_TRANSLATIONS "Обновлять исходные файлы перевода .ts при конфигурации" OFF)
+
 # 2. НАДЕЖНЫЙ ЗАПУСК LUPDATE: сканируем только папки вашего проекта
-execute_process(
-    COMMAND "${LUPDATE_EXE}" ${LIB_SOURCES} -ts ${TS_FILES} -extensions cpp -no-obsolete
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    COMMAND_ERROR_IS_FATAL ANY
-)
+if(UPDATE_TRANSLATIONS)
+    execute_process(
+        COMMAND "${LUPDATE_EXE}" ${LIB_SOURCES} -ts ${TS_FILES} -extensions cpp -no-obsolete
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        COMMAND_ERROR_IS_FATAL ANY
+    )
+endif()
 
 # 3. Указываем lrelease, куда сохранять скомпилированные .qm
 set_source_files_properties(${TS_FILES}
