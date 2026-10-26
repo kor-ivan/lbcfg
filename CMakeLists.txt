@@ -123,22 +123,26 @@ set(TS_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/translations/lbcfg_en.ts"
 )
 
+# 1. Получаем реальный абсолютный путь к lupdate через нативный таргет Qt6
+get_target_property(LUPDATE_EXE Qt6::lupdate LOCATION)
+
+# 2. НАДЕЖНЫЙ ЗАПУСК LUPDATE: сканируем только папки вашего проекта
+execute_process(
+    COMMAND "${LUPDATE_EXE}" ${LIB_SOURCES} -ts ${TS_FILES} -extensions cpp -no-obsolete
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    COMMAND_ERROR_IS_FATAL ANY
+)
+
+# 3. Указываем lrelease, куда сохранять скомпилированные .qm
 set_source_files_properties(${TS_FILES}
     PROPERTIES OUTPUT_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/translations"
 )
 
+# 4. Вызываем макрос Qt только для компиляции (без параметров поиска, чтобы Ninja не путался)
 qt_add_translations(lbcfg_lib
     TS_FILES
-        "${CMAKE_CURRENT_SOURCE_DIR}/translations/lbcfg_ru.ts"
-        "${CMAKE_CURRENT_SOURCE_DIR}/translations/lbcfg_en.ts"
-    SOURCES
-        ${EXE_SOURCES}
-        ${LIB_SOURCES}
-    QM_OUTPUT_DIRECTORY
-        "${CMAKE_CURRENT_BINARY_DIR}/translations"
+        ${TS_FILES}
 )
-target_sources(lbcfg_lib PRIVATE ${QM_FILES})
-
 
 # === АВТО-ВЕРСИЯ: Подключаем сгенерированные заголовочные файлы к lbcfg ===
 if(${QT_VERSION} VERSION_LESS 6.1.0)

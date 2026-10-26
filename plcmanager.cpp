@@ -8,9 +8,6 @@
 plcManager::plcManager()
 {}
 
-// plcManager::~plcManager()
-// {}
-
 void plcManager::scanDevice(const plc::CommandContext &ctx)
 {
     logApp() << QString(tr("Starting scan process for: %1; IF = %2; name = %3")).arg(ctx.ipv6str(), ctx.ipv6.scopeId(), ctx.name);
@@ -23,10 +20,11 @@ void plcManager::scanDevice(const plc::CommandContext &ctx)
             }
             );
     lbprocess *lbproc = new lbprocess(this, lbc);
+    lbproc->setNumOfVarRetries(AppSettings::getMaxConfigReadRetries());
     connect(lbproc, &lbprocess::outMessage, this,
-            [](const QString &lbstr, const QString &message, const QModbusDevice::Error error){
+            [ctx](const QString &lbstr, const QString &message, const QModbusDevice::Error error){
                 if(error==QModbusDevice::NoError)
-                    debugPLC()<<lbstr;
+                    logPLC(ctx.name)<<lbstr;
                 else
                     debugPLC()<<message;
             }
@@ -106,13 +104,16 @@ bool plcManager::startFirmware(const plc::CommandContext &ctx, const QString &fi
 
     emit firmwareStarted(ctx, startMessage);
     activeOtaClient = new LBclient(this, {lbkey});
-    // QPointer<LBclient> otaClient(activeOtaClient);
+    activeOtaClient -> setMaxOtaTimeOutCount(AppSettings::getMaxFirmwareRetries());
     activeOtaClient->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
     activeOtaClient->setOtaFilename(filePath);
     if (ctx.slot != -1)
         activeOtaClient->setSlot(ctx.slot);
 
-    connect(activeOtaClient, &LBclient::ExecuteCompleted, this, &plcManager::prcOtaSender);
+    connect(activeOtaClient, &LBclient::ExecuteCompleted, this, [this, ctx]
+            (const QString& lbhost, const QStringList& result, const QString& message, const QModbusDevice::Error error){
+        prcOtaSender(ctx, result, message, error);
+    });
     connect(activeOtaClient, &LBclient::lbDisconnect, this,
             [this, ctx](const QString& lbhost, const QString& message, const QModbusDevice::Error error) {
                 if (!message.isEmpty()){
@@ -180,9 +181,11 @@ void plcManager::startFirmwareAll(const plc::CommandContext &ctx, const QString 
                 arg(AppSettings::getFirmwareIgnoreCPU()?tr("with the option: ignore the processor module"):"");
     activeOtaClient = new LBclient(this);
     activeOtaClient->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
+    activeOtaClient -> setMaxOtaTimeOutCount(AppSettings::getMaxFirmwareRetries());
     prcActiveOtaClient = new lbprocess(this, activeOtaClient,
                                        static_cast<lbprocess::Strategy>(AppSettings::getFirmwareStrtegy()));
     prcActiveOtaClient->setOtaPath(filePath);
+    prcActiveOtaClient->setNumOfVarRetries(AppSettings::getMaxConfigReadRetries());
     if (!otaSlots.isEmpty())
         prcActiveOtaClient -> setPreOtaSlot(otaSlots);
     emit firmwareStarted(ctx, startMessage);
@@ -191,7 +194,10 @@ void plcManager::startFirmwareAll(const plc::CommandContext &ctx, const QString 
                 logPLC(ctx.name) <<lbstr<<message<<error;
                 emit errorOccurred(lbstr);
             });
-    connect(prcActiveOtaClient, &lbprocess::outOta, this, &plcManager::prcOtaSender);
+    connect(prcActiveOtaClient, &lbprocess::outOta, this, [this, ctx]
+            (const QString& lbhost, const QStringList& result, const QString& message, const QModbusDevice::Error error){
+                prcOtaSender(ctx, result, message, error);
+            });
     connect(activeOtaClient, &LBclient::lbDisconnect, this,
             [this, ctx]
             (const QString& lbhost, const QString& message, const QModbusDevice::Error error){
@@ -214,7 +220,9 @@ void plcManager::startRestartAll(const plc::CommandContext &ctx)
     debugApp()<<"plcManager::startRestartAll for"<<ctx.ipv6<<ctx.ipv6.scopeId();
     LBclient *lbc = new LBclient (this);
     lbc->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
+    lbc -> setMaxOtaTimeOutCount(AppSettings::getMaxFirmwareRetries());
     lbprocess *prc = new lbprocess(this, lbc);
+    prc->setNumOfVarRetries(AppSettings::getMaxConfigReadRetries());
     connect(prc, &lbprocess::outMessage, this, [this]
             (const QString& lbstr, const QString& message, const QModbusDevice::Error error){
                 emit eventOccurred(lbstr);
@@ -340,14 +348,16 @@ QString plcManager::getFastIfce(const discover::lbinfo &val)
     return ifce;
 }
 
-void plcManager::prcOtaSender(const QString &lbhost, const QStringList &result, const QString &message, const QModbusDevice::Error error)
+void plcManager::prcOtaSender(const plc::CommandContext &ctx, const QStringList &result, const QString &message, const QModbusDevice::Error error)
 {
     if(error==QModbusDevice::NoError){
         int prc = (int)result.value(1, "").toFloat();
         emit firmwareProgressChanged(prc);
     }
-    if (!message.isEmpty())
+    if (!message.isEmpty()){
+        logPLC(ctx.name) << message;
         emit errorOccurred(message);
+    }
 }
 
 const QMap<QString, discover::lbinfo>& plcManager::getldmap() const

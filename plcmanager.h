@@ -116,7 +116,7 @@ private:
     QPointer<LBclient> activeOtaClient;
     QPointer<lbprocess> prcActiveOtaClient;
     QPointer<LBclient> activeLogClient;
-    void prcOtaSender(const QString &lbhost, const QStringList &result, const QString &message, const QModbusDevice::Error error);
+    void prcOtaSender(const plc::CommandContext &ctx, const QStringList &result, const QString &message, const QModbusDevice::Error error);
 
     QMap<QString, WatchSession*> activeWatchSessions;
     QMap<QString, discover::lbinfo> last_ldmap;

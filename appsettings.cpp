@@ -326,3 +326,34 @@ void AppSettings::clearAppLanguage() {
     clear(appLanguageKey);
 }
 
+// Валидатор для количества повторов
+bool isValidRetryCount(int val) {
+    return val >= 0 && val <= 5;
+}
+
+// --- Max Firmware Retries ---
+int AppSettings::getMaxFirmwareRetries() {
+    return get<int>(maxFirmwareRetriesKey, 3, isValidRetryCount);
+}
+
+void AppSettings::setMaxFirmwareRetries(const int count) {
+    set<int>(maxFirmwareRetriesKey, count, isValidRetryCount);
+}
+
+void AppSettings::clearMaxFirmwareRetries() {
+    clear(maxFirmwareRetriesKey);
+}
+
+// --- Max Config Read Retries ---
+int AppSettings::getMaxConfigReadRetries() {
+    return get<int>(maxConfigReadRetriesKey, 3, isValidRetryCount);
+}
+
+void AppSettings::setMaxConfigReadRetries(const int count) {
+    set<int>(maxConfigReadRetriesKey, count, isValidRetryCount);
+}
+
+void AppSettings::clearMaxConfigReadRetries() {
+    clear(maxConfigReadRetriesKey);
+}
+

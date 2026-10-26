@@ -135,6 +135,20 @@ void SettingsDialog::saveSettings()
                                                     tr("Язык интерфейса изменен. Пожалуйста, перезапустите приложение для применения изменений."));
                        });
     }
+
+    if (maxFirmwareRetriesSpin) {
+        updateSettings(maxFirmwareRetriesSpin,
+                       maxFirmwareRetriesSpin->value(),
+                       AppSettings::getMaxFirmwareRetries(),
+                       AppSettings::setMaxFirmwareRetries);
+    }
+
+    if (maxConfigReadRetriesSpin) {
+        updateSettings(maxConfigReadRetriesSpin,
+                       maxConfigReadRetriesSpin->value(),
+                       AppSettings::getMaxConfigReadRetries(),
+                       AppSettings::setMaxConfigReadRetries);
+    }
 }
 
 void SettingsDialog::setupUi()
@@ -285,7 +299,40 @@ QWidget *SettingsDialog::createFirmwareSettings()
         ignoreCpuModuleCheck->setChecked(AppSettings::getFirmwareIgnoreCPU());
     });
 
+    auto *retriesGroupBox = new QGroupBox(tr("Повторные запросы"), page);
+    auto *groupFormLayout = new QFormLayout(retriesGroupBox);
+    groupFormLayout->setContentsMargins(10, 15, 10, 10);
+    groupFormLayout->setSpacing(8);
+    groupFormLayout->setFieldGrowthPolicy(QFormLayout::FieldsStayAtSizeHint);
+
+    // Повторы при прошивке
+    maxFirmwareRetriesSpin = new QSpinBox(page);
+    maxFirmwareRetriesSpin->setMinimumWidth(150);
+    maxFirmwareRetriesSpin->setRange(0, 5);
+    maxFirmwareRetriesSpin->setValue(AppSettings::getMaxFirmwareRetries());
+    QPushButton *resetMaxFirmwareRetriesBtn = nullptr;
+    auto maxFirmwareRetriesRow = createSettingsLine(maxFirmwareRetriesSpin, &resetMaxFirmwareRetriesBtn);
+    groupFormLayout->addRow(tr("При прошивке:"), maxFirmwareRetriesRow);
+    connect(resetMaxFirmwareRetriesBtn, &QPushButton::clicked, this, [this](){
+        AppSettings::clearMaxFirmwareRetries();
+        maxFirmwareRetriesSpin->setValue(AppSettings::getMaxFirmwareRetries());
+    });
+
+    // Повторы при чтении конфигурации
+    maxConfigReadRetriesSpin = new QSpinBox(page);
+    maxConfigReadRetriesSpin->setMinimumWidth(150);
+    maxConfigReadRetriesSpin->setRange(0, 5);
+    maxConfigReadRetriesSpin->setValue(AppSettings::getMaxConfigReadRetries());
+    QPushButton *resetMaxConfigReadRetriesBtn = nullptr;
+    auto maxConfigReadRetriesRow = createSettingsLine(maxConfigReadRetriesSpin, &resetMaxConfigReadRetriesBtn);
+    groupFormLayout->addRow(tr("При чтении конфигурации:"), maxConfigReadRetriesRow);
+    connect(resetMaxConfigReadRetriesBtn, &QPushButton::clicked, this, [this](){
+        AppSettings::clearMaxConfigReadRetries();
+        maxConfigReadRetriesSpin->setValue(AppSettings::getMaxConfigReadRetries());
+    });
+
     layout->addLayout(formLayout);
+    layout->addWidget(retriesGroupBox);
     layout->addStretch();
     return page;
 }

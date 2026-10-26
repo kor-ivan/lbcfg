@@ -45,6 +45,8 @@ private:
     QComboBox *plcLogLevelCombo = nullptr;
     QSpinBox *maxLogBlockSpin = nullptr;
     QComboBox *languageCombo = nullptr;
+    QSpinBox *maxFirmwareRetriesSpin = nullptr;
+    QSpinBox *maxConfigReadRetriesSpin = nullptr;
 
     QWidget* createFirmwareSettings();
     QWidget* createYAMLSettings();

@@ -947,343 +947,358 @@
         <translation>Язык интерфейса изменён. Перезапустите приложение, чтобы изменения вступили в силу.</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="142"/>
+        <location filename="../settingsdialog.cpp" line="156"/>
         <source>Настройки</source>
         <translation>Настройки</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="179"/>
+        <location filename="../settingsdialog.cpp" line="193"/>
         <source>Прошивка</source>
         <translation>Прошивка</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="181"/>
+        <location filename="../settingsdialog.cpp" line="195"/>
         <source>YAML</source>
         <translation>YAML</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="183"/>
+        <location filename="../settingsdialog.cpp" line="197"/>
         <source>Логи</source>
         <translation>Журналы</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="185"/>
+        <location filename="../settingsdialog.cpp" line="199"/>
         <source>Язык</source>
         <translation>Язык</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="208"/>
+        <location filename="../settingsdialog.cpp" line="222"/>
         <source>ОК</source>
         <translation>ОК</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="209"/>
+        <location filename="../settingsdialog.cpp" line="223"/>
         <source>Отмена</source>
         <translation>Отмена</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="210"/>
+        <location filename="../settingsdialog.cpp" line="224"/>
         <source>Применить</source>
         <translation>Применить</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="235"/>
+        <location filename="../settingsdialog.cpp" line="249"/>
         <source>&lt;h3&gt;Настройки прошивки устройств&lt;/h3&gt;</source>
         <translation>&lt;h3&gt;Настройки прошивки устройств&lt;/h3&gt;</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="242"/>
+        <location filename="../settingsdialog.cpp" line="256"/>
         <source>Репозиторий прошивок...</source>
         <translation>Репозиторий прошивок...</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="248"/>
+        <location filename="../settingsdialog.cpp" line="262"/>
         <source>Репозиторий:</source>
         <translation>Репозиторий:</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="265"/>
+        <location filename="../settingsdialog.cpp" line="279"/>
         <source>Только XZ (.bin.xz)</source>
         <translation>Только XZ (.bin.xz)</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="266"/>
+        <location filename="../settingsdialog.cpp" line="280"/>
         <source>Только BIN (.bin)</source>
         <translation>Только BIN (.bin)</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="267"/>
+        <location filename="../settingsdialog.cpp" line="281"/>
         <source>Сначала XZ</source>
         <translation>Сначала XZ</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="268"/>
+        <location filename="../settingsdialog.cpp" line="282"/>
         <source>Сначала BIN</source>
         <translation>Сначала BIN</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="272"/>
+        <location filename="../settingsdialog.cpp" line="286"/>
         <source>Стратегия:</source>
         <translation>Стратегия:</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="278"/>
+        <location filename="../settingsdialog.cpp" line="292"/>
         <source>Игнорировать процессорный модуль при групповой прошивке</source>
         <translation>Игнорировать процессорный модуль при групповой прошивке</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="298"/>
+        <location filename="../settingsdialog.cpp" line="302"/>
+        <source>Повторные запросы</source>
+        <translation>Повторные запросы</translation>
+    </message>
+    <message>
+        <location filename="../settingsdialog.cpp" line="315"/>
+        <source>При прошивке:</source>
+        <translation>При прошивке:</translation>
+    </message>
+    <message>
+        <location filename="../settingsdialog.cpp" line="328"/>
+        <source>При чтении конфигурации:</source>
+        <translation>При чтении конфигурации:</translation>
+    </message>
+    <message>
+        <location filename="../settingsdialog.cpp" line="345"/>
         <source>&lt;h3&gt;Настройки представления YAML&lt;/h3&gt;</source>
         <translation>&lt;h3&gt;Настройки отображения YAML&lt;/h3&gt;</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="312"/>
+        <location filename="../settingsdialog.cpp" line="359"/>
         <source>Уровень компактного представления</source>
         <translation>Уровень компактного отображения</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="320"/>
+        <location filename="../settingsdialog.cpp" line="367"/>
         <source>Блочный</source>
         <translation>Блочный</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="321"/>
+        <location filename="../settingsdialog.cpp" line="368"/>
         <source>Компактный</source>
         <translation>Компактный</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="325"/>
+        <location filename="../settingsdialog.cpp" line="372"/>
         <source>Тип представления списков</source>
         <translation>Тип отображения списков</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="331"/>
+        <location filename="../settingsdialog.cpp" line="378"/>
         <source>Авто отступ по Enter</source>
         <translation>Автоматический отступ при нажатии Enter</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="341"/>
+        <location filename="../settingsdialog.cpp" line="388"/>
         <source>Цвета подсветки синтаксиса</source>
         <translation>Цвета подсветки синтаксиса</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="349"/>
+        <location filename="../settingsdialog.cpp" line="396"/>
         <source>Черный</source>
         <translation>Чёрный</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="350"/>
+        <location filename="../settingsdialog.cpp" line="397"/>
         <source>Белый</source>
         <translation>Белый</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="351"/>
+        <location filename="../settingsdialog.cpp" line="398"/>
         <source>Темно-серый</source>
         <translation>Тёмно-серый</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="352"/>
+        <location filename="../settingsdialog.cpp" line="399"/>
         <source>Серый</source>
         <translation>Серый</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="353"/>
+        <location filename="../settingsdialog.cpp" line="400"/>
         <source>Светло-серый</source>
         <translation>Светло-серый</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="354"/>
+        <location filename="../settingsdialog.cpp" line="401"/>
         <source>Красный</source>
         <translation>Красный</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="355"/>
+        <location filename="../settingsdialog.cpp" line="402"/>
         <source>Темно-красный</source>
         <translation>Тёмно-красный</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="356"/>
+        <location filename="../settingsdialog.cpp" line="403"/>
         <source>Зеленый</source>
         <translation>Зелёный</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="357"/>
+        <location filename="../settingsdialog.cpp" line="404"/>
         <source>Темно-зеленый</source>
         <translation>Тёмно-зелёный</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="358"/>
+        <location filename="../settingsdialog.cpp" line="405"/>
         <source>Синий</source>
         <translation>Синий</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="359"/>
+        <location filename="../settingsdialog.cpp" line="406"/>
         <source>Темно-синий</source>
         <translation>Тёмно-синий</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="360"/>
+        <location filename="../settingsdialog.cpp" line="407"/>
         <source>Голубой/Бирюзовый</source>
         <translation>Голубой/бирюзовый</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="361"/>
+        <location filename="../settingsdialog.cpp" line="408"/>
         <source>Темно-бирюзовый</source>
         <translation>Тёмно-бирюзовый</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="362"/>
+        <location filename="../settingsdialog.cpp" line="409"/>
         <source>Пурпурный</source>
         <translation>Пурпурный</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="363"/>
+        <location filename="../settingsdialog.cpp" line="410"/>
         <source>Темно-пурпурный</source>
         <translation>Тёмно-пурпурный</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="364"/>
+        <location filename="../settingsdialog.cpp" line="411"/>
         <source>Желтый</source>
         <translation>Жёлтый</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="365"/>
+        <location filename="../settingsdialog.cpp" line="412"/>
         <source>Темно-желтый (Горчичный)</source>
         <translation>Тёмно-жёлтый (горчичный)</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="379"/>
+        <location filename="../settingsdialog.cpp" line="426"/>
         <source>Корневые ключи:</source>
         <translation>Корневые ключи:</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="380"/>
+        <location filename="../settingsdialog.cpp" line="427"/>
         <source>Внутренние ключи:</source>
         <translation>Внутренние ключи:</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="381"/>
+        <location filename="../settingsdialog.cpp" line="428"/>
         <source>Разделители:</source>
         <translation>Разделители:</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="382"/>
+        <location filename="../settingsdialog.cpp" line="429"/>
         <source>Одиночные значения:</source>
         <translation>Одиночные значения:</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="383"/>
+        <location filename="../settingsdialog.cpp" line="430"/>
         <source>Списки и массивы:</source>
         <translation>Списки и массивы:</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="384"/>
+        <location filename="../settingsdialog.cpp" line="431"/>
         <source>Строки в кавычках:</source>
         <translation>Строки в кавычках:</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="385"/>
+        <location filename="../settingsdialog.cpp" line="432"/>
         <source>Комментарии:</source>
         <translation>Комментарии:</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="399"/>
+        <location filename="../settingsdialog.cpp" line="446"/>
         <source>&lt;h3&gt;Настройки логирвания&lt;/h3&gt;</source>
         <translation>&lt;h3&gt;Настройки журналирования&lt;/h3&gt;</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="409"/>
+        <location filename="../settingsdialog.cpp" line="456"/>
         <source>Критический (Critical)</source>
         <translation>Критический (Critical)</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="410"/>
+        <location filename="../settingsdialog.cpp" line="457"/>
         <source>Авария (Alarm)</source>
         <translation>Авария (Alarm)</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="411"/>
+        <location filename="../settingsdialog.cpp" line="458"/>
         <source>Предупреждение (Warning)</source>
         <translation>Предупреждение (Warning)</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="412"/>
+        <location filename="../settingsdialog.cpp" line="459"/>
         <source>Инфо (Info)</source>
         <translation>Информация (Info)</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="413"/>
+        <location filename="../settingsdialog.cpp" line="460"/>
         <source>Отладка (Debug)</source>
         <translation>Отладка (Debug)</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="423"/>
+        <location filename="../settingsdialog.cpp" line="470"/>
         <source>Логи Приложения (App):</source>
         <translation>Журналы приложения (App):</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="436"/>
+        <location filename="../settingsdialog.cpp" line="483"/>
         <source>Логи Контроллера (PLC):</source>
         <translation>Журналы контроллера (PLC):</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="452"/>
+        <location filename="../settingsdialog.cpp" line="499"/>
         <source>Макс. количество строк:</source>
         <translation>Максимальное количество строк:</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="487"/>
+        <location filename="../settingsdialog.cpp" line="534"/>
         <source>&lt;h3&gt;Настройки языка&lt;/h3&gt;</source>
         <translation>&lt;h3&gt;Настройки языка&lt;/h3&gt;</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="498"/>
+        <location filename="../settingsdialog.cpp" line="545"/>
         <source>Русский</source>
         <translation>Русский</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="498"/>
-        <location filename="../settingsdialog.cpp" line="502"/>
+        <location filename="../settingsdialog.cpp" line="545"/>
+        <location filename="../settingsdialog.cpp" line="549"/>
         <source>English</source>
         <translation>Английский</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="500"/>
+        <location filename="../settingsdialog.cpp" line="547"/>
         <source>По умолчанию (%1)</source>
         <translation>По умолчанию (%1)</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="501"/>
+        <location filename="../settingsdialog.cpp" line="548"/>
         <source>Русский (Russian)</source>
         <translation>Русский (Russian)</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="504"/>
+        <location filename="../settingsdialog.cpp" line="551"/>
         <source>Оригинальный текст (только Debug)</source>
         <translation>Оригинальный текст (только Debug)</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="515"/>
+        <location filename="../settingsdialog.cpp" line="562"/>
         <source>Язык интерфейса:</source>
         <translation>Язык интерфейса:</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="525"/>
+        <location filename="../settingsdialog.cpp" line="572"/>
         <source>&lt;i&gt;* Изменения вступят в силу после перезапуска приложения.&lt;/i&gt;</source>
         <translation>&lt;i&gt;* Изменения вступят в силу после перезапуска приложения.&lt;/i&gt;</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="539"/>
+        <location filename="../settingsdialog.cpp" line="586"/>
         <source>&lt;i&gt;Репозиторий не настроен&lt;/i&gt;</source>
         <translation>&lt;i&gt;Репозиторий не настроен&lt;/i&gt;</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="542"/>
+        <location filename="../settingsdialog.cpp" line="589"/>
         <source>Текущий путь: %1</source>
         <translation>Текущий путь: %1</translation>
     </message>
     <message>
-        <location filename="../settingsdialog.cpp" line="585"/>
+        <location filename="../settingsdialog.cpp" line="632"/>
         <source>Сбросить...</source>
         <translation>Сбросить...</translation>
     </message>
@@ -1556,113 +1571,113 @@
 <context>
     <name>plcManager</name>
     <message>
-        <location filename="../plcmanager.cpp" line="16"/>
+        <location filename="../plcmanager.cpp" line="13"/>
         <source>Starting scan process for: %1; IF = %2; name = %3</source>
         <translation>Запуск сканирования: %1; интерфейс = %2; имя = %3</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="21"/>
-        <location filename="../plcmanager.cpp" line="163"/>
+        <location filename="../plcmanager.cpp" line="18"/>
+        <location filename="../plcmanager.cpp" line="164"/>
         <source>disconnect</source>
         <translation>отключение</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="49"/>
+        <location filename="../plcmanager.cpp" line="47"/>
         <source>Starting request config process for: %1; IF = %2; name = %3</source>
         <translation>Запуск запроса конфигурации: %1; интерфейс = %2; имя = %3</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="62"/>
+        <location filename="../plcmanager.cpp" line="60"/>
         <source>Request config is completed for:</source>
         <translation>Запрос конфигурации завершён для:</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="78"/>
+        <location filename="../plcmanager.cpp" line="76"/>
         <source>Discover allready runing</source>
         <translation>Поиск уже выполняется</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="81"/>
+        <location filename="../plcmanager.cpp" line="79"/>
         <source>Discover runing</source>
         <translation>Выполняется поиск устройств</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="149"/>
+        <location filename="../plcmanager.cpp" line="150"/>
         <source>Starting conf process for:</source>
         <translation>Запуск процесса конфигурирования для:</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="179"/>
+        <location filename="../plcmanager.cpp" line="180"/>
         <source>The command to flash all modules has been launched %1</source>
         <translation>Запущена команда прошивки всех модулей %1</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="180"/>
+        <location filename="../plcmanager.cpp" line="181"/>
         <source>with the option: ignore the processor module</source>
         <translation>с параметром: игнорировать процессорный модуль</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="234"/>
+        <location filename="../plcmanager.cpp" line="242"/>
         <source>Log is already running, stop the current log one first</source>
         <translation>Журнал уже ведётся. Сначала остановите текущую запись</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="237"/>
+        <location filename="../plcmanager.cpp" line="245"/>
         <source>StartLog for %1 if %3 slot %2</source>
         <translation>Запуск журнала для %1, интерфейс %3, слот %2</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="251"/>
+        <location filename="../plcmanager.cpp" line="259"/>
         <source>Failed to open log file for writing:</source>
         <translation>Не удалось открыть файл журнала для записи:</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="259"/>
+        <location filename="../plcmanager.cpp" line="267"/>
         <source>Log started:</source>
         <translation>Запись журнала начата:</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="274"/>
+        <location filename="../plcmanager.cpp" line="282"/>
         <source>[%1] Write line to file: %2</source>
         <translation>[%1] Запись строки в файл: %2</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="289"/>
+        <location filename="../plcmanager.cpp" line="297"/>
         <source>Log finished:</source>
         <translation>Запись журнала завершена:</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="311"/>
+        <location filename="../plcmanager.cpp" line="319"/>
         <source>WatchSession for key</source>
         <translation>Сеанс WatchSession для ключа</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="311"/>
+        <location filename="../plcmanager.cpp" line="319"/>
         <source>already exists. Returning existing session</source>
         <translation>уже существует. Возвращается существующий сеанс</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="315"/>
+        <location filename="../plcmanager.cpp" line="323"/>
         <source>Creating new WatchSession for key:</source>
         <translation>Создание нового сеанса WatchSession для ключа:</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="323"/>
+        <location filename="../plcmanager.cpp" line="331"/>
         <source>WatchSession removed from manager for key:</source>
         <translation>Сеанс WatchSession удалён из менеджера для ключа:</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="339"/>
+        <location filename="../plcmanager.cpp" line="347"/>
         <source>preferred interface is %1 whith %2 ms</source>
         <translation>Предпочтительный интерфейс: %1, интервал: %2 мс</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="369"/>
+        <location filename="../plcmanager.cpp" line="379"/>
         <source>interface search runing...</source>
         <translation>Поиск интерфейса...</translation>
     </message>
     <message>
-        <location filename="../plcmanager.cpp" line="378"/>
+        <location filename="../plcmanager.cpp" line="388"/>
         <source>The interface was not found</source>
         <translation>Интерфейс не найден</translation>
     </message>

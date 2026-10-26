@@ -31,6 +31,8 @@ public:
     static int getPlcMinLogLevel();
     static int getMaxLogBlockCount();
     static QString getAppLanguage();
+    static int getMaxFirmwareRetries();
+    static int getMaxConfigReadRetries();
 
 private:
     static inline const QLatin1StringView FirmwareRepositoryKey{"Firmware/repositoryRoot"};
@@ -100,6 +102,14 @@ private:
     static inline const QLatin1StringView appLanguageKey{"Application/Language"};
     static void setAppLanguage(const QString &lang);
     static void clearAppLanguage();
+
+    static inline const QLatin1StringView maxFirmwareRetriesKey{"lbmbc/maxRetries"};
+    static void setMaxFirmwareRetries(const int count);
+    static void clearMaxFirmwareRetries();
+
+    static inline const QLatin1StringView maxConfigReadRetriesKey{"lbmbc/maxConfigReadRetries"};
+    static void setMaxConfigReadRetries(const int count);
+    static void clearMaxConfigReadRetries();
 
     static QSettings getSettings();
 
