@@ -8,6 +8,8 @@
 #include <QDoubleSpinBox>
 #include "watchsession.h"
 
+class ValueDisplayDelegate;
+
 class WatchDockWidget : public QDockWidget
 {
     Q_OBJECT
@@ -49,7 +51,7 @@ private:
     QPushButton *connBtn = nullptr;
     QPushButton *ipBtn = nullptr;
 
-
+    ValueDisplayDelegate *valueDelegate = nullptr;
 
 };
 

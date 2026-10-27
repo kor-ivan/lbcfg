@@ -6,10 +6,186 @@
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QMimeData>
+#include <QMessageBox>
+#include <QApplication>
+#include <qstyleditemdelegate.h>
 #include "logmanager.h"
 #include "plcmanager.h"
 
+enum class DisplayFormat {
+    Default,
+    Hex,
+    Binary,
+    Dec
+};
 
+constexpr int DisplayFormatRole = Qt::UserRole + 1;
+constexpr int IsUnsignedRole   = Qt::UserRole + 2;
+
+class ValueDisplayDelegate : public QStyledItemDelegate
+{
+public:
+    explicit ValueDisplayDelegate(QObject *parent = nullptr) : QStyledItemDelegate(parent) {}
+
+    QString displayText(const QVariant &value, const QLocale &locale) const override {
+        return QStyledItemDelegate::displayText(value, locale);
+    }
+
+    void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override {
+        // Извлекаем формат конкретной строки из первой колонки (var name) текущего ряда
+        QModelIndex varNameIndex = index.siblingAtColumn(0);
+        DisplayFormat format = static_cast<DisplayFormat>(varNameIndex.data(DisplayFormatRole).toInt());
+
+        if (format != DisplayFormat::Default && index.data().canConvert<qlonglong>()) {
+            bool ok = false;
+            qlonglong num = index.data().toLongLong(&ok);
+            if (ok) {
+                QStyleOptionViewItem opt = option;
+                initStyleOption(&opt, index);
+
+                bool isUnsigned = varNameIndex.data(IsUnsignedRole).toBool();
+
+                int pad = 8;
+                if (isUnsigned) {
+                    qulonglong uNum = static_cast<qulonglong>(num);
+
+                    // Восстанавливаем исходное знаковое число из 64-битного эха,
+                    // чтобы понять, в какую сетку оно изначально закладывалось в ПЛК.
+                    qlonglong s8  = static_cast<char>(uNum & 0xFFULL);
+                    qlonglong s16 = static_cast<short>(uNum & 0xFFFFULL);
+                    qlonglong s32 = static_cast<int>(uNum & 0xFFFFFFFFULL);
+
+                    // 1. Проверяем, совпадает ли наше 64-битное число с 8-битным знаковым расширением
+                    if (static_cast<qulonglong>(s8) == uNum || uNum <= 0xFFULL) {
+                        pad = 8;
+                    }
+                    // 2. Проверяем, совпадает ли с 16-битным знаковым расширением (Наш случай для -255)
+                    else if (static_cast<qulonglong>(s16) == uNum || uNum <= 0xFFFFULL) {
+                        pad = 16;
+                    }
+                    // 3. Проверяем, совпадает ли с 32-битным знаковым расширением
+                    else if (static_cast<qulonglong>(s32) == uNum || uNum <= 0xFFFFFFFFULL) {
+                        pad = 32;
+                    }
+                    // 4. Во всех остальных случаях — это честное 64-битное беззнаковое число
+                    else {
+                        pad = 64;
+                    }
+                } else {
+                    if (num < -2147483648LL || num > 2147483647LL) pad = 64;
+                    else if (num < -32768 || num > 32767)           pad = 32;
+                    else if (num < -128 || num > 127)               pad = 16;
+                }
+
+                if (format == DisplayFormat::Dec) {
+                    if (isUnsigned) {
+                        qulonglong uNum = static_cast<qulonglong>(num);
+                        if (pad == 8)  uNum &= 0xFF;
+                        if (pad == 16) uNum &= 0xFFFF;
+                        if (pad == 32) uNum &= 0xFFFFFFFF;
+                        opt.text = QString::number(uNum);
+                    } else {
+                        qlonglong sNum = num;
+                        if (pad == 8)  sNum = static_cast<char>(num);
+                        if (pad == 16) sNum = static_cast<short>(num);
+                        if (pad == 32) sNum = static_cast<int>(num);
+                        opt.text = QString::number(sNum);
+                    }
+                }
+                else if (format == DisplayFormat::Hex) {
+                    qulonglong uNum = static_cast<qulonglong>(num);
+                    if (pad == 8)  uNum &= 0xFF;
+                    if (pad == 16) uNum &= 0xFFFF;
+                    if (pad == 32) uNum &= 0xFFFFFFFF;
+
+                    opt.text = QString("0x%1").arg(QString::number(uNum, 16).toUpper().rightJustified(pad / 4, '0'));
+                }
+                else if (format == DisplayFormat::Binary) {
+                    qulonglong uNum = static_cast<qulonglong>(num);
+                    QString bin = QString::number(uNum, 2);
+
+                    if (!isUnsigned && num < 0) {
+                        // Для отрицательных знаковых чисел берем честный дополнительный код нужной длины
+                        bin = bin.right(pad);
+                    } else {
+                        // Для беззнаковых и положительных маскируем и дополняем нулями
+                        if (pad == 8)  uNum &= 0xFF;
+                        if (pad == 16) uNum &= 0xFFFF;
+                        if (pad == 32) uNum &= 0xFFFFFFFF;
+                        bin = QString::number(uNum, 2).rightJustified(pad, '0');
+                    }
+                    opt.text = QString("0b%1").arg(bin);
+                }
+                QApplication::style()->drawControl(QStyle::CE_ItemViewItem, &opt, painter, opt.widget);
+                return;
+            }
+        }
+        QStyledItemDelegate::paint(painter, option, index);
+    }
+
+    void setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const override {
+        QLineEdit *lineEdit = qobject_cast<QLineEdit*>(editor);
+        if (!lineEdit) {
+            QStyledItemDelegate::setModelData(editor, model, index);
+            return;
+        }
+        QString text = lineEdit->text().trimmed().toLower();
+        if (text.isEmpty()) {
+            QStyledItemDelegate::setModelData(editor, model, index);
+            return;
+        }
+
+        QModelIndex varNameIndex = index.siblingAtColumn(0);
+        DisplayFormat format = static_cast<DisplayFormat>(varNameIndex.data(DisplayFormatRole).toInt());
+        bool isUnsigned = varNameIndex.data(IsUnsignedRole).toBool();
+
+        bool ok = false;
+        qlonglong parsedValue = 0;
+        DisplayFormat expectedFormat = DisplayFormat::Default;
+
+        auto parseAsFormat = [&](QString str, int base) -> qlonglong {
+            if (isUnsigned) {
+                bool uOk = false;
+                qulonglong uVal = str.toULongLong(&uOk, base);
+                ok = uOk;
+                return static_cast<qlonglong>(uVal);
+            } else {
+                return str.toLongLong(&ok, base);
+            }
+        };
+
+        if (text.startsWith("0x")) {
+            expectedFormat = DisplayFormat::Hex;
+            parsedValue = parseAsFormat(text.mid(2), 16);
+        } else if (text.startsWith("0b")) {
+            expectedFormat = DisplayFormat::Binary;
+            parsedValue = parseAsFormat(text.mid(2), 2);
+        } else {
+            expectedFormat = format;
+            switch (format) {
+            case DisplayFormat::Hex:    parsedValue = parseAsFormat(text, 16); break;
+            case DisplayFormat::Binary: parsedValue = parseAsFormat(text, 2); break;
+            case DisplayFormat::Dec:    parsedValue = parseAsFormat(text, 10); break;
+            default: break;
+            }
+        }
+
+        if (ok) {
+            model->setData(index, QString::number(parsedValue), Qt::EditRole);
+        }
+        else if (expectedFormat != DisplayFormat::Default) {
+            auto formatToString = [](DisplayFormat fmt) -> QString {
+                if (fmt == DisplayFormat::Hex) return "HEX";
+                if (fmt == DisplayFormat::Binary) return "Binary";
+                return "Unknown";
+            };
+            QMessageBox::warning(editor->window(), tr("Ошибка ввода"),
+                                 tr("Введенное значение не соответствует выбранному формату (%1).\nИзменения отменены.").arg(formatToString(expectedFormat)));
+        } else {
+            QStyledItemDelegate::setModelData(editor, model, index);
+        }
+    }
+};
 
 WatchDockWidget::WatchDockWidget(const plc::CommandContext &ctx, QWidget *parent)
     : QDockWidget{QString("Watch: %1").arg(ctx.name), parent}, m_ctx(ctx)
@@ -75,6 +251,10 @@ WatchDockWidget::WatchDockWidget(const plc::CommandContext &ctx, QWidget *parent
     watch->setAcceptDrops(true);
     // Устанавливаем фильтр событий на таблицу, чтобы перехватывать Drag & Drop
     watch->installEventFilter(this);
+    valueDelegate = new ValueDisplayDelegate(this);
+    watch->setItemDelegateForColumn(1, valueDelegate); // value
+    watch->setItemDelegateForColumn(2, valueDelegate); // set value
+    watch->setItemDelegateForColumn(3, valueDelegate); // force value
 
 
     QHeaderView *header = watch->horizontalHeader();
@@ -128,7 +308,7 @@ WatchDockWidget::WatchDockWidget(const plc::CommandContext &ctx, QWidget *parent
             get.append(collectVariables());
 
             QStringList set = {"set", QString("%1=%2")
-                                          .arg(watchModel->item(row, 0)->text()).arg(val)};
+                                          .arg(watchModel->item(row, 0)->text(), val)};
             if (session && session->isConnected())
             {
                 session->setQuery({get, set});
@@ -146,7 +326,7 @@ WatchDockWidget::WatchDockWidget(const plc::CommandContext &ctx, QWidget *parent
             if (val != "")
             {
                 QStringList force = {"force", QString("%1=%2")
-                                                  .arg(varName).arg(val)};
+                                                  .arg(varName, val)};
                 if (session && session->isConnected()){
                     session->setQuery({get, force});
                     debugApp() << tr("WatchDockWidget: list of variables for FORCE:") << get << force;
@@ -386,6 +566,91 @@ void WatchDockWidget::showContextMenu(const QPoint &pos)
         }
     });
 
+    QModelIndex varNameIndex = watchModel->index(row, 0);
+    bool isUnsigned = varNameIndex.data(IsUnsignedRole).toBool();
+    DisplayFormat currentFmt = static_cast<DisplayFormat>(varNameIndex.data(DisplayFormatRole).toInt());
+
+    menu.addSeparator();
+    QAction *actDefault = menu.addAction(tr("Без преобразования"));
+    QAction *actDec     = menu.addAction(tr("DEC (Десятичный)"));
+    QAction *actHex     = menu.addAction(tr("HEX (Шестнадцатеричный)"));
+    QAction *actBin     = menu.addAction(tr("Binary (Битовый ряд)"));
+
+    actDefault->setCheckable(true);
+    actDec->setCheckable(true);
+    actHex->setCheckable(true);
+    actBin->setCheckable(true);
+
+    actDefault->setChecked(currentFmt == DisplayFormat::Default);
+    actDec->setChecked(currentFmt == DisplayFormat::Dec);
+    actHex->setChecked(currentFmt == DisplayFormat::Hex);
+    actBin->setChecked(currentFmt == DisplayFormat::Binary);
+
+    auto trySetFormat = [this, varNameIndex, row](DisplayFormat newFmt, const QString &formatName) {
+        QStandardItem *valueItem = watchModel->item(row, 1);
+        QString rawValue = valueItem ? valueItem->text().trimmed() : "";
+
+        bool canConvert = false;
+        if (newFmt == DisplayFormat::Default || rawValue.isEmpty()) {
+            canConvert = true;
+        } else {
+            rawValue.toLongLong(&canConvert);
+        }
+
+        if (canConvert) {
+            watchModel->setData(varNameIndex, static_cast<int>(newFmt), DisplayFormatRole);
+            watch->viewport()->update();
+        } else {
+            QMessageBox::warning(
+                this,
+                tr("Ошибка смены формата"),
+                tr("Не удалось переключить режим в %1.\nТекущее значение \"%2\" не является целым числом.")
+                    .arg(formatName, rawValue)
+                );
+            watch->viewport()->update();
+        }
+    };
+
+    connect(actDefault, &QAction::triggered, this, [trySetFormat]() {
+        trySetFormat(DisplayFormat::Default, "Default");
+    });
+    connect(actDec, &QAction::triggered, this, [trySetFormat]() {
+        trySetFormat(DisplayFormat::Dec, "DEC");
+    });
+    connect(actHex, &QAction::triggered, this, [trySetFormat]() {
+        trySetFormat(DisplayFormat::Hex, "HEX");
+    });
+    connect(actBin, &QAction::triggered, this, [trySetFormat]() {
+        trySetFormat(DisplayFormat::Binary, "Binary");
+    });
+
+    menu.addSeparator();
+
+    QAction *actSigned   = menu.addAction(tr("Знаковое (Signed)"));
+    QAction *actUnsigned = menu.addAction(tr("Беззнаковое (Unsigned)"));
+
+    actSigned->setCheckable(true);
+    actUnsigned->setCheckable(true);
+
+    actSigned->setChecked(!isUnsigned);
+    actUnsigned->setChecked(isUnsigned);
+
+    if (currentFmt == DisplayFormat::Default) {
+        actSigned->setEnabled(false);
+        actUnsigned->setEnabled(false);
+    } else {
+        actSigned->setEnabled(true);
+        actUnsigned->setEnabled(true);
+    }
+
+    connect(actSigned, &QAction::triggered, this, [this, varNameIndex]() {
+        watchModel->setData(varNameIndex, false, IsUnsignedRole);
+        watch->viewport()->update();
+    });
+    connect(actUnsigned, &QAction::triggered, this, [this, varNameIndex]() {
+        watchModel->setData(varNameIndex, true, IsUnsignedRole);
+        watch->viewport()->update();
+    });
 
     menu.exec(watch->viewport()->mapToGlobal(pos));
 }
