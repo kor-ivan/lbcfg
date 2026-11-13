@@ -169,8 +169,8 @@ void DiscoverDockWidget::discoverReceived(const QMap<QString, discover::lbinfo> 
             strList << QString::number(val);
         table->setItem(row, 4, new QTableWidgetItem(strList.join(",")));
         strList.clear();
-        for (int val : it.value().ifindex)
-            strList << QString::number(val);
+        for (const auto& val : it.value().ifindex)
+            strList << val;
         table->setItem(row, 5, new QTableWidgetItem(strList.join(",")));
 
         for (int col = 0; col < table->columnCount(); ++col) {

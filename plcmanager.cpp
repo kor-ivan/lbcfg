@@ -343,7 +343,7 @@ QString plcManager::getFastIfce(const discover::lbinfo &val)
     auto minIt = std::min_element(val.delay.constBegin(), val.delay.constEnd());
     auto minIndex = std::distance(val.delay.constBegin(), minIt);
     if (SearchDiscoverRuning) SearchDiscoverRuning = false;
-    QString ifce = QString::number(val.ifindex.at(minIndex));
+    QString ifce = val.ifindex.at(minIndex);
     debugApp() << QString(tr("preferred interface is %1 whith %2 ms")).arg(ifce).arg(val.delay.at(minIndex));
     return ifce;
 }
