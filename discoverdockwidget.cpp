@@ -4,6 +4,7 @@
 #include <QApplication>
 #include <QMenu>
 #include <QClipboard>
+#include <QSerialPort>
 #include "logmanager.h"
 #include "commandmanager.h"
 
@@ -24,14 +25,14 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
     // Создаем таблицу
     table = new QTableWidget(this);
     table->setColumnCount(7);
-    table->setHorizontalHeaderLabels({tr("Name"), tr("Type"), tr("IPv4"), tr("MAC"), tr("Delays (ms)"), tr("IF")});
+    table->setHorizontalHeaderLabels({tr("Name"), tr("Type"), tr("IPv4"), tr("MAC"), tr("Delays (ms)"), tr("IF"), tr("RTU")});
     // Выделять строку целиком при клике на любую ячейку
     table->setSelectionBehavior(QAbstractItemView::SelectRows);
     // разрешить выбирать только одну строку за раз
     table->setSelectionMode(QAbstractItemView::SingleSelection);
     // запретить редактирование ячеек, чтобы они не открывались по двойному клику
     table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    table->setColumnHidden(6, true);
+    // table->setColumnHidden(6, true);
     QHeaderView *header = table->horizontalHeader();
     header->setSectionResizeMode(0, QHeaderView::Stretch);
     // Остальные столбцы: подгоняем под содержимое текста
@@ -87,18 +88,18 @@ void DiscoverDockWidget::onTableDoubleClicked(int row, int column)
     if (QApplication::mouseButtons() != Qt::LeftButton) {
         return;
     }
-    QTableWidgetItem *item = table->item(row, 6);
+    QTableWidgetItem *item = table->item(row, 0);
     if (!item) return;
-    QString ipv6 = item->text();
+    QString ipv6 = item->data(ipv6Role).toString();
     emit deviceSelected(lbplc->getctx(ipv6,
-                                      table->item(item->row(), 0)->text()));
+                                      item->text()));
 }
 
 void DiscoverDockWidget::showContextMenu(const QPoint &pos)
 {
     QTableWidgetItem *item = table->itemAt(pos);
     if (!item) return;
-    QString ipv6 = table->item(item->row(), 6)->text();
+    QString ipv6 = table->item(item->row(), 0)->data(ipv6Role).toString();
     auto ctx = lbplc->getctx(ipv6,
                              table->item(item->row(), 0)->text());
 
@@ -160,7 +161,10 @@ void DiscoverDockWidget::discoverReceived(const QMap<QString, discover::lbinfo> 
     for (auto it = ldmap.begin(); it != ldmap.end(); ++it) {
         debugPLC() << it.key() << it.value();
         table->insertRow(row);
-        table->setItem(row, 0, new QTableWidgetItem(it.value().name));
+        QTableWidgetItem *nameItem = new QTableWidgetItem(it.value().name);
+        nameItem->setData(ipv6Role, it.key());
+        table->setItem(row, 0, nameItem);
+        // table->setItem(row, 0, new QTableWidgetItem(it.value().name));
         table->setItem(row, 1, new QTableWidgetItem(it.value().type));
         table->setItem(row, 2, new QTableWidgetItem(it.value().ipv4));
         table->setItem(row, 3, new QTableWidgetItem(it.value().mac));
@@ -172,6 +176,14 @@ void DiscoverDockWidget::discoverReceived(const QMap<QString, discover::lbinfo> 
         for (const auto& val : it.value().ifindex)
             strList << val;
         table->setItem(row, 5, new QTableWidgetItem(strList.join(",")));
+        if (it.value().rtuSettings.addr > 0)
+            table->setItem(row, 6, new QTableWidgetItem(QString("%1/%2/%3/%4/%5")
+                                                        .arg(it.value().rtuSettings.addr)
+                                                        .arg(it.value().rtuSettings.baudRate)
+                                                        .arg(it.value().rtuSettings.dataBits)
+                                                        .arg(it.value().rtuSettings.parity == QSerialPort::EvenParity ? "E" :
+                                                                 it.value().rtuSettings.parity == QSerialPort::OddParity  ? "O" : "N")
+                                                        .arg(it.value().rtuSettings.stopBits)));
 
         for (int col = 0; col < table->columnCount(); ++col) {
             QTableWidgetItem *item = table->item(row, col);
@@ -185,7 +197,8 @@ void DiscoverDockWidget::discoverReceived(const QMap<QString, discover::lbinfo> 
                 }
             }
         }
-        table->setItem(row, 6, new QTableWidgetItem(it.key()));
+        // table->setItem(row, 6, new QTableWidgetItem(it.key()));
+
         row++;
     }
     table->setSortingEnabled(true); // Возвращаем возможность сортировки
