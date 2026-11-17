@@ -91,8 +91,12 @@ void DiscoverDockWidget::onTableDoubleClicked(int row, int column)
     QTableWidgetItem *item = table->item(row, 0);
     if (!item) return;
     QString ipv6 = item->data(ipv6Role).toString();
-    emit deviceSelected(lbplc->getctx(ipv6,
-                                      item->text()));
+    auto ctx = lbplc->getctx(ipv6, item->text());
+
+    QTableWidgetItem *rtuItem = table->item(item->row(), 6);
+    if (rtuItem)
+        ctx.rtu = rtuItem->data(rtuRole).value<discover::ModbusRtuSettings>();
+    emit deviceSelected(ctx);
 }
 
 void DiscoverDockWidget::showContextMenu(const QPoint &pos)
@@ -100,8 +104,13 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
     QTableWidgetItem *item = table->itemAt(pos);
     if (!item) return;
     QString ipv6 = table->item(item->row(), 0)->data(ipv6Role).toString();
+
     auto ctx = lbplc->getctx(ipv6,
                              table->item(item->row(), 0)->text());
+
+    QTableWidgetItem *rtuItem = table->item(item->row(), 6);
+    if (rtuItem)
+        ctx.rtu = rtuItem->data(rtuRole).value<discover::ModbusRtuSettings>();
 
     QMenu menu(this);
     QAction *AddDivice = menu.addAction(tr("Добавить"));
@@ -177,13 +186,17 @@ void DiscoverDockWidget::discoverReceived(const QMap<QString, discover::lbinfo> 
             strList << val;
         table->setItem(row, 5, new QTableWidgetItem(strList.join(",")));
         if (it.value().rtuSettings.addr > 0)
-            table->setItem(row, 6, new QTableWidgetItem(QString("%1/%2/%3/%4/%5")
-                                                        .arg(it.value().rtuSettings.addr)
-                                                        .arg(it.value().rtuSettings.baudRate)
-                                                        .arg(it.value().rtuSettings.dataBits)
-                                                        .arg(it.value().rtuSettings.parity == QSerialPort::EvenParity ? "E" :
-                                                                 it.value().rtuSettings.parity == QSerialPort::OddParity  ? "O" : "N")
-                                                        .arg(it.value().rtuSettings.stopBits)));
+        {
+            QTableWidgetItem *rtuItem = new QTableWidgetItem(QString("%1/%2/%3/%4/%5")
+                                                                 .arg(it.value().rtuSettings.addr)
+                                                                 .arg(it.value().rtuSettings.baudRate)
+                                                                 .arg(it.value().rtuSettings.dataBits)
+                                                                 .arg(it.value().rtuSettings.parity == QSerialPort::EvenParity ? "E" :
+                                                                          it.value().rtuSettings.parity == QSerialPort::OddParity  ? "O" : "N")
+                                                                 .arg(it.value().rtuSettings.stopBits));
+            table->setItem(row, 6, rtuItem);
+            rtuItem -> setData(rtuRole, QVariant::fromValue(it.value().rtuSettings));
+        }
 
         for (int col = 0; col < table->columnCount(); ++col) {
             QTableWidgetItem *item = table->item(row, col);

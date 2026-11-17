@@ -28,7 +28,10 @@ private slots:
     void showContextMenu(const QPoint& pos);
 
 private:
-    Qt::ItemDataRole ipv6Role = Qt::UserRole;
+    enum DeviceRoles {
+        ipv6Role = Qt::UserRole,
+        rtuRole = Qt::UserRole + 1
+    };
     plcManager *lbplc = nullptr;
     void discoverReceived(const QMap<QString, discover::lbinfo>& DiscoverMap);
     QPushButton* btnDiscover = nullptr;

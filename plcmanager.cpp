@@ -10,7 +10,7 @@ plcManager::plcManager()
 
 void plcManager::scanDevice(const plc::CommandContext &ctx)
 {
-    logApp() << QString(tr("Starting scan process for: %1; IF = %2; name = %3")).arg(ctx.ipv6str(), ctx.ipv6.scopeId(), ctx.name);
+    logApp() << QString(tr("Starting scan process for: %1; IF = %2; name = %3; rtu = %4")).arg(ctx.ipv6str(), ctx.ipv6.scopeId(), ctx.name, QString::number(ctx.rtu.addr));
     LBclient *lbc = new LBclient(this);
     lbc->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
     connect(lbc, &LBclient::lbDisconnect, this,

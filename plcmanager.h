@@ -15,6 +15,8 @@ struct CommandContext {
     QHostAddress ipv6;
     int slot = -1;
 
+    discover::ModbusRtuSettings rtu;
+
     bool isSlot() const { return slot != -1; }
     QString displayName() const {
         return isSlot() ? QString("%1/slot %2").arg(name).arg(slot) : name;
