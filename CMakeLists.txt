@@ -57,6 +57,7 @@ set(LIB_SOURCES
         watchsession.h watchsession.cpp
         settingsdialog.h settingsdialog.cpp
         yamlhighlighter.h yamlhighlighter.cpp
+        rtusettingsdialog.h rtusettingsdialog.cpp
         resources.qrc
         version.h.in
         lbcfg_global.h

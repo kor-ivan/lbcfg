@@ -31,12 +31,23 @@ struct CommandContext {
 };
 }
 
+using SerialPortList = QList<QSerialPortInfo>;
+using SerialPortIterator = SerialPortList::const_iterator;
+
+using RtuProfileList = QList<discover::ModbusRtuSettings>;
+using RtuProfileIterator = RtuProfileList::const_iterator;
+
 class plcManager : public QObject
 {
     Q_OBJECT
 public:
     // explicit plcManager(QObject *parent = nullptr);
     // virtual ~plcManager();
+    enum class ConnectionMode {
+        TCPMode,
+        RTUMode
+    };
+    Q_ENUM(ConnectionMode)
     static plcManager* instanse()
     {
         static plcManager inst;
@@ -60,6 +71,7 @@ public:
     void startFbootDownload(const plc::CommandContext &ctx, const QString &filePath);
     void startLog (const plc::CommandContext &ctx, const QString &flag, const QString &fileName = {});
     void stopLog();
+    void startDiscoverRTU(const RtuProfileList &profiles, const int startAddr, const int endAddr, const int timeOut);
 
     template <typename F>
     void lbc_executeCommand(const plc::CommandContext &ctx,
@@ -91,6 +103,18 @@ public:
     plc::CommandContext getctx(const QHostAddress &host, const QString &name = {});
     const QMap<QString, discover::lbinfo>& getldmap() const;
 
+    ConnectionMode connectionMode() const { return m_mode; }
+    void setConnectionMode(ConnectionMode mode);
+    void refreshSerialPorts(const QString &preferredPortName = QString());
+
+    RtuProfileList rtuProfiles() const;
+    RtuProfileIterator currentProfileIt() const;
+    void setCurrentProfileIt(const RtuProfileIterator &newCurrentProfileIt);
+    SerialPortList serialPorts() const;
+    SerialPortIterator currentPortIt() const;
+    void setCurrentPortIt(const SerialPortIterator &newCurrentPortIt);
+    void reloadRtuProfiles();
+
 signals:
     void scanCompleted(const plc::CommandContext &ctx, const QMap<qsizetype, lbprocess::scaninfo> &scanData);
     void configReceived(const plc::CommandContext &ctx, const QString &yamlContent);
@@ -107,6 +131,11 @@ signals:
     void showMessage(const QString &title, const QString &message);
     void restartAllCompleted(const plc::CommandContext &ctx);
     void activeWatchChanged(const QStringList &keys);
+
+    void connectionModeChanged(plcManager::ConnectionMode mode);
+    void rtuProfilesUpdated(const RtuProfileList &profiles);
+    void serialPortsUpdated(const SerialPortList &ports);
+
 
 private:
     plcManager();
@@ -125,6 +154,16 @@ private:
     bool SearchDiscoverRuning = false;
     QString getFastIfce(const discover::lbinfo &val);
     QString getIf(const QString &ipv6);
+
+    ConnectionMode m_mode = ConnectionMode::TCPMode;
+    bool configureClientTransport(LBclient *lbc, const plc::CommandContext &ctx);
+    SerialPortList m_serialPorts;
+    SerialPortIterator m_currentPortIt = m_serialPorts.cend();
+
+    RtuProfileList m_rtuProfiles;
+    RtuProfileIterator m_currentProfileIt = m_rtuProfiles.cend();
+
+
 };
 
 #endif // PLCMANAGER_H

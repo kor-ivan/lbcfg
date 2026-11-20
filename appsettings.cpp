@@ -1,6 +1,7 @@
 #include "appsettings.h"
 #include <QDir>
 #include <QStandardPaths>
+#include <QSerialPort>
 
 #ifdef QT_DEBUG
 int AppSettings::defaultLogLevel = 4;
@@ -357,3 +358,51 @@ void AppSettings::clearMaxConfigReadRetries() {
     clear(maxConfigReadRetriesKey);
 }
 
+// --- getRtuProfiles ---
+QList<discover::ModbusRtuSettings> AppSettings::getRtuProfiles()
+{
+    QList<discover::ModbusRtuSettings> list;
+    QSettings s = getSettings();
+    const int size = s.beginReadArray(rtuProfilesKey);
+    for (int i = 0; i < size; ++i) {
+        s.setArrayIndex(i);
+        discover::ModbusRtuSettings cfg;
+        cfg.baudRate = s.value("baudRate", 9600).toInt();
+        cfg.dataBits = s.value("dataBits", 8).toInt();
+        cfg.parity   = s.value("parity", QSerialPort::NoParity).toInt();
+        cfg.stopBits = s.value("stopBits", QSerialPort::OneStop).toInt();
+        list.append(cfg);
+    }
+    s.endArray();
+
+    if (list.isEmpty()) {
+        discover::ModbusRtuSettings def;
+        def.baudRate = 9600;
+        def.dataBits = 8;
+        def.parity   = QSerialPort::NoParity;
+        def.stopBits = QSerialPort::OneStop;
+        list.append(def);
+    }
+    return list;
+}
+
+void AppSettings::setRtuProfiles(const QList<discover::ModbusRtuSettings> &profiles)
+{
+    QSettings s = getSettings();
+    s.remove(rtuProfilesKey);
+    s.beginWriteArray(rtuProfilesKey);
+    for (int i = 0; i < profiles.size(); ++i) {
+        s.setArrayIndex(i);
+        s.setValue("baudRate", profiles[i].baudRate);
+        s.setValue("dataBits", profiles[i].dataBits);
+        s.setValue("parity",   profiles[i].parity);
+        s.setValue("stopBits", profiles[i].stopBits);
+    }
+    s.endArray();
+    s.sync();
+}
+
+void AppSettings::clearRtuProfiles()
+{
+    clear(rtuProfilesKey);
+}

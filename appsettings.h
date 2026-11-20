@@ -3,6 +3,7 @@
 
 #include <QString>
 #include <QSettings>
+#include <discover.h>
 
 class FirmwareRepositoryDialog;
 class SettingsDialog;
@@ -11,6 +12,7 @@ class AppSettings
 {
     friend class FirmwareRepositoryDialog;
     friend class SettingsDialog;
+    friend class RtuSettingsDialog;
 
 public:
     static QString firmwareRepositoryRoot();
@@ -33,6 +35,7 @@ public:
     static QString getAppLanguage();
     static int getMaxFirmwareRetries();
     static int getMaxConfigReadRetries();
+    static QList<discover::ModbusRtuSettings> getRtuProfiles();
 
 private:
     static inline const QLatin1StringView FirmwareRepositoryKey{"Firmware/repositoryRoot"};
@@ -110,6 +113,10 @@ private:
     static inline const QLatin1StringView maxConfigReadRetriesKey{"lbmbc/maxConfigReadRetries"};
     static void setMaxConfigReadRetries(const int count);
     static void clearMaxConfigReadRetries();
+
+    static inline const QLatin1StringView rtuProfilesKey{"RTU/profiles"};
+    static void setRtuProfiles(const QList<discover::ModbusRtuSettings> &profiles);
+    static void clearRtuProfiles();
 
     static QSettings getSettings();
 

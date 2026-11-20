@@ -8,6 +8,8 @@
 #include "logdockwidget.h"
 #include <QProcess>
 #include <QDir>
+#include <QSerialPort>
+#include "rtusettingsdialog.h"
 #include "settingsdialog.h"
 #ifdef Q_OS_LINUX
 #include "appsettings.h"
@@ -315,6 +317,75 @@ void MainMenu::onEditMenuAboutToShow()
         CommandManager::instance()->getFirmwareAnalyzer()->update();
         p_mainWindow->getTreeDock()->reloadFirmwareRepositoryFromSettings();
     });
+
+    editMenu->addSeparator();
+    plcManager *mgr = plcManager::instanse();
+    const bool rtuEnabled = (mgr->connectionMode() == plcManager::ConnectionMode::RTUMode);
+    QAction *rtuModeAct = editMenu->addAction(tr("RTU режим"));
+    rtuModeAct->setCheckable(true);
+    rtuModeAct->setChecked(rtuEnabled);
+    connect(rtuModeAct, &QAction::toggled, this, [mgr](bool checked) {
+        mgr->setConnectionMode(checked ? plcManager::ConnectionMode::RTUMode
+                                       : plcManager::ConnectionMode::TCPMode);
+    });
+
+    QMenu *rs485Menu = editMenu->addMenu(tr("Параметры RS-485"));
+    rs485Menu->setEnabled(rtuEnabled);
+    if (rtuEnabled) {
+        const auto &profiles = mgr->rtuProfiles();
+        const auto currentProfileIt = mgr->currentProfileIt();
+
+        for (auto it = profiles.cbegin(); it != profiles.cend(); ++it) {
+            const QChar pChar = (it->parity == QSerialPort::EvenParity) ? QChar('E') :
+                                    (it->parity == QSerialPort::OddParity)  ? QChar('O') : QChar('N');
+            const QString label = QString("%1/%2/%3/%4")
+                                      .arg(it->baudRate)
+                                      .arg(it->dataBits)
+                                      .arg(pChar)
+                                      .arg(it->stopBits);
+            QAction *profAct = rs485Menu->addAction(label);
+            profAct->setCheckable(true);
+            profAct->setChecked(it == currentProfileIt);
+            connect(profAct, &QAction::triggered, this, [mgr, it]() {
+                mgr->setCurrentProfileIt(it);
+            });
+        }
+
+        rs485Menu->addSeparator();
+        QAction *editProfilesAct = rs485Menu->addAction(tr("Настроить..."));
+        connect(editProfilesAct, &QAction::triggered, this, [this, mgr]() {
+            RtuSettingsDialog dlg(p_mainWindow);
+            if (dlg.exec() == QDialog::Accepted) {
+                mgr->reloadRtuProfiles();
+            }
+        });
+    }
+
+    QMenu *portMenu = editMenu->addMenu(tr("Порт"));
+    portMenu->setEnabled(rtuEnabled);
+    if (rtuEnabled) {
+        mgr->refreshSerialPorts();
+        const auto &ports = mgr->serialPorts();
+        const auto currentPortIt = mgr->currentPortIt();
+
+        if (ports.isEmpty()) {
+            QAction *noPortsAct = portMenu->addAction(tr("Нет доступных портов"));
+            noPortsAct->setEnabled(false);
+        }else{
+            for (auto it = ports.cbegin(); it != ports.cend(); ++it) {
+                const QString label = it->description().isEmpty()
+                ? it->portName()
+                : QString("%1 (%2)").arg(it->portName(), it->description());
+                QAction *pAct = portMenu->addAction(label);
+                pAct->setCheckable(true);
+                pAct->setChecked(it == currentPortIt);
+
+                connect(pAct, &QAction::triggered, this, [mgr, it]() {
+                    mgr->setCurrentPortIt(it);
+                });
+            }
+        }
+    }
 
     editMenu->addSeparator();
 

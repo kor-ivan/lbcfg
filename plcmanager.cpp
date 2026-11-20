@@ -12,7 +12,8 @@ void plcManager::scanDevice(const plc::CommandContext &ctx)
 {
     logApp() << QString(tr("Starting scan process for: %1; IF = %2; name = %3; rtu = %4")).arg(ctx.ipv6str(), ctx.ipv6.scopeId(), ctx.name, QString::number(ctx.rtu.addr));
     LBclient *lbc = new LBclient(this);
-    lbc->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
+    configureClientTransport(lbc, ctx);
+    // lbc->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
     connect(lbc, &LBclient::lbDisconnect, this,
             [lbc](const QString& lbhost, const QString& message, const QModbusDevice::Error error){
                 logApp() << message << tr("disconnect") << lbhost;
@@ -46,7 +47,8 @@ void plcManager::requestConfig(const plc::CommandContext &ctx)
 {
     logApp()<<QString(tr("Starting request config process for: %1; IF = %2; name = %3")).arg(ctx.ipv6str(), ctx.ipv6.scopeId(), ctx.name);
     LBclient *lbc = new LBclient(this, {"getconf"});
-    lbc->setTCPaddr(ctx.ipv6str(), 502, ctx.ipv6.scopeId());
+    configureClientTransport(lbc, ctx);
+    // lbc->setTCPaddr(ctx.ipv6str(), 502, ctx.ipv6.scopeId());
     connect(lbc, &LBclient::ExecuteCompletedJson, this,
             [lbc, this, ctx](const QString& lbhost, const QJsonObject& Qjo, const QString& message, const QModbusDevice::Error error){
                 if(error==QModbusDevice::NoError){
@@ -105,7 +107,8 @@ bool plcManager::startFirmware(const plc::CommandContext &ctx, const QString &fi
     emit firmwareStarted(ctx, startMessage);
     activeOtaClient = new LBclient(this, {lbkey});
     activeOtaClient -> setMaxOtaTimeOutCount(AppSettings::getMaxFirmwareRetries());
-    activeOtaClient->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
+    configureClientTransport(activeOtaClient, ctx);
+    // activeOtaClient->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
     activeOtaClient->setOtaFilename(filePath);
     if (ctx.slot != -1)
         activeOtaClient->setSlot(ctx.slot);
@@ -180,7 +183,8 @@ void plcManager::startFirmwareAll(const plc::CommandContext &ctx, const QString 
     logPLC() << QString(tr("The command to flash all modules has been launched %1")).
                 arg(AppSettings::getFirmwareIgnoreCPU()?tr("with the option: ignore the processor module"):"");
     activeOtaClient = new LBclient(this);
-    activeOtaClient->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
+    configureClientTransport(activeOtaClient, ctx);
+    // activeOtaClient->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
     activeOtaClient -> setMaxOtaTimeOutCount(AppSettings::getMaxFirmwareRetries());
     prcActiveOtaClient = new lbprocess(this, activeOtaClient,
                                        static_cast<lbprocess::Strategy>(AppSettings::getFirmwareStrtegy()));
@@ -219,7 +223,8 @@ void plcManager::startRestartAll(const plc::CommandContext &ctx)
 {
     debugApp()<<"plcManager::startRestartAll for"<<ctx.ipv6<<ctx.ipv6.scopeId();
     LBclient *lbc = new LBclient (this);
-    lbc->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
+    configureClientTransport(lbc, ctx);
+    // lbc->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
     lbc -> setMaxOtaTimeOutCount(AppSettings::getMaxFirmwareRetries());
     lbprocess *prc = new lbprocess(this, lbc);
     prc->setNumOfVarRetries(AppSettings::getMaxConfigReadRetries());
@@ -249,7 +254,8 @@ void plcManager::startLog(const plc::CommandContext &ctx, const QString &flag, c
     activeLogClient = new LBclient (this, {"log", flag});
     if (ctx.slot!=-1)
         activeLogClient->setSlot(ctx.slot);
-    activeLogClient->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
+    configureClientTransport(activeLogClient, ctx);
+    // activeLogClient->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
 
     QPointer<QFile> logFile;
 
@@ -313,6 +319,52 @@ void plcManager::stopLog()
     emit logFinished();
 }
 
+void plcManager::startDiscoverRTU(const RtuProfileList &profiles, const int startAddr, const int endAddr, const int timeOut)
+{
+    if (discoverRunning) {
+        logApp() << tr("Discover already running");
+        return;
+    }
+
+    if (m_currentPortIt == m_serialPorts.cend()) {
+        emit errorOccurred(tr("RTU режим: нет доступных COM-портов или порт не выбран"));
+        return;
+    }
+
+    const QString portName = m_currentPortIt->portName();
+    RtuProfileList rtuList = profiles.isEmpty()
+                                 ? (m_rtuProfiles.isEmpty() ? AppSettings::getRtuProfiles() : m_rtuProfiles)
+                                 : profiles;
+
+    logApp() << QString(tr("RTU Discover on %1 (addrs %2..%3, timeout %4 ms)"))
+                    .arg(portName).arg(startAddr).arg(endAddr).arg(timeOut);
+    emit discoverStarting();
+
+    discover *wgtdiscover = new discover(this);
+    connect(wgtdiscover, &discover::SendingRtuResponse, this,
+            [this](const discover::ModbusRtuSettings &rtu) {
+                logApp() << QString(tr("RTU опрос: %1, адрес %2 (%3 бод)"))
+                                       .arg(rtu.portName).arg(rtu.addr).arg(rtu.baudRate);
+            });
+    connect(wgtdiscover, &discover::discoverCompleted, this,
+            [this, wgtdiscover](const QMap<QString, discover::lbinfo>& DiscoverMap,
+                                const discover::discoverError error,
+                                const QString errorStr) {
+                discoverRunning = false;
+                if (error != discover::NoError) {
+                    emit errorOccurred(errorStr);
+                    wgtdiscover->deleteLater();
+                    return;
+                }
+                last_ldmap = DiscoverMap;
+                emit discoverCompleted(DiscoverMap);
+                wgtdiscover->deleteLater();
+            });
+
+    discoverRunning = true;
+    wgtdiscover->executeRtu(rtuList, startAddr, endAddr, timeOut);
+}
+
 WatchSession *plcManager::startWatch(const plc::CommandContext &ctx, const QStringList &arg, QObject *p_watchDock)
 {
     if (activeWatchSessions.contains(ctx.name)) {
@@ -365,6 +417,20 @@ const QMap<QString, discover::lbinfo>& plcManager::getldmap() const
     return last_ldmap;
 }
 
+void plcManager::setConnectionMode(ConnectionMode mode)
+{
+    if (m_mode == mode)
+        return;
+
+    if (mode == ConnectionMode::RTUMode) {
+        refreshSerialPorts();
+        reloadRtuProfiles();
+    }
+
+    m_mode = mode;
+    emit connectionModeChanged(m_mode);
+}
+
 QString plcManager::getIf(const QString &ipv6)
 {
     if (!last_ldmap.isEmpty()){
@@ -388,6 +454,110 @@ QString plcManager::getIf(const QString &ipv6)
         debugApp() << tr("The interface was not found");
     }
     return QString();
+}
+
+bool plcManager::configureClientTransport(LBclient *lbc, const plc::CommandContext &ctx)
+{
+    if (m_mode == ConnectionMode::RTUMode) {
+        const QString port = ctx.rtu.portName;
+        const int addr = ctx.rtu.addr;
+        if (port.isEmpty() || addr <= 0) {
+            emit errorOccurred(tr("RTU: не задан COM-порт или адрес устройства"));
+            return false;
+        }
+        lbc->setSerialAddr(port, addr, ctx.rtu.baudRate, ctx.rtu.dataBits, ctx.rtu.parity, ctx.rtu.stopBits);
+        return true;
+    }
+
+    lbc->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
+    return true;
+}
+
+void plcManager::setCurrentPortIt(const SerialPortIterator &newCurrentPortIt)
+{
+    m_currentPortIt = newCurrentPortIt;
+}
+
+SerialPortIterator plcManager::currentPortIt() const
+{
+    return m_currentPortIt;
+}
+
+SerialPortList plcManager::serialPorts() const
+{
+    return m_serialPorts;
+}
+
+void plcManager::setCurrentProfileIt(const RtuProfileIterator &newCurrentProfileIt)
+{
+    m_currentProfileIt = newCurrentProfileIt;
+}
+
+RtuProfileIterator plcManager::currentProfileIt() const
+{
+    return m_currentProfileIt;
+}
+
+RtuProfileList plcManager::rtuProfiles() const
+{
+    return m_rtuProfiles;
+}
+
+void plcManager::reloadRtuProfiles()
+{
+    int prevBaud = -1, prevData = -1, prevParity = -1, prevStop = -1;
+    const bool hadProfile = (m_currentProfileIt != m_rtuProfiles.cend());
+    if (hadProfile) {
+        prevBaud   = m_currentProfileIt->baudRate;
+        prevData   = m_currentProfileIt->dataBits;
+        prevParity = m_currentProfileIt->parity;
+        prevStop   = m_currentProfileIt->stopBits;
+    }
+
+    m_rtuProfiles = AppSettings::getRtuProfiles();
+
+    if (m_rtuProfiles.isEmpty()) {
+        m_currentProfileIt = m_rtuProfiles.cend();
+    } else if (hadProfile) {
+        auto it = std::find_if(m_rtuProfiles.cbegin(), m_rtuProfiles.cend(),
+                               [=](const discover::ModbusRtuSettings &cfg) {
+                                   return cfg.baudRate == prevBaud &&
+                                          cfg.dataBits == prevData &&
+                                          cfg.parity   == prevParity &&
+                                          cfg.stopBits == prevStop;
+                               });
+        m_currentProfileIt = (it != m_rtuProfiles.cend()) ? it : m_rtuProfiles.cbegin();
+    } else {
+        m_currentProfileIt = m_rtuProfiles.cbegin();
+    }
+
+    emit rtuProfilesUpdated(m_rtuProfiles);
+    // emit currentRtuProfileChanged(m_currentProfileIt);
+}
+
+void plcManager::refreshSerialPorts(const QString &preferredPortName)
+{
+    QString targetName = preferredPortName;
+    if (targetName.isEmpty() && m_currentPortIt != m_serialPorts.cend()) {
+        targetName = m_currentPortIt->portName();
+    }
+
+    m_serialPorts = discover::getlbSerialDiscover(); //[cite: 4]
+
+    if (m_serialPorts.isEmpty()) {
+        m_currentPortIt = m_serialPorts.cend();
+    } else if (!targetName.isEmpty()) {
+        auto it = std::find_if(m_serialPorts.cbegin(), m_serialPorts.cend(),
+                               [&targetName](const QSerialPortInfo &info) {
+                                   return info.portName() == targetName;
+                               });
+        m_currentPortIt = (it != m_serialPorts.cend()) ? it : m_serialPorts.cbegin();
+    } else {
+        m_currentPortIt = m_serialPorts.cbegin();
+    }
+
+    emit serialPortsUpdated(m_serialPorts);
+    // emit currentSerialPortChanged(m_currentPortIt);
 }
 
 plc::CommandContext plcManager::getctx(const QString &ipv6, const QString &name)
