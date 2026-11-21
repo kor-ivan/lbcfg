@@ -336,13 +336,7 @@ void MainMenu::onEditMenuAboutToShow()
         const auto currentProfileIt = mgr->currentProfileIt();
 
         for (auto it = profiles.cbegin(); it != profiles.cend(); ++it) {
-            const QChar pChar = (it->parity == QSerialPort::EvenParity) ? QChar('E') :
-                                    (it->parity == QSerialPort::OddParity)  ? QChar('O') : QChar('N');
-            const QString label = QString("%1/%2/%3/%4")
-                                      .arg(it->baudRate)
-                                      .arg(it->dataBits)
-                                      .arg(pChar)
-                                      .arg(it->stopBits);
+            const QString label = DiscoverDockWidget::formatRtuProfile(*it);
             QAction *profAct = rs485Menu->addAction(label);
             profAct->setCheckable(true);
             profAct->setChecked(it == currentProfileIt);

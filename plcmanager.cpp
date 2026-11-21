@@ -542,7 +542,7 @@ void plcManager::refreshSerialPorts(const QString &preferredPortName)
         targetName = m_currentPortIt->portName();
     }
 
-    m_serialPorts = discover::getlbSerialDiscover(); //[cite: 4]
+    m_serialPorts = discover::getlbSerialDiscover();
 
     if (m_serialPorts.isEmpty()) {
         m_currentPortIt = m_serialPorts.cend();

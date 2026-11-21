@@ -5,6 +5,8 @@
 #include <QMenu>
 #include <QClipboard>
 #include <QSerialPort>
+#include <QLabel>
+#include <qlineedit.h>
 #include "logmanager.h"
 #include "commandmanager.h"
 
@@ -19,6 +21,9 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
 
     vbox->setSpacing(0);
     hbox->addWidget(btnDiscover);
+
+    initRtuPanel(hbox);
+
     hbox->addStretch();
     vbox->addLayout(hbox);
 
@@ -72,6 +77,33 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
 
     connect(lbplc, &plcManager::discoverStarting,
             this, &DiscoverDockWidget::cleanRow);
+
+    connect(lbplc, &plcManager::connectionModeChanged, this, [this](plcManager::ConnectionMode mode) {
+        bool enabled = (mode == plcManager::ConnectionMode::RTUMode);
+        rtuPanel->setVisible(enabled);
+        btnDiscover->setText(enabled ? tr("Scan RTU") : tr("Send Discover"));
+        setWindowTitle(enabled ? tr("Discover [RTU Mode]") : tr("Discover"));
+
+        if (enabled) {
+            startAddrSpin->setValue(m_rtuStartAddr);
+            endAddrSpin->setValue(m_rtuEndAddr);
+            timeoutSpin->setValue(m_rtuTimeOut);
+            rebuildProfileCombo();
+        }
+        cleanRow();
+
+    });
+}
+
+QString DiscoverDockWidget::formatRtuProfile(const discover::ModbusRtuSettings &cfg)
+{
+    const QChar pChar = (cfg.parity == QSerialPort::EvenParity) ? QChar('E') :
+                            (cfg.parity == QSerialPort::OddParity)  ? QChar('O') : QChar('N');
+    return QString("%1/%2/%3/%4")
+        .arg(cfg.baudRate)
+        .arg(cfg.dataBits)
+        .arg(pChar)
+        .arg(cfg.stopBits);
 }
 
 
@@ -216,6 +248,123 @@ void DiscoverDockWidget::discoverReceived(const QMap<QString, discover::lbinfo> 
     }
     table->setSortingEnabled(true); // Возвращаем возможность сортировки
     logApp() << tr("Discover completed");
+}
+
+void DiscoverDockWidget::initRtuPanel(QHBoxLayout *parentLayout)
+{
+    rtuPanel = new QWidget(this);
+    QHBoxLayout *rtuLayout = new QHBoxLayout(rtuPanel);
+    rtuLayout->setContentsMargins(8, 0, 0, 0);
+    rtuLayout->setSpacing(6);
+
+    rtuLayout->addWidget(new QLabel(tr("Адреса:"), rtuPanel));
+    startAddrSpin = new QSpinBox(rtuPanel);
+    startAddrSpin->setRange(1, 247);
+    rtuLayout->addWidget(startAddrSpin);
+
+    rtuLayout->addWidget(new QLabel("—", rtuPanel));
+    endAddrSpin = new QSpinBox(rtuPanel);
+    endAddrSpin->setRange(1, 247);
+    rtuLayout->addWidget(endAddrSpin);
+
+    rtuLayout->addWidget(new QLabel(tr("Таймаут:"), rtuPanel));
+    timeoutSpin = new QSpinBox(rtuPanel);
+    timeoutSpin->setRange(100, 10000);
+    timeoutSpin->setSingleStep(50);
+    timeoutSpin->setSuffix(tr(" мс"));
+    rtuLayout->addWidget(timeoutSpin);
+
+    rtuLayout->addWidget(new QLabel(tr("RS-485:"), rtuPanel));
+    profilesCombo = new QComboBox(rtuPanel);
+    profilesCombo->setMinimumWidth(135);
+    profilesModel = new QStandardItemModel(profilesCombo);
+    profilesCombo->setModel(profilesModel);
+    rtuLayout->addWidget(profilesCombo);
+
+    parentLayout->addWidget(rtuPanel);
+
+    connect(startAddrSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int val) {
+        if (val > endAddrSpin->value()) {
+            endAddrSpin->setValue(val);
+        }
+        m_rtuStartAddr = val;
+    });
+    connect(endAddrSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int val) {
+        if (val < startAddrSpin->value()) {
+            startAddrSpin->setValue(val);
+        }
+        m_rtuEndAddr = val;
+    });
+    connect(timeoutSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int val) {
+        m_rtuTimeOut = val;
+    });
+    connect(profilesModel, &QStandardItemModel::itemChanged, this, [this](QStandardItem *item) {
+        if (!item) return;
+        updateProfilesComboDisplay();
+    });
+}
+
+void DiscoverDockWidget::rebuildProfileCombo()
+{
+    profilesModel->blockSignals(true);
+    profilesModel->clear();
+
+    const auto &profiles = lbplc->rtuProfiles();
+    const auto curIt = lbplc->currentProfileIt();
+    const int activeIdx = (curIt != profiles.cend())
+                              ? static_cast<int>(std::distance(profiles.cbegin(), curIt))
+                              : 0;
+
+    for (int i = 0; i < profiles.size(); ++i) {
+        auto *item = new QStandardItem(formatRtuProfile(profiles.at(i)));
+        item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsUserCheckable);
+        item->setCheckState(i == activeIdx ? Qt::Checked : Qt::Unchecked);
+        profilesModel->appendRow(item);
+    }
+
+    profilesModel->blockSignals(false);
+    updateProfilesComboDisplay();
+}
+
+void DiscoverDockWidget::updateProfilesComboDisplay()
+{
+    QStringList checkedLabels;
+    for (int row = 0; row < profilesModel->rowCount(); ++row) {
+        const QStandardItem *item = profilesModel->item(row);
+        if (item && item->checkState() == Qt::Checked) {
+            checkedLabels.append(item->text());
+        }
+    }
+
+    QString displayText;
+    if (checkedLabels.isEmpty()) {
+        displayText = tr("Нет выбранных");
+    } else if (checkedLabels.size() == 1) {
+        displayText = checkedLabels.first();
+    } else {
+        displayText = QString("%1 (+%2)").arg(checkedLabels.first()).arg(checkedLabels.size() - 1);
+    }
+
+    if (profilesCombo->lineEdit() == nullptr) {
+        profilesCombo->setEditable(true);
+        profilesCombo->lineEdit()->setReadOnly(true);
+    }
+    profilesCombo->setCurrentText(displayText);
+}
+
+QList<discover::ModbusRtuSettings> DiscoverDockWidget::selectedRtuProfiles() const
+{
+    QList<discover::ModbusRtuSettings> result;
+    const auto &profiles = lbplc->rtuProfiles();
+
+    for (int row = 0; row < profilesModel->rowCount() && row < profiles.size(); ++row) {
+        const QStandardItem *item = profilesModel->item(row);
+        if (item && item->checkState() == Qt::Checked) {
+            result.append(profiles.at(row));
+        }
+    }
+
+    return result;
 }
 
 // QMap<QString, discover::lbinfo> DiscoverDockWidget::getLdmap() const
