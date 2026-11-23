@@ -7,6 +7,7 @@
 #include <QSerialPort>
 #include <QLabel>
 #include <qlineedit.h>
+#include <QMessageBox>
 #include "logmanager.h"
 #include "commandmanager.h"
 
@@ -16,8 +17,10 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
     QWidget *content = new QWidget(this);
     setWidget(content);
     QVBoxLayout *vbox = new QVBoxLayout(content);
-    btnDiscover = new QPushButton(tr("Send Discover"));
+    btnDiscover = new QPushButton(tr("Send Discover"), this);
     QHBoxLayout *hbox = new QHBoxLayout();
+    hbox->setContentsMargins(0, 0, 0, 0);
+    btnDiscover->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     vbox->setSpacing(0);
     hbox->addWidget(btnDiscover);
@@ -25,7 +28,7 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
     initRtuPanel(hbox);
 
     hbox->addStretch();
-    vbox->addLayout(hbox);
+    vbox->addLayout(hbox, 0);
 
     // Создаем таблицу
     table = new QTableWidget(this);
@@ -53,8 +56,8 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
         "    height: 20px;"      // Подсказка для высоты
         "}"
         );
-    table->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-    vbox->addWidget(table);
+    table->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    vbox->addWidget(table, 1);
 
     table->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(table, &QTableView::customContextMenuRequested, this, &DiscoverDockWidget::showContextMenu);
@@ -63,8 +66,8 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
     connect(
         btnDiscover,
         &QPushButton::clicked,
-        lbplc,
-        &plcManager::startDiscover);
+        this,
+        &DiscoverDockWidget::triggerDiscover);
 
     connect(lbplc, &plcManager::discoverCompleted,
             this, &DiscoverDockWidget::discoverReceived);
@@ -79,20 +82,25 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
             this, &DiscoverDockWidget::cleanRow);
 
     connect(lbplc, &plcManager::connectionModeChanged, this, [this](plcManager::ConnectionMode mode) {
-        bool enabled = (mode == plcManager::ConnectionMode::RTUMode);
-        rtuPanel->setVisible(enabled);
-        btnDiscover->setText(enabled ? tr("Scan RTU") : tr("Send Discover"));
-        setWindowTitle(enabled ? tr("Discover [RTU Mode]") : tr("Discover"));
-
-        if (enabled) {
-            startAddrSpin->setValue(m_rtuStartAddr);
-            endAddrSpin->setValue(m_rtuEndAddr);
-            timeoutSpin->setValue(m_rtuTimeOut);
-            rebuildProfileCombo();
-        }
-        cleanRow();
-
+        setRtuMode(mode == plcManager::ConnectionMode::RTUMode);
     });
+
+    setRtuMode(lbplc->connectionMode() == plcManager::ConnectionMode::RTUMode);
+}
+
+void DiscoverDockWidget::setRtuMode(bool enabled)
+{
+    rtuPanel->setVisible(enabled);
+    btnDiscover->setText(enabled ? tr("Scan RTU") : tr("Send Discover"));
+    setWindowTitle(enabled ? tr("Discover [RTU Mode]") : tr("Discover"));
+
+    if (enabled) {
+        startAddrSpin->setValue(m_rtuStartAddr);
+        endAddrSpin->setValue(m_rtuEndAddr);
+        timeoutSpin->setValue(m_rtuTimeOut);
+        rebuildProfileCombo();
+    }
+    cleanRow();
 }
 
 QString DiscoverDockWidget::formatRtuProfile(const discover::ModbusRtuSettings &cfg)
@@ -253,32 +261,57 @@ void DiscoverDockWidget::discoverReceived(const QMap<QString, discover::lbinfo> 
 void DiscoverDockWidget::initRtuPanel(QHBoxLayout *parentLayout)
 {
     rtuPanel = new QWidget(this);
+    rtuPanel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+
     QHBoxLayout *rtuLayout = new QHBoxLayout(rtuPanel);
     rtuLayout->setContentsMargins(8, 0, 0, 0);
     rtuLayout->setSpacing(6);
 
-    rtuLayout->addWidget(new QLabel(tr("Адреса:"), rtuPanel));
+    auto fixVertical = [](QWidget *w) {
+        w->setSizePolicy(w->sizePolicy().horizontalPolicy(), QSizePolicy::Fixed);
+    };
+
+    QLabel *lblAddr = new QLabel(tr("Адреса:"), rtuPanel);
+    fixVertical(lblAddr);
+    rtuLayout->addWidget(lblAddr);
+
     startAddrSpin = new QSpinBox(rtuPanel);
     startAddrSpin->setRange(1, 247);
+    startAddrSpin->setValue(m_rtuStartAddr);
+    fixVertical(startAddrSpin);
     rtuLayout->addWidget(startAddrSpin);
 
-    rtuLayout->addWidget(new QLabel("—", rtuPanel));
+    QLabel *lblDash = new QLabel("—", rtuPanel);
+    fixVertical(lblDash);
+    rtuLayout->addWidget(lblDash);
+
     endAddrSpin = new QSpinBox(rtuPanel);
     endAddrSpin->setRange(1, 247);
+    endAddrSpin->setValue(m_rtuEndAddr);
+    fixVertical(endAddrSpin);
     rtuLayout->addWidget(endAddrSpin);
 
-    rtuLayout->addWidget(new QLabel(tr("Таймаут:"), rtuPanel));
+    QLabel *lblTimeout = new QLabel(tr("Таймаут:"), rtuPanel);
+    fixVertical(lblTimeout);
+    rtuLayout->addWidget(lblTimeout);
+
     timeoutSpin = new QSpinBox(rtuPanel);
     timeoutSpin->setRange(100, 10000);
     timeoutSpin->setSingleStep(50);
     timeoutSpin->setSuffix(tr(" мс"));
+    timeoutSpin->setValue(m_rtuTimeOut);
+    fixVertical(timeoutSpin);
     rtuLayout->addWidget(timeoutSpin);
 
-    rtuLayout->addWidget(new QLabel(tr("RS-485:"), rtuPanel));
+    QLabel *lblProfiles = new QLabel(tr("RS-485:"), rtuPanel);
+    fixVertical(lblProfiles);
+    rtuLayout->addWidget(lblProfiles);
+
     profilesCombo = new QComboBox(rtuPanel);
     profilesCombo->setMinimumWidth(135);
     profilesModel = new QStandardItemModel(profilesCombo);
     profilesCombo->setModel(profilesModel);
+    fixVertical(profilesCombo);
     rtuLayout->addWidget(profilesCombo);
 
     parentLayout->addWidget(rtuPanel);
@@ -356,15 +389,42 @@ QList<discover::ModbusRtuSettings> DiscoverDockWidget::selectedRtuProfiles() con
 {
     QList<discover::ModbusRtuSettings> result;
     const auto &profiles = lbplc->rtuProfiles();
+    const auto &ports = lbplc->serialPorts();
+    const auto portIt = lbplc->currentPortIt();
+    const QString activePort = (portIt != ports.cend())
+                                   ? portIt->portName()
+                                   : QString();
 
     for (int row = 0; row < profilesModel->rowCount() && row < profiles.size(); ++row) {
         const QStandardItem *item = profilesModel->item(row);
         if (item && item->checkState() == Qt::Checked) {
-            result.append(profiles.at(row));
+            discover::ModbusRtuSettings cfg = profiles.at(row);
+            cfg.portName = activePort;
+            result.append(cfg);
         }
     }
 
     return result;
+}
+
+void DiscoverDockWidget::triggerDiscover()
+{
+    if (lbplc->connectionMode() == plcManager::ConnectionMode::RTUMode) {
+        const auto profiles = selectedRtuProfiles();
+        if (profiles.isEmpty()) {
+            const QString msg = tr("Не выбран ни один профиль RS-485. Отметьте хотя бы один профиль перед сканированием.");
+            logApp() << msg;
+            QMessageBox::warning(this, tr("RTU Discover"), msg);
+            return;
+        }
+
+        const int startAddr = m_rtuStartAddr;
+        const int endAddr = m_rtuEndAddr;
+        const int timeOut = m_rtuTimeOut;
+        lbplc->startDiscoverRTU(profiles, startAddr, endAddr, timeOut);
+    } else {
+        lbplc->startDiscover();
+    }
 }
 
 // QMap<QString, discover::lbinfo> DiscoverDockWidget::getLdmap() const

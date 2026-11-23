@@ -335,7 +335,6 @@ void plcManager::startDiscoverRTU(const RtuProfileList &profiles, const int star
     RtuProfileList rtuList = profiles.isEmpty()
                                  ? (m_rtuProfiles.isEmpty() ? AppSettings::getRtuProfiles() : m_rtuProfiles)
                                  : profiles;
-
     logApp() << QString(tr("RTU Discover on %1 (addrs %2..%3, timeout %4 ms)"))
                     .arg(portName).arg(startAddr).arg(endAddr).arg(timeOut);
     emit discoverStarting();
@@ -343,7 +342,7 @@ void plcManager::startDiscoverRTU(const RtuProfileList &profiles, const int star
     discover *wgtdiscover = new discover(this);
     connect(wgtdiscover, &discover::SendingRtuResponse, this,
             [this](const discover::ModbusRtuSettings &rtu) {
-                logApp() << QString(tr("RTU опрос: %1, адрес %2 (%3 бод)"))
+                logApp() << QString(tr("RTU опрос: %1, адрес %2 (%3 бит/c)"))
                                        .arg(rtu.portName).arg(rtu.addr).arg(rtu.baudRate);
             });
     connect(wgtdiscover, &discover::discoverCompleted, this,

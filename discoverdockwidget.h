@@ -17,7 +17,7 @@ class DiscoverDockWidget : public QDockWidget
     Q_OBJECT
 public:
     explicit DiscoverDockWidget(QWidget *parent = nullptr);
-    // void setRtuMode(bool enabled);
+    void setRtuMode(bool enabled);
 
     // QMap<QString, discover::lbinfo> getLdmap() const;
     static QString formatRtuProfile(const discover::ModbusRtuSettings &cfg);
@@ -53,6 +53,7 @@ private:
     void rebuildProfileCombo();
     void updateProfilesComboDisplay();
     QList<discover::ModbusRtuSettings> selectedRtuProfiles() const;
+    void triggerDiscover();
 
     // Виджеты панели RTU режима
     QWidget *rtuPanel = nullptr;
