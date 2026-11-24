@@ -69,8 +69,10 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
         this,
         &DiscoverDockWidget::triggerDiscover);
 
-    connect(lbplc, &plcManager::discoverCompleted,
-            this, &DiscoverDockWidget::discoverReceived);
+    connect(lbplc, &plcManager::discoverCompleted, this, [this](const QMap<QString, discover::lbinfo>& DiscoverMap) {
+        updateDiscoverButtonState();
+        discoverReceived(DiscoverMap);
+    });
 
     connect(
         table,
@@ -78,11 +80,27 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
         this,
         &DiscoverDockWidget::onTableDoubleClicked);
 
-    connect(lbplc, &plcManager::discoverStarting,
-            this, &DiscoverDockWidget::cleanRow);
+    connect(lbplc, &plcManager::discoverStarting, this, [this]() {
+        cleanRow();
+        updateDiscoverButtonState();
+    });
 
     connect(lbplc, &plcManager::connectionModeChanged, this, [this](plcManager::ConnectionMode mode) {
         setRtuMode(mode == plcManager::ConnectionMode::RTUMode);
+    });
+
+    connect(lbplc, &plcManager::rtuDeviceDiscovered, this,
+            [this](const discover::lbinfo &info) {
+                const QString key = lbyaml::MacToIPv6(info.mac);
+                debugApp() << QString(tr("RTU найдено устройство: %1 (%2), адрес %3, профиль %4"))
+                                  .arg(info.name, info.type)
+                                  .arg(info.rtuSettings.addr)
+                                  .arg(formatRtuProfile(info.rtuSettings));
+                appendDeviceRow(key, info);
+            });
+
+    connect(lbplc, &plcManager::discoverStopped, this, [this]() {
+        updateDiscoverButtonState();
     });
 
     setRtuMode(lbplc->connectionMode() == plcManager::ConnectionMode::RTUMode);
@@ -90,16 +108,17 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
 
 void DiscoverDockWidget::setRtuMode(bool enabled)
 {
-    rtuPanel->setVisible(enabled);
-    btnDiscover->setText(enabled ? tr("Scan RTU") : tr("Send Discover"));
-    setWindowTitle(enabled ? tr("Discover [RTU Mode]") : tr("Discover"));
+    if (btnDiscover) {
+        btnDiscover->setProperty("rtuMode", enabled);
+    }
+    if (rtuPanel) {
+        rtuPanel->setVisible(enabled);
+    }
 
     if (enabled) {
-        startAddrSpin->setValue(m_rtuStartAddr);
-        endAddrSpin->setValue(m_rtuEndAddr);
-        timeoutSpin->setValue(m_rtuTimeOut);
         rebuildProfileCombo();
     }
+    updateDiscoverButtonState();
     cleanRow();
 }
 
@@ -204,57 +223,66 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
 
 void DiscoverDockWidget::discoverReceived(const QMap<QString, discover::lbinfo> &DiscoverMap)
 {
-    const auto &ldmap = DiscoverMap;
-    table->setSortingEnabled(false); // Отключаем сортировку на время вставки для скорости
-    int row = 0;
-    for (auto it = ldmap.begin(); it != ldmap.end(); ++it) {
-        debugPLC() << it.key() << it.value();
-        table->insertRow(row);
-        QTableWidgetItem *nameItem = new QTableWidgetItem(it.value().name);
-        nameItem->setData(ipv6Role, it.key());
-        table->setItem(row, 0, nameItem);
-        // table->setItem(row, 0, new QTableWidgetItem(it.value().name));
-        table->setItem(row, 1, new QTableWidgetItem(it.value().type));
-        table->setItem(row, 2, new QTableWidgetItem(it.value().ipv4));
-        table->setItem(row, 3, new QTableWidgetItem(it.value().mac));
-        QStringList strList;
-        for (float val : it.value().delay)
-            strList << QString::number(val);
-        table->setItem(row, 4, new QTableWidgetItem(strList.join(",")));
-        strList.clear();
-        for (const auto& val : it.value().ifindex)
-            strList << val;
-        table->setItem(row, 5, new QTableWidgetItem(strList.join(",")));
-        if (it.value().rtuSettings.addr > 0)
-        {
-            QTableWidgetItem *rtuItem = new QTableWidgetItem(QString("%1/%2/%3/%4/%5")
-                                                                 .arg(it.value().rtuSettings.addr)
-                                                                 .arg(it.value().rtuSettings.baudRate)
-                                                                 .arg(it.value().rtuSettings.dataBits)
-                                                                 .arg(it.value().rtuSettings.parity == QSerialPort::EvenParity ? "E" :
-                                                                          it.value().rtuSettings.parity == QSerialPort::OddParity  ? "O" : "N")
-                                                                 .arg(it.value().rtuSettings.stopBits));
-            table->setItem(row, 6, rtuItem);
-            rtuItem -> setData(rtuRole, QVariant::fromValue(it.value().rtuSettings));
-        }
-
-        for (int col = 0; col < table->columnCount(); ++col) {
-            QTableWidgetItem *item = table->item(row, col);
-            if (item) {
-                item->setToolTip(it.key());
-                if (it.value().btn) {
-                    item->setBackground(alertColor);
-                    QFont font = item->font();
-                    font.setBold(true);
-                    item->setFont(font);
-                }
-            }
-        }
-        // table->setItem(row, 6, new QTableWidgetItem(it.key()));
-
-        row++;
+    if (lbplc->connectionMode() == plcManager::ConnectionMode::RTUMode) {
+        logApp() << tr("RTU Discover completed");
+        return;
     }
-    table->setSortingEnabled(true); // Возвращаем возможность сортировки
+
+    for (auto it = DiscoverMap.begin(); it != DiscoverMap.end(); ++it) {
+        debugPLC() << it.key() << it.value();
+        appendDeviceRow(it.key(), it.value());
+    }
+    // const auto &ldmap = DiscoverMap;
+    // table->setSortingEnabled(false); // Отключаем сортировку на время вставки для скорости
+    // int row = 0;
+    // for (auto it = ldmap.begin(); it != ldmap.end(); ++it) {
+    //     debugPLC() << it.key() << it.value();
+    //     table->insertRow(row);
+    //     QTableWidgetItem *nameItem = new QTableWidgetItem(it.value().name);
+    //     nameItem->setData(ipv6Role, it.key());
+    //     table->setItem(row, 0, nameItem);
+    //     // table->setItem(row, 0, new QTableWidgetItem(it.value().name));
+    //     table->setItem(row, 1, new QTableWidgetItem(it.value().type));
+    //     table->setItem(row, 2, new QTableWidgetItem(it.value().ipv4));
+    //     table->setItem(row, 3, new QTableWidgetItem(it.value().mac));
+    //     QStringList strList;
+    //     for (float val : it.value().delay)
+    //         strList << QString::number(val);
+    //     table->setItem(row, 4, new QTableWidgetItem(strList.join(",")));
+    //     strList.clear();
+    //     for (const auto& val : it.value().ifindex)
+    //         strList << val;
+    //     table->setItem(row, 5, new QTableWidgetItem(strList.join(",")));
+    //     if (it.value().rtuSettings.addr > 0)
+    //     {
+    //         QTableWidgetItem *rtuItem = new QTableWidgetItem(QString("%1/%2/%3/%4/%5")
+    //                                                              .arg(it.value().rtuSettings.addr)
+    //                                                              .arg(it.value().rtuSettings.baudRate)
+    //                                                              .arg(it.value().rtuSettings.dataBits)
+    //                                                              .arg(it.value().rtuSettings.parity == QSerialPort::EvenParity ? "E" :
+    //                                                                       it.value().rtuSettings.parity == QSerialPort::OddParity  ? "O" : "N")
+    //                                                              .arg(it.value().rtuSettings.stopBits));
+    //         table->setItem(row, 6, rtuItem);
+    //         rtuItem -> setData(rtuRole, QVariant::fromValue(it.value().rtuSettings));
+    //     }
+
+    //     for (int col = 0; col < table->columnCount(); ++col) {
+    //         QTableWidgetItem *item = table->item(row, col);
+    //         if (item) {
+    //             item->setToolTip(it.key());
+    //             if (it.value().btn) {
+    //                 item->setBackground(alertColor);
+    //                 QFont font = item->font();
+    //                 font.setBold(true);
+    //                 item->setFont(font);
+    //             }
+    //         }
+    //     }
+    //     // table->setItem(row, 6, new QTableWidgetItem(it.key()));
+
+    //     row++;
+    // }
+    // table->setSortingEnabled(true); // Возвращаем возможность сортировки
     logApp() << tr("Discover completed");
 }
 
@@ -409,7 +437,18 @@ QList<discover::ModbusRtuSettings> DiscoverDockWidget::selectedRtuProfiles() con
 
 void DiscoverDockWidget::triggerDiscover()
 {
-    if (lbplc->connectionMode() == plcManager::ConnectionMode::RTUMode) {
+    if (!lbplc) {
+        return;
+    }
+
+    if (lbplc->isDiscoverRunning()) {
+        lbplc->stopDiscover();
+        return;
+    }
+
+    const bool isRtu = btnDiscover && btnDiscover->property("rtuMode").toBool();
+
+    if (isRtu) {
         const auto profiles = selectedRtuProfiles();
         if (profiles.isEmpty()) {
             const QString msg = tr("Не выбран ни один профиль RS-485. Отметьте хотя бы один профиль перед сканированием.");
@@ -421,13 +460,81 @@ void DiscoverDockWidget::triggerDiscover()
         const int startAddr = m_rtuStartAddr;
         const int endAddr = m_rtuEndAddr;
         const int timeOut = m_rtuTimeOut;
+
         lbplc->startDiscoverRTU(profiles, startAddr, endAddr, timeOut);
-    } else {
+    } else if (lbplc) {
         lbplc->startDiscover();
     }
 }
 
-// QMap<QString, discover::lbinfo> DiscoverDockWidget::getLdmap() const
-// {
-//     return ldmap;
-// }
+void DiscoverDockWidget::appendDeviceRow(const QString &key, const discover::lbinfo &info)
+{
+    const bool wasSorting = table->isSortingEnabled();
+    table->setSortingEnabled(false);
+
+    const int row = table->rowCount();
+    table->insertRow(row);
+
+    QTableWidgetItem *nameItem = new QTableWidgetItem(info.name);
+    nameItem->setData(ipv6Role, key);
+    table->setItem(row, 0, nameItem);
+    table->setItem(row, 1, new QTableWidgetItem(info.type));
+    table->setItem(row, 2, new QTableWidgetItem(info.ipv4));
+    table->setItem(row, 3, new QTableWidgetItem(info.mac));
+
+    QStringList strList;
+    for (float val : info.delay)
+        strList << QString::number(val);
+    table->setItem(row, 4, new QTableWidgetItem(strList.join(",")));
+
+    strList.clear();
+    for (const auto &val : info.ifindex)
+        strList << val;
+    table->setItem(row, 5, new QTableWidgetItem(strList.join(",")));
+
+    if (info.rtuSettings.addr > 0) {
+        const QString rtuText = QString("%1/%2")
+        .arg(info.rtuSettings.addr)
+            .arg(formatRtuProfile(info.rtuSettings));
+        QTableWidgetItem *rtuItem = new QTableWidgetItem(rtuText);
+        rtuItem->setData(rtuRole, QVariant::fromValue(info.rtuSettings));
+        table->setItem(row, 6, rtuItem);
+    }
+
+    for (int col = 0; col < table->columnCount(); ++col) {
+        QTableWidgetItem *item = table->item(row, col);
+        if (item) {
+            item->setToolTip(key);
+            if (info.btn) {
+                item->setBackground(alertColor);
+                QFont font = item->font();
+                font.setBold(true);
+                item->setFont(font);
+            }
+        }
+    }
+
+    table->setSortingEnabled(wasSorting);
+}
+
+void DiscoverDockWidget::updateDiscoverButtonState()
+{
+    const bool running = lbplc && lbplc->isDiscoverRunning();
+    const bool isRtu = btnDiscover && btnDiscover->property("rtuMode").toBool();
+
+    if (btnDiscover) {
+        btnDiscover->setEnabled(true);
+        if (isRtu) {
+            btnDiscover->setText(running ? tr("Stop") : tr("Scan RTU"));
+        } else {
+            btnDiscover->setText(running ? tr("Stop") : tr("Send Discover"));
+        }
+    }
+
+    if (isRtu) {
+        if (startAddrSpin) startAddrSpin->setEnabled(!running);
+        if (endAddrSpin)   endAddrSpin->setEnabled(!running);
+        if (timeoutSpin)   timeoutSpin->setEnabled(!running);
+        if (profilesCombo) profilesCombo->setEnabled(!running);
+    }
+}

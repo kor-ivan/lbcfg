@@ -54,6 +54,8 @@ private:
     void updateProfilesComboDisplay();
     QList<discover::ModbusRtuSettings> selectedRtuProfiles() const;
     void triggerDiscover();
+    void appendDeviceRow(const QString &key, const discover::lbinfo &info);
+    void updateDiscoverButtonState();
 
     // Виджеты панели RTU режима
     QWidget *rtuPanel = nullptr;

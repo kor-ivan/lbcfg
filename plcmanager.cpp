@@ -79,10 +79,9 @@ void plcManager::startDiscover()
         return;
     }
     logApp() << tr("Discover runing");
-    emit discoverStarting();
-    discover *wgtdiscover = new discover(this);
-    connect(wgtdiscover, &discover::discoverCompleted, this,
-            [this, wgtdiscover] (const QMap<QString, discover::lbinfo>& DiscoverMap, const discover::discoverError error, const QString errorStr){
+    activeDiscover = new discover(this);
+    connect(activeDiscover, &discover::discoverCompleted, this,
+            [this] (const QMap<QString, discover::lbinfo>& DiscoverMap, const discover::discoverError error, const QString errorStr){
                 discoverRunning = false;
                 if (error != discover::NoError){
                     emit errorOccurred(errorStr);
@@ -90,11 +89,12 @@ void plcManager::startDiscover()
                 }
                 last_ldmap = DiscoverMap;
                 emit discoverCompleted(DiscoverMap);
-                wgtdiscover->deleteLater();
+                activeDiscover->deleteLater();
             }
             );
     discoverRunning = true;
-    wgtdiscover -> execute();
+    emit discoverStarting();
+    activeDiscover -> execute();
 }
 
 bool plcManager::startFirmware(const plc::CommandContext &ctx, const QString &filePath, const QString &checkMessage, const QString &startMessage, const QString &lbkey)
@@ -327,7 +327,7 @@ void plcManager::startDiscoverRTU(const RtuProfileList &profiles, const int star
     }
 
     if (m_currentPortIt == m_serialPorts.cend()) {
-        emit errorOccurred(tr("RTU режим: нет доступных COM-портов или порт не выбран"));
+        logApp() << (tr("RTU режим: нет доступных COM-портов или порт не выбран"));
         return;
     }
 
@@ -337,31 +337,38 @@ void plcManager::startDiscoverRTU(const RtuProfileList &profiles, const int star
                                  : profiles;
     logApp() << QString(tr("RTU Discover on %1 (addrs %2..%3, timeout %4 ms)"))
                     .arg(portName).arg(startAddr).arg(endAddr).arg(timeOut);
-    emit discoverStarting();
 
-    discover *wgtdiscover = new discover(this);
-    connect(wgtdiscover, &discover::SendingRtuResponse, this,
+    activeDiscover = new discover(this);
+    connect(activeDiscover, &discover::SendingRtuResponse, this,
             [this](const discover::ModbusRtuSettings &rtu) {
                 logApp() << QString(tr("RTU опрос: %1, адрес %2 (%3 бит/c)"))
                                        .arg(rtu.portName).arg(rtu.addr).arg(rtu.baudRate);
             });
-    connect(wgtdiscover, &discover::discoverCompleted, this,
-            [this, wgtdiscover](const QMap<QString, discover::lbinfo>& DiscoverMap,
+    connect(activeDiscover, &discover::discoverCompleted, this,
+            [this](const QMap<QString, discover::lbinfo>& DiscoverMap,
                                 const discover::discoverError error,
                                 const QString errorStr) {
                 discoverRunning = false;
                 if (error != discover::NoError) {
                     emit errorOccurred(errorStr);
-                    wgtdiscover->deleteLater();
+                    activeDiscover->deleteLater();
                     return;
                 }
                 last_ldmap = DiscoverMap;
                 emit discoverCompleted(DiscoverMap);
-                wgtdiscover->deleteLater();
+                activeDiscover->deleteLater();
+            });
+    connect(activeDiscover, &discover::rtuResponseReceived, this,
+            [this](const discover::lbinfo &info) {
+                const QString key = lbyaml::MacToIPv6(info.mac);
+                last_ldmap.insert(key, info);
+                emit rtuDeviceDiscovered(info);
             });
 
     discoverRunning = true;
-    wgtdiscover->executeRtu(rtuList, startAddr, endAddr, timeOut);
+    emit discoverStarting();
+    last_ldmap.clear();
+    activeDiscover->executeRtu(rtuList, startAddr, endAddr, timeOut);
 }
 
 WatchSession *plcManager::startWatch(const plc::CommandContext &ctx, const QStringList &arg, QObject *p_watchDock)
@@ -532,6 +539,23 @@ void plcManager::reloadRtuProfiles()
 
     emit rtuProfilesUpdated(m_rtuProfiles);
     // emit currentRtuProfileChanged(m_currentProfileIt);
+}
+
+void plcManager::stopDiscover()
+{
+    if (!discoverRunning)
+        return;
+
+    discoverRunning = false;
+
+    if (activeDiscover) {
+        QObject::disconnect(activeDiscover, nullptr, this, nullptr);
+        activeDiscover->deleteLater();
+        activeDiscover.clear();
+    }
+
+    logApp() << tr("RTU Discover stopped by user");
+    emit discoverStopped();
 }
 
 void plcManager::refreshSerialPorts(const QString &preferredPortName)

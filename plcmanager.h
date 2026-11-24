@@ -114,6 +114,8 @@ public:
     SerialPortIterator currentPortIt() const;
     void setCurrentPortIt(const SerialPortIterator &newCurrentPortIt);
     void reloadRtuProfiles();
+    void stopDiscover();
+    bool isDiscoverRunning() const { return discoverRunning; }
 
 signals:
     void scanCompleted(const plc::CommandContext &ctx, const QMap<qsizetype, lbprocess::scaninfo> &scanData);
@@ -122,6 +124,7 @@ signals:
     void eventOccurred(const QString &message);
     void discoverStarting();
     void discoverCompleted(const QMap<QString, discover::lbinfo>& DiscoverMap);
+    void discoverStopped();
     void firmwareStarted(const plc::CommandContext &ctx, const QString &message);
     void firmwareProgressChanged(int prc);
     void firmwareFinished();
@@ -135,6 +138,8 @@ signals:
     void connectionModeChanged(plcManager::ConnectionMode mode);
     void rtuProfilesUpdated(const RtuProfileList &profiles);
     void serialPortsUpdated(const SerialPortList &ports);
+    void rtuDeviceDiscovered(const discover::lbinfo& info);
+
 
 
 private:
@@ -144,6 +149,7 @@ private:
     plcManager& operator=(const plcManager&) = delete;
     static constexpr int port = 502;
     bool discoverRunning = false;
+    QPointer<discover> activeDiscover;
     QPointer<LBclient> activeOtaClient;
     QPointer<lbprocess> prcActiveOtaClient;
     QPointer<LBclient> activeLogClient;
