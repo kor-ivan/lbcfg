@@ -8,8 +8,70 @@
 #include <QLabel>
 #include <qlineedit.h>
 #include <QMessageBox>
+#include <QMouseEvent>
 #include "logmanager.h"
 #include "commandmanager.h"
+
+class RefreshableComboBox : public QComboBox
+{
+public:
+    explicit RefreshableComboBox(QWidget *parent = nullptr) : QComboBox(parent)
+    {
+        setEditable(true);
+        configureLineEdit();
+    }
+
+    std::function<void()> onBeforePopup;
+
+    void showPopup() override
+    {
+        if (onBeforePopup) {
+            onBeforePopup();
+        }
+        if (auto *v = view()) {
+            v->doItemsLayout();
+            const int visibleRows = qMin(count(), maxVisibleItems());
+            const int rowHeight = v->sizeHintForRow(0);
+            if (visibleRows > 0 && rowHeight > 0) {
+                const int totalHeight = visibleRows * rowHeight;
+                v->setMinimumHeight(totalHeight);
+                v->setMaximumHeight(totalHeight);
+            }
+        }
+        QComboBox::showPopup();
+    }
+
+protected:
+    void configureLineEdit()
+    {
+        if (lineEdit()) {
+            lineEdit()->setReadOnly(true);
+            lineEdit()->removeEventFilter(this);
+            lineEdit()->installEventFilter(this);
+        }
+    }
+    bool eventFilter(QObject *watched, QEvent *event) override
+    {
+        if (watched == lineEdit()) {
+            if (event->type() == QEvent::MouseButtonPress) {
+                auto *mouseEvent = static_cast<QMouseEvent*>(event);
+                if (mouseEvent->button() == Qt::LeftButton && isEnabled()) {
+                    return true;
+                }
+            }
+            if (event->type() == QEvent::MouseButtonRelease) {
+                auto *mouseEvent = static_cast<QMouseEvent*>(event);
+                if (mouseEvent->button() == Qt::LeftButton && isEnabled()) {
+                    if (!view()->isVisible()) {
+                        showPopup();
+                    }
+                    return true;
+                }
+            }
+        }
+        return QComboBox::eventFilter(watched, event);
+    }
+};
 
 DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
     : QDockWidget("Discover", parent), lbplc(plcManager::instanse())
@@ -132,8 +194,6 @@ QString DiscoverDockWidget::formatRtuProfile(const discover::ModbusRtuSettings &
         .arg(pChar)
         .arg(cfg.stopBits);
 }
-
-
 
 void DiscoverDockWidget::cleanRow()
 {
@@ -335,7 +395,12 @@ void DiscoverDockWidget::initRtuPanel(QHBoxLayout *parentLayout)
     fixVertical(lblProfiles);
     rtuLayout->addWidget(lblProfiles);
 
-    profilesCombo = new QComboBox(rtuPanel);
+    auto *combo = new RefreshableComboBox(rtuPanel);
+    combo->onBeforePopup = [this]() {
+        lbplc->reloadRtuProfiles();
+        rebuildProfileCombo();
+    };
+    profilesCombo = combo;
     profilesCombo->setMinimumWidth(135);
     profilesModel = new QStandardItemModel(profilesCombo);
     profilesCombo->setModel(profilesModel);
@@ -367,6 +432,14 @@ void DiscoverDockWidget::initRtuPanel(QHBoxLayout *parentLayout)
 
 void DiscoverDockWidget::rebuildProfileCombo()
 {
+    QSet<QString> previouslyChecked;
+    for (int row = 0; row < profilesModel->rowCount(); ++row) {
+        const QStandardItem *item = profilesModel->item(row);
+        if (item && item->checkState() == Qt::Checked) {
+            previouslyChecked.insert(item->text());
+        }
+    }
+
     profilesModel->blockSignals(true);
     profilesModel->clear();
 
@@ -377,9 +450,15 @@ void DiscoverDockWidget::rebuildProfileCombo()
                               : 0;
 
     for (int i = 0; i < profiles.size(); ++i) {
-        auto *item = new QStandardItem(formatRtuProfile(profiles.at(i)));
+        const QString label = formatRtuProfile(profiles.at(i));
+        auto *item = new QStandardItem(label);
         item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsUserCheckable);
-        item->setCheckState(i == activeIdx ? Qt::Checked : Qt::Unchecked);
+
+        bool isChecked = previouslyChecked.isEmpty()
+                             ? (i == activeIdx)
+                             : previouslyChecked.contains(label);
+
+        item->setCheckState(isChecked ? Qt::Checked : Qt::Unchecked);
         profilesModel->appendRow(item);
     }
 
@@ -406,10 +485,11 @@ void DiscoverDockWidget::updateProfilesComboDisplay()
         displayText = QString("%1 (+%2)").arg(checkedLabels.first()).arg(checkedLabels.size() - 1);
     }
 
-    if (profilesCombo->lineEdit() == nullptr) {
-        profilesCombo->setEditable(true);
-        profilesCombo->lineEdit()->setReadOnly(true);
-    }
+    // if (profilesCombo->lineEdit() == nullptr) {
+    //     // profilesCombo->setEditable(true);
+    //     // profilesCombo->lineEdit()->setReadOnly(true);
+    //     profilesCombo->setCurrentText(displayText);
+    // }
     profilesCombo->setCurrentText(displayText);
 }
 

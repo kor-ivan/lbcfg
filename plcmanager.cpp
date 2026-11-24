@@ -2,6 +2,7 @@
 #include "logmanager.h"
 #include "watchsession.h"
 #include "appsettings.h"
+#include "discoverdockwidget.h"
 #include <QEventLoop>
 
 
@@ -341,8 +342,9 @@ void plcManager::startDiscoverRTU(const RtuProfileList &profiles, const int star
     activeDiscover = new discover(this);
     connect(activeDiscover, &discover::SendingRtuResponse, this,
             [this](const discover::ModbusRtuSettings &rtu) {
-                logApp() << QString(tr("RTU опрос: %1, адрес %2 (%3 бит/c)"))
-                                       .arg(rtu.portName).arg(rtu.addr).arg(rtu.baudRate);
+                logApp() << QString(tr("RTU опрос: %1, адрес %2 (%3)"))
+                                       .arg(rtu.portName).arg(rtu.addr)
+                        .arg(DiscoverDockWidget::formatRtuProfile(rtu));
             });
     connect(activeDiscover, &discover::discoverCompleted, this,
             [this](const QMap<QString, discover::lbinfo>& DiscoverMap,
