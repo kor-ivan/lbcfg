@@ -32,20 +32,12 @@ DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent)
     connect(treeView, &QTreeView::expanded,
             this, &DeviceTreeDockWidget::onTreeExpanded);
 
-    // m_firmwareAnalyzer = new firmwareAnalyzer(this);
-    // connect(m_firmwareAnalyzer, &firmwareAnalyzer::updated, this, [](const QString &gitHeadHash){
-    //     qDebug() << gitHeadHash;
-    // });
-
     layout->addWidget(treeView);
     connect(treeView, &QTreeView::doubleClicked, this,
             [this](const QModelIndex &index){
                 if (!index.isValid()) return;
                 if (!index.parent().isValid()){
-                    // plc::CommandContext ctx;
-                    // ctx.ipv6 = index.data(Qt::UserRole).value<QHostAddress>();
-                    // ctx.name = index.data().toString();
-                    emit requestConfig(lbplc->getctx(index.data(Qt::UserRole).value<QHostAddress>(), index.data().toString()));
+                    emit requestConfig(index.data(ctxRole).value<plc::CommandContext>());
                 }
             }
             );
@@ -57,7 +49,19 @@ DeviceTreeDockWidget::DeviceTreeDockWidget(QWidget *parent)
                 QMessageBox::information(this, tr("Перезагрузить все"),
                                          QString(tr("Команда на перезагрузку всех модулей %1 отправлена")).arg(ctx.name));
             });
-    // qRegisterMetaType<QHostAddress>("QHostAddress");
+
+    connect(lbplc, &plcManager::configReceived, this, [this](const plc::CommandContext &ctx, const QString &) {
+        if (lbplc->connectionMode() != plcManager::ConnectionMode::RTUMode)
+            return;
+
+        if (ctx.name.isEmpty() || containsName(ctx.name))
+            return;
+
+        if (QStandardItem *plcRoot = findPlcRoot(ctx.ipv6)) {
+            plcRoot -> setData(QVariant::fromValue(ctx), ctxRole);
+            plcRoot->setText(ctx.name);
+        }
+    });
 }
 
 void DeviceTreeDockWidget::updateDevice(const plc::CommandContext &ctx, const QMap<qsizetype, lbprocess::scaninfo> &scan)
@@ -68,7 +72,8 @@ void DeviceTreeDockWidget::updateDevice(const plc::CommandContext &ctx, const QM
     // Если не нашли, создаем новый корень
     if (!plcRoot) {
         plcRoot = new QStandardItem(ctx.name);
-        plcRoot->setData(QVariant::fromValue(ctx.ipv6), Qt::UserRole); // Прячем ID для поиска в будущем
+        // plcRoot->setData(QVariant::fromValue(ctx.ipv6), Qt::UserRole);
+        plcRoot -> setData(QVariant::fromValue(ctx), ctxRole);
         QFont rootFont = plcRoot->font();
         rootFont.setBold(true);
         rootFont.setPointSize(rootFont.pointSize());
@@ -88,7 +93,7 @@ void DeviceTreeDockWidget::updateDevice(const plc::CommandContext &ctx, const QM
         const auto &info = it.value();
         // Создаем элементы для двух колонок
         QStandardItem *col1 = new QStandardItem(QString("Slot %1: %2").arg(it.key()).arg(info.devtype));
-        col1->setData(it.key(), Qt::UserRole);
+        col1->setData(it.key(), slotRole);
         col1->setData(info.devtype, ModuleTypeRole);
         col1->setData(info.version, InstalledVersionRole);
         col1->setData(true, ModuleItemRole);
@@ -151,12 +156,14 @@ void DeviceTreeDockWidget::showContextMenu(const QPoint &pos)
 
     plc::CommandContext ctx;
     if (isRoot) {
-        ctx.name = index.data().toString();
-        ctx.ipv6 = index.data(Qt::UserRole).value<QHostAddress>();
+        // ctx.name = index.data().toString();
+        // ctx.ipv6 = index.data(Qt::UserRole).value<QHostAddress>();
+        ctx = index.data(ctxRole).value<plc::CommandContext>();
     } else {
-        ctx.name = index.parent().data().toString();
-        ctx.ipv6 = index.parent().data(Qt::UserRole).value<QHostAddress>();
-        ctx.slot = index.data(Qt::UserRole).toInt();
+        // ctx.name = index.parent().data().toString();
+        // ctx.ipv6 = index.parent().data(Qt::UserRole).value<QHostAddress>();
+        ctx = index.parent().data(ctxRole).value<plc::CommandContext>();
+        ctx.slot = index.data(slotRole).toInt();
     }
 
     QMenu menu(this);
@@ -358,7 +365,7 @@ QStringList DeviceTreeDockWidget::getMismatchedSlots(const QModelIndex &plcIndex
 
         // Если не совпадают — забираем номер слота
         if (!matches) {
-            QString slotNumber = moduleItem->data(Qt::UserRole).toString();
+            QString slotNumber = moduleItem->data(slotRole).toString();
             if (!mismatchedSlots.contains(slotNumber)) {
                 mismatchedSlots.append(slotNumber);
             }
@@ -378,7 +385,7 @@ QStringList DeviceTreeDockWidget::getIgnoreCPUslots(const QModelIndex &plcIndex,
     for (int row = 0; row < plcRoot->rowCount(); ++row) {
         QStandardItem *moduleItem = plcRoot->child(row);
         const QString moduleType = moduleItem->data(ModuleTypeRole).toString().trimmed();
-        QString slotNumber = moduleItem->data(Qt::UserRole).toString();
+        QString slotNumber = moduleItem->data(slotRole).toString();
         if (!mismatched.isEmpty() && !mismatched.contains(slotNumber))
             continue;
         if (moduleType.compare("LB241CPU", Qt::CaseInsensitive) == 0){
@@ -726,7 +733,7 @@ QStandardItem *DeviceTreeDockWidget::findPlcRoot(const QHostAddress& ipv6)
 {
     for (int i = 0; i < treeModel->rowCount(); ++i) {
         auto *item = treeModel->item(i);
-        if (item->data(Qt::UserRole).value<QHostAddress>() == ipv6)
+        if (item->data(ctxRole).value<plc::CommandContext>().ipv6 == ipv6)
             return item;
     }
     return nullptr;

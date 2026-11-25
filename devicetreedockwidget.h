@@ -36,7 +36,9 @@ private slots:
 private:
     MainWindow *p_mainWindow;
     enum ItemRole {
-        ModuleTypeRole = Qt::UserRole + 1,
+        ctxRole = Qt::UserRole,
+        slotRole,
+        ModuleTypeRole,
         InstalledVersionRole,
         ModuleItemRole,
         VersionInfoRole,

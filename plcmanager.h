@@ -79,7 +79,8 @@ public:
                             const QString &boxTitle,
                             F messageBuilder){
         LBclient *lbc = new LBclient(this, args);
-        lbc->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
+        if (!configureClientTransport(lbc, ctx)) return;
+        // lbc->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
         if (ctx.isSlot()) lbc->setSlot(ctx.slot);
         connect(lbc, &LBclient::ExecuteCompleted, this,
                 [this, lbc, ctx, boxTitle, messageBuilder]

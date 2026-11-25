@@ -69,7 +69,6 @@ void plcManager::requestConfig(const plc::CommandContext &ctx)
                         if (jit != Qjo.end() && jit->isString())
                             updatedCtx.name = jit->toString();
                         const QString key = updatedCtx.ipv6str();
-                        qDebug() << key << updatedCtx.name;
                         if (last_ldmap.contains(key)) {
                             last_ldmap[key].name = updatedCtx.name;
                         }
@@ -486,8 +485,26 @@ bool plcManager::configureClientTransport(LBclient *lbc, const plc::CommandConte
             rtu = last_ldmap.value(ctx.ipv6str()).rtuSettings;
         }
         if (rtu.portName.isEmpty() || rtu.addr <= 0) {
-            emit errorOccurred(tr("RTU: не задан COM-порт или адрес устройства"));
+            logApp() << (tr("RTU: не задан COM-порт или адрес устройства"));
             lbc->deleteLater();
+            return false;
+        }
+        auto it = std::find_if(m_rtuProfiles.cbegin(), m_rtuProfiles.cend(),
+                               [&ctx](const discover::ModbusRtuSettings &cfg) {
+                                   return cfg.baudRate == ctx.rtu.baudRate &&
+                                          cfg.dataBits == ctx.rtu.dataBits &&
+                                          cfg.parity   == ctx.rtu.parity &&
+                                          cfg.stopBits == ctx.rtu.stopBits;
+                               });
+
+        const QString requestedProfile = DiscoverDockWidget::formatRtuProfile(ctx.rtu);
+
+        if (it != m_rtuProfiles.cend()) {
+            setCurrentProfileIt(it);
+            logApp() << tr("Активный профиль RTU изменён на %1.").arg(DiscoverDockWidget::formatRtuProfile(*it));
+        } else {
+            lbc->deleteLater();
+            logApp() << tr("Профиль RTU (%1) не найден в списке. Добавьте профиль в настройки. Операция прервана.").arg(requestedProfile);
             return false;
         }
         lbc->setSerialAddr(rtu.portName, rtu.addr, ctx.rtu.baudRate, ctx.rtu.dataBits, ctx.rtu.parity, ctx.rtu.stopBits);
