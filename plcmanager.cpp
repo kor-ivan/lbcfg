@@ -13,7 +13,7 @@ void plcManager::scanDevice(const plc::CommandContext &ctx)
 {
     logApp() << QString(tr("Starting scan process for: %1; IF = %2; name = %3; rtu = %4")).arg(ctx.ipv6str(), ctx.ipv6.scopeId(), ctx.name, QString::number(ctx.rtu.addr));
     LBclient *lbc = new LBclient(this);
-    configureClientTransport(lbc, ctx);
+    if (!configureClientTransport(lbc, ctx)) return;
     // lbc->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
     connect(lbc, &LBclient::lbDisconnect, this,
             [lbc](const QString& lbhost, const QString& message, const QModbusDevice::Error error){
@@ -48,7 +48,7 @@ void plcManager::requestConfig(const plc::CommandContext &ctx)
 {
     logApp()<<QString(tr("Starting request config process for: %1; IF = %2; name = %3")).arg(ctx.ipv6str(), ctx.ipv6.scopeId(), ctx.name);
     LBclient *lbc = new LBclient(this, {"getconf"});
-    configureClientTransport(lbc, ctx);
+    if (!configureClientTransport(lbc, ctx)) return;
     // lbc->setTCPaddr(ctx.ipv6str(), 502, ctx.ipv6.scopeId());
     connect(lbc, &LBclient::ExecuteCompletedJson, this,
             [lbc, this, ctx](const QString& lbhost, const QJsonObject& Qjo, const QString& message, const QModbusDevice::Error error){
@@ -61,7 +61,21 @@ void plcManager::requestConfig(const plc::CommandContext &ctx)
                     logPLC(ctx.name, LogCatcher::Debug, LogCatcher::wrapYes)<<yamlContent;
                     logPLC(ctx.name, LogCatcher::Debug) << "# END YAML";
                     logApp() << tr("Request config is completed for:") << lbhost;
-                    emit configReceived(ctx, yamlContent);
+
+                    plc::CommandContext updatedCtx = ctx;
+
+                    if (m_mode == ConnectionMode::RTUMode && updatedCtx.name == "noname" && !Qjo.isEmpty()) {
+                        auto jit = Qjo.find("hostname");
+                        if (jit != Qjo.end() && jit->isString())
+                            updatedCtx.name = jit->toString();
+                        const QString key = updatedCtx.ipv6str();
+                        qDebug() << key << updatedCtx.name;
+                        if (last_ldmap.contains(key)) {
+                            last_ldmap[key].name = updatedCtx.name;
+                        }
+                    }
+
+                    emit configReceived(updatedCtx, yamlContent);
                 }
                 else{
                     logPLC(ctx.name) << message;
@@ -108,7 +122,7 @@ bool plcManager::startFirmware(const plc::CommandContext &ctx, const QString &fi
     emit firmwareStarted(ctx, startMessage);
     activeOtaClient = new LBclient(this, {lbkey});
     activeOtaClient -> setMaxOtaTimeOutCount(AppSettings::getMaxFirmwareRetries());
-    configureClientTransport(activeOtaClient, ctx);
+    if (!configureClientTransport(activeOtaClient, ctx)) return false;
     // activeOtaClient->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
     activeOtaClient->setOtaFilename(filePath);
     if (ctx.slot != -1)
@@ -184,7 +198,7 @@ void plcManager::startFirmwareAll(const plc::CommandContext &ctx, const QString 
     logPLC() << QString(tr("The command to flash all modules has been launched %1")).
                 arg(AppSettings::getFirmwareIgnoreCPU()?tr("with the option: ignore the processor module"):"");
     activeOtaClient = new LBclient(this);
-    configureClientTransport(activeOtaClient, ctx);
+    if (!configureClientTransport(activeOtaClient, ctx)) return;
     // activeOtaClient->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
     activeOtaClient -> setMaxOtaTimeOutCount(AppSettings::getMaxFirmwareRetries());
     prcActiveOtaClient = new lbprocess(this, activeOtaClient,
@@ -224,7 +238,7 @@ void plcManager::startRestartAll(const plc::CommandContext &ctx)
 {
     debugApp()<<"plcManager::startRestartAll for"<<ctx.ipv6<<ctx.ipv6.scopeId();
     LBclient *lbc = new LBclient (this);
-    configureClientTransport(lbc, ctx);
+    if (!configureClientTransport(lbc, ctx)) return;
     // lbc->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
     lbc -> setMaxOtaTimeOutCount(AppSettings::getMaxFirmwareRetries());
     lbprocess *prc = new lbprocess(this, lbc);
@@ -255,7 +269,7 @@ void plcManager::startLog(const plc::CommandContext &ctx, const QString &flag, c
     activeLogClient = new LBclient (this, {"log", flag});
     if (ctx.slot!=-1)
         activeLogClient->setSlot(ctx.slot);
-    configureClientTransport(activeLogClient, ctx);
+    if (!configureClientTransport(activeLogClient, ctx)) return;
     // activeLogClient->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
 
     QPointer<QFile> logFile;
@@ -467,13 +481,16 @@ QString plcManager::getIf(const QString &ipv6)
 bool plcManager::configureClientTransport(LBclient *lbc, const plc::CommandContext &ctx)
 {
     if (m_mode == ConnectionMode::RTUMode) {
-        const QString port = ctx.rtu.portName;
-        const int addr = ctx.rtu.addr;
-        if (port.isEmpty() || addr <= 0) {
+        discover::ModbusRtuSettings rtu = ctx.rtu;
+        if ((rtu.portName.isEmpty() || rtu.addr <= 0) && last_ldmap.contains(ctx.ipv6str())) {
+            rtu = last_ldmap.value(ctx.ipv6str()).rtuSettings;
+        }
+        if (rtu.portName.isEmpty() || rtu.addr <= 0) {
             emit errorOccurred(tr("RTU: не задан COM-порт или адрес устройства"));
+            lbc->deleteLater();
             return false;
         }
-        lbc->setSerialAddr(port, addr, ctx.rtu.baudRate, ctx.rtu.dataBits, ctx.rtu.parity, ctx.rtu.stopBits);
+        lbc->setSerialAddr(rtu.portName, rtu.addr, ctx.rtu.baudRate, ctx.rtu.dataBits, ctx.rtu.parity, ctx.rtu.stopBits);
         return true;
     }
 

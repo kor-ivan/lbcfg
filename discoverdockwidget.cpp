@@ -165,6 +165,13 @@ DiscoverDockWidget::DiscoverDockWidget(QWidget *parent)
         updateDiscoverButtonState();
     });
 
+    connect(lbplc, &plcManager::configReceived, this,
+            [this](const plc::CommandContext &ctx, const QString &) {
+                if (!ctx.name.isEmpty()) {
+                    updateDeviceName(ctx.ipv6str(), ctx.name);
+                }
+            });
+
     setRtuMode(lbplc->connectionMode() == plcManager::ConnectionMode::RTUMode);
 }
 
@@ -276,10 +283,25 @@ void DiscoverDockWidget::showContextMenu(const QPoint &pos)
     }
 }
 
-// void DiscoverDockWidget::fillTable()
-// {
+void DiscoverDockWidget::updateDeviceName(const QString &key, const QString &name)
+{
+    if (key.isEmpty() || name.isEmpty())
+        return;
 
-// }
+    const QHostAddress targetAddr(key);
+
+    for (int row = 0; row < table->rowCount(); ++row) {
+        QTableWidgetItem *nameItem = table->item(row, 0);
+        if (!nameItem)
+            continue;
+
+        const QString rowKey = nameItem->data(ipv6Role).toString();
+        if (rowKey == key || (!targetAddr.isNull() && QHostAddress(rowKey) == targetAddr)) {
+            nameItem->setText(name);
+            break;
+        }
+    }
+}
 
 void DiscoverDockWidget::discoverReceived(const QMap<QString, discover::lbinfo> &DiscoverMap)
 {
@@ -292,57 +314,7 @@ void DiscoverDockWidget::discoverReceived(const QMap<QString, discover::lbinfo> 
         debugPLC() << it.key() << it.value();
         appendDeviceRow(it.key(), it.value());
     }
-    // const auto &ldmap = DiscoverMap;
-    // table->setSortingEnabled(false); // Отключаем сортировку на время вставки для скорости
-    // int row = 0;
-    // for (auto it = ldmap.begin(); it != ldmap.end(); ++it) {
-    //     debugPLC() << it.key() << it.value();
-    //     table->insertRow(row);
-    //     QTableWidgetItem *nameItem = new QTableWidgetItem(it.value().name);
-    //     nameItem->setData(ipv6Role, it.key());
-    //     table->setItem(row, 0, nameItem);
-    //     // table->setItem(row, 0, new QTableWidgetItem(it.value().name));
-    //     table->setItem(row, 1, new QTableWidgetItem(it.value().type));
-    //     table->setItem(row, 2, new QTableWidgetItem(it.value().ipv4));
-    //     table->setItem(row, 3, new QTableWidgetItem(it.value().mac));
-    //     QStringList strList;
-    //     for (float val : it.value().delay)
-    //         strList << QString::number(val);
-    //     table->setItem(row, 4, new QTableWidgetItem(strList.join(",")));
-    //     strList.clear();
-    //     for (const auto& val : it.value().ifindex)
-    //         strList << val;
-    //     table->setItem(row, 5, new QTableWidgetItem(strList.join(",")));
-    //     if (it.value().rtuSettings.addr > 0)
-    //     {
-    //         QTableWidgetItem *rtuItem = new QTableWidgetItem(QString("%1/%2/%3/%4/%5")
-    //                                                              .arg(it.value().rtuSettings.addr)
-    //                                                              .arg(it.value().rtuSettings.baudRate)
-    //                                                              .arg(it.value().rtuSettings.dataBits)
-    //                                                              .arg(it.value().rtuSettings.parity == QSerialPort::EvenParity ? "E" :
-    //                                                                       it.value().rtuSettings.parity == QSerialPort::OddParity  ? "O" : "N")
-    //                                                              .arg(it.value().rtuSettings.stopBits));
-    //         table->setItem(row, 6, rtuItem);
-    //         rtuItem -> setData(rtuRole, QVariant::fromValue(it.value().rtuSettings));
-    //     }
 
-    //     for (int col = 0; col < table->columnCount(); ++col) {
-    //         QTableWidgetItem *item = table->item(row, col);
-    //         if (item) {
-    //             item->setToolTip(it.key());
-    //             if (it.value().btn) {
-    //                 item->setBackground(alertColor);
-    //                 QFont font = item->font();
-    //                 font.setBold(true);
-    //                 item->setFont(font);
-    //             }
-    //         }
-    //     }
-    //     // table->setItem(row, 6, new QTableWidgetItem(it.key()));
-
-    //     row++;
-    // }
-    // table->setSortingEnabled(true); // Возвращаем возможность сортировки
     logApp() << tr("Discover completed");
 }
 

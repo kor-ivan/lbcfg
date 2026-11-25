@@ -31,6 +31,7 @@ private slots:
     void cleanRow();
     void onTableDoubleClicked(int row, int column);
     void showContextMenu(const QPoint& pos);
+    void updateDeviceName(const QString &key, const QString &name);
 
 private:
     enum DeviceRoles {
