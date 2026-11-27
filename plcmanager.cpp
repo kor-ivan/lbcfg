@@ -165,23 +165,52 @@ void plcManager::stopFirmware()
 void plcManager::startConf(const plc::CommandContext &ctx, const QString &yamlFilePath)
 {
     logApp() << tr("Starting conf process for:") << ctx.name;
+
+    QString ifce;
+    discover::ModbusRtuSettings m_rtu;
+
+    if (m_mode == ConnectionMode::RTUMode) {
+        m_rtu = getRtu(ctx.ipv6str());
+        if (m_rtu.addr == -1 || m_rtu.portName.isEmpty()) {
+            logApp() << tr("Для %1 не определены параметры RTU. Сначала выполните поиск устройств.").arg(ctx.name);
+            return;
+        }
+    } else if (m_mode == ConnectionMode::TCPMode) {
+        ifce = getIf(ctx.ipv6str());
+    }
+
     LBclient *lbc = new LBclient(this, {"conf"});
-    QString ifce = getIf(ctx.ipv6str());
+
+    if (m_mode == ConnectionMode::RTUMode) {
+        lbc->setSerialAddr(m_rtu.portName, m_rtu.addr, m_rtu.baudRate, m_rtu.dataBits, m_rtu.parity, m_rtu.stopBits);
+    }
+    plc::CommandContext m_ctx = ctx;
+    m_ctx.ipv6.setScopeId(ifce);
+    connect(lbc, &LBclient::newRtuSettings, this, [&m_ctx]
+            (const int addr, const int baudRate, const int dataBits, const int parity, const int stopBits){
+        m_ctx.rtu.addr = addr;
+        m_ctx.rtu.baudRate = baudRate;
+        m_ctx.rtu.dataBits = dataBits;
+        m_ctx.rtu.parity = parity;
+        m_ctx.rtu.stopBits = stopBits;
+    });
+
     lbc->setlbHost(ctx.name, yamlFilePath, ifce);
-    connect(lbc, &LBclient::ExecuteCompletedStr, this, [this, ctx]
+
+    connect(lbc, &LBclient::ExecuteCompletedStr, this, [this, m_ctx]
             (const QString& lbstr, const QString& message, const QModbusDevice::Error error){
                 if (lbstr!="OK")
                     emit errorOccurred(lbstr);
                 else
                     emit eventOccurred(lbstr);
-                logPLC(ctx.name) << lbstr;
+                logPLC(m_ctx.name) << lbstr;
             });
-    connect(lbc, &LBclient::lbDisconnect, this, [lbc, ctx, ifce, this]
+    connect(lbc, &LBclient::lbDisconnect, this, [lbc, m_ctx, this]
             (const QString& lbhost, const QString& message, const QModbusDevice::Error error){
                 logApp() << message << tr("disconnect") << lbhost;
-                plc::CommandContext m_ctx;
-                m_ctx = ctx;
-                m_ctx.ipv6.setScopeId(ifce);
+                // plc::CommandContext m_ctx;
+                // m_ctx = ctx;
+                // m_ctx.ipv6.setScopeId(ifce);
                 emit confCompleted(m_ctx);
                 lbc->deleteLater();
             });
@@ -507,12 +536,20 @@ bool plcManager::configureClientTransport(LBclient *lbc, const plc::CommandConte
             logApp() << tr("Профиль RTU (%1) не найден в списке. Добавьте профиль в настройки. Операция прервана.").arg(requestedProfile);
             return false;
         }
-        lbc->setSerialAddr(rtu.portName, rtu.addr, ctx.rtu.baudRate, ctx.rtu.dataBits, ctx.rtu.parity, ctx.rtu.stopBits);
+        lbc->setSerialAddr(m_currentPortIt->portName(), rtu.addr, ctx.rtu.baudRate, ctx.rtu.dataBits, ctx.rtu.parity, ctx.rtu.stopBits);
         return true;
     }
 
     lbc->setTCPaddr(ctx.ipv6str(), port, ctx.ipv6.scopeId());
     return true;
+}
+
+discover::ModbusRtuSettings plcManager::getRtu(const QString &ipv6)
+{
+    discover::ModbusRtuSettings rtu;
+    if (!last_ldmap.isEmpty() && last_ldmap.contains(ipv6))
+        rtu = last_ldmap.value(ipv6).rtuSettings;
+    return rtu;
 }
 
 void plcManager::setCurrentPortIt(const SerialPortIterator &newCurrentPortIt)

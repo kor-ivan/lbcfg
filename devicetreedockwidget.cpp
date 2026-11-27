@@ -465,6 +465,18 @@ reloadFirmwareRepositoryFromSettings()
     }
 }
 
+void DeviceTreeDockWidget::updateRtuSettings(const plc::CommandContext &ctx)
+{
+    for (int i = 0; i < treeModel->rowCount(); ++i) {
+        auto *item = treeModel->item(i);
+        auto m_ctx = item->data(ctxRole).value<plc::CommandContext>();
+        if (m_ctx.ipv6 == ctx.ipv6){
+            m_ctx.rtu = ctx.rtu;
+            return;
+        }
+    }
+}
+
 bool DeviceTreeDockWidget::loadFirmwareRepository(const QString &repositoryRoot)
 {
     // m_firmwareAnalyzer->setPath(

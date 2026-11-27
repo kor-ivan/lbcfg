@@ -40,6 +40,8 @@ using RtuProfileIterator = RtuProfileList::const_iterator;
 class plcManager : public QObject
 {
     Q_OBJECT
+    friend class WatchSession;
+
 public:
     // explicit plcManager(QObject *parent = nullptr);
     // virtual ~plcManager();
@@ -169,6 +171,7 @@ private:
 
     RtuProfileList m_rtuProfiles;
     RtuProfileIterator m_currentProfileIt = m_rtuProfiles.cend();
+    discover::ModbusRtuSettings getRtu(const QString &ipv6);
 
 
 };

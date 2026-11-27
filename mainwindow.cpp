@@ -79,6 +79,11 @@ ConfigDockWidget *MainWindowPrivate::CreateConfDockWidget(const QString &key, co
         if (!scanConnection) {
             scanConnection = QObject::connect(lbplc, &plcManager::confCompleted, q_ptr, [this](const plc::CommandContext &ctx){
                 this->checkTreeAndStartScan(ctx);
+                if (ctx.rtu.addr != -1){
+                    qDebug() << DiscoverDockWidget::formatRtuProfile(ctx.rtu);
+                    if (treeDock)
+                        treeDock->updateRtuSettings(ctx);
+                }
             });
         }
     }

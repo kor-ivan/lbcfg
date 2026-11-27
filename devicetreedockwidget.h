@@ -21,6 +21,7 @@ public:
 
     // void editFirmwareRepository();
     void reloadFirmwareRepositoryFromSettings();
+    void updateRtuSettings(const plc::CommandContext &ctx);
 
 signals:
     void requestConfig(const plc::CommandContext &ctx);
